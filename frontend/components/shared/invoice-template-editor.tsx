@@ -180,24 +180,17 @@ export function InvoiceTemplateA4({
         {editing?.status === "DRAFT" && <button onClick={() => onAction("activate")} className="px-3 py-1 text-xs rounded bg-green-50 text-green-700 hover:bg-green-100">Activate</button>}
         {editing?.status === "ACTIVE" && <button onClick={() => onAction("archive")} className="px-3 py-1 text-xs rounded bg-gray-100 text-gray-600 hover:bg-gray-200">Archive</button>}
         {editing && editing.status !== "ACTIVE" && <button onClick={onDelete} className="px-3 py-1 text-xs rounded bg-red-50 text-red-600 hover:bg-red-100">Delete</button>}
-        {editing && <button onClick={async () => {
-          try {
-            const res = await fetch(`/api/v1/invoice-templates/${editing.id}/sample-pdf`, {
-              method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form),
-            });
-            const blob = await res.blob();
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a"); a.href = url; a.download = `preview-unsaved-${form.code || editing.id}.pdf`; a.click(); URL.revokeObjectURL(url);
-          } catch { alert("Failed to download PDF"); }
-        }} className="px-3 py-1 text-xs rounded border border-blue-300 text-blue-600 hover:bg-blue-50">Preview Unsaved</button>}
-        {editing && <button onClick={async () => {
-          try {
-            const res = await fetch(`/api/v1/invoice-templates/${editing.id}/sample-pdf`);
-            const blob = await res.blob();
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a"); a.href = url; a.download = `preview-saved-${form.code || editing.id}.pdf`; a.click(); URL.revokeObjectURL(url);
-          } catch { alert("Failed to download PDF"); }
-        }} className="px-3 py-1 text-xs rounded border border-gray-300 text-gray-600 hover:bg-gray-50">Preview Saved</button>}
+        {editing && (() => {
+          const safeName = (form.title || "template").replace(/[^a-zA-Z0-9]/g, "_");
+          const ts = () => { const d = new Date(); return `${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}${String(d.getSeconds()).padStart(2,"0")}`; };
+          const dl = async (blob: Blob, prefix: string) => { const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `prev_${prefix}_${safeName}_${ts()}.pdf`; a.click(); URL.revokeObjectURL(url); };
+          return <>
+            <button onClick={async () => { try { const r = await fetch(`/api/v1/invoice-templates/${editing.id}/sample-pdf`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) }); await dl(await r.blob(), "unsvd"); } catch { alert("Failed"); } }}
+              className="px-3 py-1 text-xs rounded border border-blue-300 text-blue-600 hover:bg-blue-50">Preview Unsaved</button>
+            <button onClick={async () => { try { const r = await fetch(`/api/v1/invoice-templates/${editing.id}/sample-pdf`); await dl(await r.blob(), "svd"); } catch { alert("Failed"); } }}
+              className="px-3 py-1 text-xs rounded border border-gray-300 text-gray-600 hover:bg-gray-50">Preview Saved</button>
+          </>;
+        })()}
         <button onClick={onSave} disabled={saving}
           className="px-4 py-1.5 bg-brand-600 text-white rounded text-sm hover:bg-brand-700 disabled:opacity-50">
           {saving ? "Saving..." : "Save"}
