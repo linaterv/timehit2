@@ -100,6 +100,7 @@ class InvoiceTemplateListSerializer(serializers.ModelSerializer):
             "id", "title", "code", "template_type", "status", "is_default",
             "contractor", "client", "placement_id", "parent_id",
             "company_name", "country", "default_currency",
+            "billing_address", "bank_name", "vat_rate_percent",
             "invoice_series_prefix", "created_at", "updated_at",
         ]
 

@@ -543,6 +543,8 @@ export default function ContractorDetailPage() {
           saving={tplSaving} error={tplError}
           showTypeSelector={false}
           globalTemplates={globalTemplates}
+          contractorOwnEdit
+          parentTemplate={globalTemplates.find((g) => g.id === (tplForm.parent_id ?? tplEditing?.parent_id)) ?? null}
         />
       )}
     </div>

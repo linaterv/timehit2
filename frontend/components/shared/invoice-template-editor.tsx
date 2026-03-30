@@ -114,14 +114,23 @@ interface A4Props {
   showTypeSelector?: boolean;
   globalLabel?: string | null;
   globalTemplates?: InvoiceTemplate[];
+  /** When true, contractor edits their own side (From + VAT + bank). Agency side becomes read-only. */
+  contractorOwnEdit?: boolean;
+  /** The selected parent/global template — used to prefill read-only side */
+  parentTemplate?: InvoiceTemplate | null;
 }
 
 export function InvoiceTemplateA4({
   form, onChange, isNew, editing, onSave, onDelete, onAction, onClose,
-  saving, error, showTypeSelector = true, globalLabel, globalTemplates,
+  saving, error, showTypeSelector = true, globalLabel, globalTemplates, contractorOwnEdit = false, parentTemplate,
 }: A4Props) {
   const u = onChange;
   const isContractorType = form.template_type === "CONTRACTOR";
+  // When contractorOwnEdit: contractor edits From side, agency Bill To is read-only (inverted)
+  const fromEditable = isContractorType ? contractorOwnEdit : !contractorOwnEdit;
+  const toEditable = isContractorType ? !contractorOwnEdit : contractorOwnEdit;
+  const vatEditable = contractorOwnEdit;
+  const bankEditable = contractorOwnEdit || !isContractorType;
   const previewNumber = `${form.invoice_series_prefix || "???-"}${String(form.next_invoice_number ?? 1).padStart(4, "0")}`;
 
   return (
@@ -203,25 +212,25 @@ export function InvoiceTemplateA4({
         <div className="grid grid-cols-2 gap-8 mb-10">
           <div>
             <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">From</div>
-            {isContractorType ? (
-              <div className="w-full bg-amber-50 border-2 border-dashed border-amber-200 rounded px-2 py-1.5 text-sm text-amber-600/60 leading-relaxed" style={{ minHeight: "calc(7 * 1.625em + 0.75rem)" }}>
-                Contractor company name<br />Reg. code: auto-filled<br />VAT: auto-filled<br />Contractor address<br />City, Country
-              </div>
-            ) : (
+            {fromEditable ? (
               <textarea value={form.billing_address} onChange={(e) => u("billing_address", e.target.value)}
-                placeholder={"Agency name\nReg. code: 123456789\nVAT: LT100001234\nAddress line 1\nCity, Country\nEmail / website"}
+                placeholder={isContractorType ? "Contractor company\nReg. code: ...\nVAT: ...\nAddress\nCity, Country" : "Agency name\nReg. code: ...\nVAT: ...\nAddress\nCity, Country"}
                 rows={7} className="w-full bg-blue-50/60 border-2 border-brand-200 focus:border-brand-600 focus:bg-blue-50 focus:outline-none rounded px-2 py-1.5 text-sm text-gray-900 placeholder:text-brand-300 resize-none leading-relaxed" />
+            ) : (
+              <div className="w-full bg-amber-50 border-2 border-dashed border-amber-200 rounded px-2 py-1.5 text-sm text-amber-600/60 leading-relaxed whitespace-pre-wrap" style={{ minHeight: "calc(7 * 1.625em + 0.75rem)" }}>
+                {parentTemplate?.billing_address || (isContractorType ? "Contractor info — auto-filled" : "Agency info — from global template")}
+              </div>
             )}
           </div>
           <div>
             <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Bill To</div>
-            {isContractorType ? (
+            {toEditable ? (
               <textarea value={form.billing_address} onChange={(e) => u("billing_address", e.target.value)}
-                placeholder={"Agency name\nReg. code: 123456789\nVAT: LT100001234\nAddress line 1\nCity, Country\nEmail / website"}
+                placeholder={isContractorType ? "Agency name\nReg. code: ...\nVAT: ...\nAddress\nCity, Country" : "Client company\nAddress\nCity, Country"}
                 rows={7} className="w-full bg-blue-50/60 border-2 border-brand-200 focus:border-brand-600 focus:bg-blue-50 focus:outline-none rounded px-2 py-1.5 text-sm text-gray-900 placeholder:text-brand-300 resize-none leading-relaxed" />
             ) : (
-              <div className="w-full bg-amber-50 border-2 border-dashed border-amber-200 rounded px-2 py-1.5 text-sm text-amber-600/60 leading-relaxed" style={{ minHeight: "calc(7 * 1.625em + 0.75rem)" }}>
-                Client company name<br />Reg. code: auto-filled<br />VAT: auto-filled<br />Client address<br />City, Country
+              <div className="w-full bg-amber-50 border-2 border-dashed border-amber-200 rounded px-2 py-1.5 text-sm text-amber-600/60 leading-relaxed whitespace-pre-wrap" style={{ minHeight: "calc(7 * 1.625em + 0.75rem)" }}>
+                {parentTemplate?.billing_address || (isContractorType ? "Agency info — from global template" : "Client info — auto-filled")}
               </div>
             )}
           </div>
@@ -251,10 +260,10 @@ export function InvoiceTemplateA4({
               <Placeholder>{`0.00 ${form.default_currency || "EUR"}`}</Placeholder>
             </div>
             <div className="flex justify-between text-gray-500 items-center">
-              {isContractorType ? (
-                <span>VAT (<Placeholder>auto</Placeholder>%)</span>
-              ) : (
+              {vatEditable ? (
                 <span>VAT (<Field value={form.vat_rate_percent} onChange={(v) => u("vat_rate_percent", v)} placeholder="0" className="text-xs w-8 text-center" />%)</span>
+              ) : (
+                <span>VAT (<Placeholder>{parentTemplate?.vat_rate_percent ?? "auto"}</Placeholder>%)</span>
               )}
               <Placeholder>0.00</Placeholder>
             </div>
@@ -269,21 +278,28 @@ export function InvoiceTemplateA4({
         {isContractorType && (
           <div className="border-t pt-6 mb-6">
             <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Payment Details</div>
-            <textarea value={form.bank_name} onChange={(e) => u("bank_name", e.target.value)}
-              placeholder={"Bank: SEB\nIBAN: LT11 2233 4455 6677 8899\nSWIFT: CBVILT2X"}
-              rows={4} className="w-full bg-blue-50/60 border-2 border-brand-200 focus:border-brand-600 focus:bg-blue-50 focus:outline-none rounded px-2 py-1.5 text-sm text-gray-900 placeholder:text-brand-300 resize-none leading-relaxed font-mono" />
+            {bankEditable ? (
+              <textarea value={form.bank_name} onChange={(e) => u("bank_name", e.target.value)}
+                placeholder={"Bank: SEB\nIBAN: LT11 2233 4455 6677 8899\nSWIFT: CBVILT2X"}
+                rows={4} className="w-full bg-blue-50/60 border-2 border-brand-200 focus:border-brand-600 focus:bg-blue-50 focus:outline-none rounded px-2 py-1.5 text-sm text-gray-900 placeholder:text-brand-300 resize-none leading-relaxed font-mono" />
+            ) : (
+              <div className="w-full bg-amber-50 border-2 border-dashed border-amber-200 rounded px-2 py-1.5 text-sm text-amber-600/60 leading-relaxed whitespace-pre-wrap font-mono" style={{ minHeight: "calc(4 * 1.625em + 0.75rem)" }}>
+                {parentTemplate?.bank_name || "Bank details — from global template"}
+              </div>
+            )}
           </div>
         )}
 
         {/* Footer bar */}
         <div className="border-t pt-4 flex items-center gap-4 text-xs text-gray-500">
-          {!isContractorType && (
+          {vatEditable ? (
             <label className="flex items-center gap-1.5">
               <input type="checkbox" checked={!!form.vat_registered} onChange={(e) => u("vat_registered", e.target.checked)} className="rounded" />
               VAT Registered
             </label>
+          ) : (
+            <span className="text-amber-600/60">VAT: {contractorOwnEdit ? "from global template" : "from contractor"}</span>
           )}
-          {isContractorType && <span className="text-amber-600/60">VAT: from contractor</span>}
           <span>&middot;</span>
           <span>Series: <Field value={form.invoice_series_prefix} onChange={(v) => u("invoice_series_prefix", v)} placeholder="PREFIX-" className="text-xs w-24 font-mono" mono /></span>
           <span>&middot;</span>
