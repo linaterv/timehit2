@@ -187,9 +187,17 @@ export function InvoiceTemplateA4({
             });
             const blob = await res.blob();
             const url = URL.createObjectURL(blob);
-            const a = document.createElement("a"); a.href = url; a.download = `sample-${form.code || editing.id}.pdf`; a.click(); URL.revokeObjectURL(url);
+            const a = document.createElement("a"); a.href = url; a.download = `preview-unsaved-${form.code || editing.id}.pdf`; a.click(); URL.revokeObjectURL(url);
           } catch { alert("Failed to download PDF"); }
-        }} className="px-3 py-1 text-xs rounded border border-gray-300 text-gray-600 hover:bg-gray-50">Download PDF</button>}
+        }} className="px-3 py-1 text-xs rounded border border-blue-300 text-blue-600 hover:bg-blue-50">Preview Unsaved</button>}
+        {editing && <button onClick={async () => {
+          try {
+            const res = await fetch(`/api/v1/invoice-templates/${editing.id}/sample-pdf`);
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a"); a.href = url; a.download = `preview-saved-${form.code || editing.id}.pdf`; a.click(); URL.revokeObjectURL(url);
+          } catch { alert("Failed to download PDF"); }
+        }} className="px-3 py-1 text-xs rounded border border-gray-300 text-gray-600 hover:bg-gray-50">Preview Saved</button>}
         <button onClick={onSave} disabled={saving}
           className="px-4 py-1.5 bg-brand-600 text-white rounded text-sm hover:bg-brand-700 disabled:opacity-50">
           {saving ? "Saving..." : "Save"}
