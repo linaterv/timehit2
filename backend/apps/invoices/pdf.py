@@ -112,8 +112,9 @@ def generate_pdf(data: dict) -> bytes:
     return buf.read()
 
 
-def generate_sample_pdf(template) -> bytes:
-    """Generate a sample/preview PDF from an InvoiceTemplate with dummy data."""
+def generate_sample_pdf(template, parent=None) -> bytes:
+    """Generate a sample/preview PDF from an InvoiceTemplate with dummy data.
+    If parent is provided, uses parent data for the non-editable side."""
     is_contractor = template.template_type == "CONTRACTOR"
     prefix = template.invoice_series_prefix or "???-"
     num = template.next_invoice_number or 1
@@ -132,14 +133,26 @@ def generate_sample_pdf(template) -> bytes:
 
     # From / To blocks
     tpl_block = template.billing_address or f"{template.company_name or 'Company Name'}\nAddress"
-    other_block = "Sample Company Ltd\nSample Address\nSample City, Country"
+    parent_block = (parent.billing_address if parent and parent.billing_address else None) or "Sample Company Ltd\nSample Address\nSample City, Country"
+    is_global = not template.contractor_id and not template.client_id
 
     if is_contractor:
-        from_block = other_block  # contractor side = sample
-        to_block = tpl_block       # agency side = from template
+        if is_global:
+            # Global template stores agency (Bill To) side
+            from_block = "Sample Contractor Ltd\nSample Address\nSample City, Country"
+            to_block = tpl_block
+        else:
+            # Contractor-owned: template = contractor's From, parent = agency's Bill To
+            from_block = tpl_block
+            to_block = parent_block
     else:
-        from_block = tpl_block     # agency side = from template
-        to_block = other_block     # client side = sample
+        if is_global:
+            # Global template stores agency (From) side
+            from_block = tpl_block
+            to_block = "Sample Client Ltd\nSample Address\nSample City, Country"
+        else:
+            from_block = parent_block
+            to_block = tpl_block
 
     data = {
         "invoice_number": preview_number,

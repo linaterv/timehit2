@@ -421,6 +421,7 @@ class InvoiceTemplateViewSet(viewsets.ModelViewSet):
     def sample_pdf(self, request, pk=None):
         from .pdf import generate_sample_pdf
         obj = InvoiceTemplate.objects.get(pk=pk)
+        parent = None
         # POST: override template fields with request data for live preview
         if request.method == "POST" and request.data:
             for field in ["billing_address", "bank_name", "company_name", "vat_rate_percent",
@@ -429,11 +430,23 @@ class InvoiceTemplateViewSet(viewsets.ModelViewSet):
                 if field in request.data:
                     val = request.data[field]
                     if field == "next_invoice_number" and val is not None:
-                        val = int(val)
+                        try: val = int(val)
+                        except (ValueError, TypeError): pass
                     if field == "payment_terms_days" and val is not None:
-                        val = int(val)
+                        try: val = int(val)
+                        except (ValueError, TypeError): pass
                     setattr(obj, field, val)
-        pdf_bytes = generate_sample_pdf(obj)
+            # Resolve parent from posted data or from saved template
+            parent_id = request.data.get("parent_id") or obj.parent_id
+            if parent_id:
+                try: parent = InvoiceTemplate.objects.get(pk=parent_id)
+                except InvoiceTemplate.DoesNotExist: pass
+        else:
+            # GET: use saved parent
+            if obj.parent_id:
+                try: parent = InvoiceTemplate.objects.get(pk=obj.parent_id)
+                except InvoiceTemplate.DoesNotExist: pass
+        pdf_bytes = generate_sample_pdf(obj, parent=parent)
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="sample-{obj.code or obj.id}.pdf"'
         return response
