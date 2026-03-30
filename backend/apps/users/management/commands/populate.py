@@ -194,6 +194,22 @@ class Command(BaseCommand):
                 vat_number=cl.vat_number, payment_terms_days=cl.payment_terms_days,
             )
 
+        # Global Contractor→Agency templates (LT and EN)
+        InvoiceTemplate.objects.create(
+            title="LT Template", code="LT",
+            template_type=InvoiceTemplate.Type.CONTRACTOR, status=InvoiceTemplate.Status.ACTIVE,
+            billing_address="Klientas:\nUAB \u201eWISE INTEGRATION\u201c\n\u012emon\u0117s kodas: 302666833\nPVM mok\u0117tojo kodas: LT100006404014\nAdresas: Paneri\u0173 g. 11, LT-03209 Vilnius, Lietuva\nEl. pa\u0161tas: info@wiseintegration.com\nTinklalapis: https://hitcontract.lt",
+            bank_name="Beneficiary Bank\nSEB Bank AB\nVilnius Lithuania\nSwift: CBVILT2X\nIBAN: LT06 7044 0600 0817 7672\nAccount Name: MB \u201eMidija\u201c\nCompany Code: 304612656",
+            company_name="UAB \u201eWISE INTEGRATION\u201c", country="LT", default_currency="EUR",
+        )
+        InvoiceTemplate.objects.create(
+            title="EN Template", code="EN",
+            template_type=InvoiceTemplate.Type.CONTRACTOR, status=InvoiceTemplate.Status.ACTIVE,
+            billing_address="Client:\nUAB \"WISE INTEGRATION\"\nCompany code: 302666833\nVAT No.: LT100006404014\nRegistered address: Paneri\u0173 g. 11, LT-03209 Vilnius, Lithuania\nEmail: info@hitcontract.com\nWebsite: https://hitcontract.lt\nPhone: +370 671 80231",
+            bank_name="Beneficiary Bank\nSEB Bank AB\nVilnius Lithuania\nSwift: CBVILT2X\nIBAN: LT06 7044 0600 0817 7672\nAccount Name: MB \u201eMidija\u201c\nCompany Code: 304612656",
+            company_name="UAB \"WISE INTEGRATION\"", country="LT", default_currency="EUR",
+        )
+
         # ── PLACEMENTS ───────────────────────────────────────────────────────
         self.stdout.write("Creating placements...")
         p1 = Placement.objects.create(
