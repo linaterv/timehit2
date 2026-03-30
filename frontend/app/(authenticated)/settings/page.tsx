@@ -223,8 +223,8 @@ export default function SettingsPage() {
             )}
             {isNew && (
               <select value={form.template_type} onChange={(e) => u("template_type", e.target.value)} className="px-2 py-1 border rounded text-xs">
-                <option value="CONTRACTOR">Contractor</option>
-                <option value="CLIENT">Client</option>
+                <option value="CONTRACTOR">For Contractor</option>
+                <option value="CLIENT">For Client</option>
                 <option value="AGENCY">Agency</option>
               </select>
             )}

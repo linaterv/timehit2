@@ -309,10 +309,10 @@ Subtabs within the settings page:
 - Click card → opens A4 invoice-shaped editor (replaces list view).
 
 **A4 Invoice Editor** (template detail view):
-- Toolbar above: back button, editable title + code, type selector (locked after creation), default toggle, status actions (Activate/Archive/Delete), Save button.
+- Toolbar above: back button, editable title + code, type selector ("For Contractor" / "For Client" / "Agency", locked after creation), default toggle, status actions (Activate/Archive/Delete), Save button.
 - A4-proportioned page matching the actual PDF invoice layout:
   - **Header**: "INVOICE" title, preview invoice number (from series prefix + next number), date/due date placeholders.
-  - **From / To**: left side = editable company name, address, country, reg number, VAT. Right side = amber placeholders for recipient (auto-filled at generation).
+  - **From / To**: left side = single paste-friendly **textarea** (blue tint) for entire sender block (company, reg code, VAT, address — user pastes full block). Right side = amber placeholder block for recipient (auto-filled at generation).
   - **Line Items table**: placeholder row with editable currency field.
   - **Totals**: subtotal, editable VAT rate, total — all with currency.
   - **Payment Details** (contractor type only): editable bank name, IBAN, SWIFT.
