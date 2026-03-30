@@ -15,7 +15,10 @@
       "Bash(bash /Users/adomasurbanavicius/timehit3/temp_sh.sh)",
       "Bash(npx playwright:*)",
       "Bash(cp:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ]
   }
 }
