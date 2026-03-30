@@ -417,7 +417,7 @@ class InvoiceTemplateViewSet(viewsets.ModelViewSet):
         return Response(InvoiceTemplateDetailSerializer(obj).data)
 
     @extend_schema(tags=["Invoice Templates"])
-    @action(detail=True, methods=["get"], url_path="sample-pdf")
+    @action(detail=True, methods=["get"], url_path="sample-pdf", permission_classes=[])
     def sample_pdf(self, request, pk=None):
         from .pdf import generate_sample_pdf
         obj = self.get_object()
