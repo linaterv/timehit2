@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { DataTable, type Column } from "@/components/data-table/data-table";
 import { useApiQuery } from "@/hooks/use-api";
 import { useAuth } from "@/hooks/use-auth";
+import { formatDate } from "@/lib/utils";
 import type { ContractorProfile, PaginatedResponse } from "@/types/api";
 
 export default function ContractorsPage() {
@@ -34,9 +35,6 @@ export default function ContractorsPage() {
 
   const columns: Column<ContractorProfile>[] = [
     { key: "full_name", label: "Name", sortable: true },
-    { key: "company_name", label: "Company", sortable: true },
-    { key: "country", label: "Country", sortable: true },
-    { key: "default_currency", label: "Currency", sortable: true },
     {
       key: "current_placement" as keyof ContractorProfile,
       label: "Placement",
@@ -54,36 +52,33 @@ export default function ContractorsPage() {
       },
     },
     {
-      key: "vat_registered",
-      label: "VAT Registered",
-      render: (row) => (
-        <span
-          data-testid={`vat-badge-${row.id}`}
-          className={
-            row.vat_registered
-              ? "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700"
-              : "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700"
-          }
-        >
-          {row.vat_registered ? "Yes" : "No"}
-        </span>
-      ),
+      key: "end_date" as keyof ContractorProfile,
+      label: "Ends",
+      render: (row) => {
+        const p = row.current_placement;
+        if (!p || p.status !== "ACTIVE") return <span className="text-gray-400">—</span>;
+        if (!p.end_date) return <span className="text-xs text-gray-400">open-ended</span>;
+        return <span className="text-sm">{formatDate(p.end_date)}</span>;
+      },
     },
     {
-      key: "is_active",
+      key: "is_active" as keyof ContractorProfile,
       label: "Status",
-      render: (row) => (
-        <span
-          data-testid={`active-badge-${row.id}`}
-          className={
-            row.is_active
-              ? "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700"
-              : "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700"
-          }
-        >
-          {row.is_active ? "Active" : "Inactive"}
-        </span>
-      ),
+      render: (row) => {
+        const hasActive = row.current_placement?.status === "ACTIVE";
+        return (
+          <span
+            data-testid={`active-badge-${row.id}`}
+            className={
+              hasActive
+                ? "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700"
+                : "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500"
+            }
+          >
+            {hasActive ? "In Effect" : "No Placement"}
+          </span>
+        );
+      },
     },
   ];
 

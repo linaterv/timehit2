@@ -223,9 +223,9 @@ export default function SettingsPage() {
             )}
             {isNew && (
               <select value={form.template_type} onChange={(e) => u("template_type", e.target.value)} className="px-2 py-1 border rounded text-xs">
-                <option value="CONTRACTOR">For Contractor</option>
-                <option value="CLIENT">For Client</option>
-                <option value="AGENCY">Agency</option>
+                <option value="CONTRACTOR">Contractor → Agency</option>
+                <option value="CLIENT">Agency → Client</option>
+                <option value="AGENCY">Agency (internal)</option>
               </select>
             )}
             <label className="flex items-center gap-1.5 text-xs text-gray-600">

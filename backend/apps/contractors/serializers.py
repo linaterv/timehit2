@@ -39,6 +39,7 @@ class ContractorProfileListSerializer(serializers.ModelSerializer):
             "id": str(placement.id),
             "label": f"{placement.client.company_name} → {placement.title}" if placement.title else placement.client.company_name,
             "status": placement.status,
+            "end_date": str(placement.end_date) if placement.end_date else None,
         }
 
 

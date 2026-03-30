@@ -22,6 +22,7 @@ export interface PlacementRef {
   id: string;
   label: string;
   status: PlacementStatus;
+  end_date?: string | null;
 }
 
 export interface User {

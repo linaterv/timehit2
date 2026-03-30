@@ -21,7 +21,8 @@
       "Bash(git push:*)",
       "Bash(npm run:*)",
       "WebSearch",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(chmod +x /Users/adomasurbanavicius/timehit3/checkbugs.sh)"
     ]
   }
 }
