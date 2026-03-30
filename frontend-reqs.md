@@ -301,14 +301,25 @@ Aggregated view of all placement documents the user has access to.
 
 Subtabs within the settings page:
 
-**Invoice Templates** (`/settings/invoice-templates` or default subtab):
-- Table/card list of all invoice templates (all types: CONTRACTOR, CLIENT, AGENCY).
-- Each row/card: title, code, template_type badge, status badge, is_default badge, owner (contractor/client name).
-- Filters: template_type, status.
-- "New Template" button → slide-over with full form.
-- Click row → slide-over for edit. All fields editable: title, code, template_type, owner (contractor/client/placement), is_default, company info, VAT, bank, invoice series, payment terms.
-- Actions: Activate (DRAFT→ACTIVE), Archive (ACTIVE→ARCHIVED), Delete (DRAFT/ARCHIVED).
-- data-testid: `settings-page`, `tab-invoice-templates`, `btn-new-template`, `tpl-slideover`
+**Invoice Templates** (default subtab):
+- Card list of all invoice templates (all types: CONTRACTOR, CLIENT, AGENCY).
+- Each card: title, code (mono), template_type badge, status badge, is_default badge, owner name, company summary.
+- Filters: template_type dropdown, status dropdown.
+- "New Template" button → opens A4 editor.
+- Click card → opens A4 invoice-shaped editor (replaces list view).
+
+**A4 Invoice Editor** (template detail view):
+- Toolbar above: back button, editable title + code, type selector (locked after creation), default toggle, status actions (Activate/Archive/Delete), Save button.
+- A4-proportioned page matching the actual PDF invoice layout:
+  - **Header**: "INVOICE" title, preview invoice number (from series prefix + next number), date/due date placeholders.
+  - **From / To**: left side = editable company name, address, country, reg number, VAT. Right side = amber placeholders for recipient (auto-filled at generation).
+  - **Line Items table**: placeholder row with editable currency field.
+  - **Totals**: subtotal, editable VAT rate, total — all with currency.
+  - **Payment Details** (contractor type only): editable bank name, IBAN, SWIFT.
+  - **Footer bar**: VAT registered toggle, series prefix, next invoice number, payment terms — all inline editable.
+  - **Footer**: preview invoice number + platform name.
+- **Visual distinction**: editable fields have **blue tint** background + brand-colored border. Auto-filled placeholders have **amber/yellow tint** + dashed border. A **legend** above the A4 page explains both styles.
+- data-testid: `settings-page`, `tab-invoice-templates`, `btn-new-template`
 
 ---
 

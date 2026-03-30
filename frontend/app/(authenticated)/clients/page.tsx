@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useApiQuery, useApiMutation } from "@/hooks/use-api";
 import { DataTable, type Column } from "@/components/data-table/data-table";
 import { SlideOver } from "@/components/forms/slide-over";
-import { formatDate } from "@/lib/utils";
+
 import type { Client, PaginatedResponse } from "@/types/api";
 
 export default function ClientsPage() {
@@ -16,8 +16,8 @@ export default function ClientsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("");
-  const [sort, setSort] = useState("created_at");
-  const [order, setOrder] = useState<"asc" | "desc">("desc");
+  const [sort, setSort] = useState("company_name");
+  const [order, setOrder] = useState<"asc" | "desc">("asc");
   const [slideOpen, setSlideOpen] = useState(false);
 
   // Form state
@@ -87,12 +87,6 @@ export default function ClientsPage() {
           }`}
         />
       ),
-    },
-    {
-      key: "created_at",
-      label: "Created",
-      sortable: true,
-      render: (row) => <span>{formatDate(row.created_at)}</span>,
     },
   ];
 
