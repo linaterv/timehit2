@@ -134,7 +134,7 @@ class InvoiceTemplateCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = InvoiceTemplate
         fields = [
-            "title", "code", "template_type", "contractor_id", "client_id",
+            "id", "title", "code", "template_type", "contractor_id", "client_id",
             "placement_id", "parent_id", "is_default",
             "company_name", "registration_number", "billing_address",
             "country", "default_currency",

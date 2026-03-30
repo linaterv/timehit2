@@ -795,3 +795,86 @@ class TestRoleAccess:
         if placement:
             assert placement["client_rate"] is not None, "Broker must see client_rate on timesheet"
             assert placement["contractor_rate"] is not None, "Broker must see contractor_rate on timesheet"
+
+
+class TestSamplePdf:
+    """Tests for generating sample PDFs from invoice templates."""
+
+    def _get_global_template(self, admin_api, code):
+        """Find a global template by code."""
+        r = admin_api.get(f"/invoice-templates?template_type=CONTRACTOR&status=ACTIVE")
+        assert r.status_code == 200
+        for t in r.json()["data"]:
+            if t["code"] == code and not t["contractor"] and not t["client"]:
+                return t
+        return None
+
+    def _get_alex_user_id(self, admin_api):
+        r = admin_api.get("/contractors")
+        assert r.status_code == 200
+        alex = _find(r.json()["data"], full_name="Alex Turner")
+        assert alex, "Alex Turner not found"
+        return alex["user_id"]
+
+    def test_sample_pdf_from_template(self, admin_api):
+        """GET sample-pdf from a saved global template — verify PDF contains payment data."""
+        import pdfplumber
+        from io import BytesIO
+
+        tpl = self._get_global_template(admin_api, "LT")
+        assert tpl, "LT global template not found"
+
+        # GET (no form data override, uses saved template data)
+        r = admin_api.get(f"/invoice-templates/{tpl['id']}/sample-pdf")
+        assert r.status_code == 200
+        assert r.headers["Content-Type"] == "application/pdf"
+
+        # Parse PDF and verify payment block text
+        with pdfplumber.open(BytesIO(r.content)) as pdf:
+            text = pdf.pages[0].extract_text()
+            assert "SEB Bank AB" in text, f"Payment bank not in PDF: {text[:200]}"
+            assert "LT06 7044 0600 0817 7672" in text, f"IBAN not in PDF"
+            assert "CBVILT2X" in text, f"SWIFT not in PDF"
+            assert "SAMPLE" in text, "Should show SAMPLE status"
+
+    def test_sample_pdf_with_form_data(self, admin_api):
+        """POST sample-pdf with overridden form data — verify PDF uses the posted values."""
+        import pdfplumber
+        from io import BytesIO
+
+        # Create a contractor template for Alex based on LT global
+        lt_tpl = self._get_global_template(admin_api, "LT")
+        assert lt_tpl, "LT global template not found"
+        alex_id = self._get_alex_user_id(admin_api)
+
+        r = admin_api.post("/invoice-templates", json={
+            "title": "Alex Test Template", "code": "ALEX-TEST",
+            "template_type": "CONTRACTOR", "contractor_id": alex_id,
+            "parent_id": lt_tpl["id"],
+            "billing_address": "AT Consulting UAB\nTest Address 123\nVilnius, Lithuania",
+            "bank_name": "Test Bank XYZ\nIBAN: LT99 1234 5678 9012 3456\nSWIFT: TESTLT2X",
+            "invoice_series_prefix": "ATEST-", "next_invoice_number": 1,
+            "default_currency": "EUR",
+        })
+        assert r.status_code == 201, f"Create failed: {r.text}"
+        tpl_id = r.json()["id"]
+
+        # POST with overridden payment data
+        custom_payment = "Custom Bank ABC\nIBAN: LT00 9999 8888 7777 6666\nSWIFT: CUSTLT99"
+        r2 = admin_api.post(f"/invoice-templates/{tpl_id}/sample-pdf", json={
+            "bank_name": custom_payment,
+            "billing_address": "Override Company\nOverride Address 999",
+            "default_currency": "USD",
+        })
+        assert r2.status_code == 200
+        assert r2.headers["Content-Type"] == "application/pdf"
+
+        with pdfplumber.open(BytesIO(r2.content)) as pdf:
+            text = pdf.pages[0].extract_text()
+            assert "Custom Bank ABC" in text, f"Custom payment not in PDF: {text[:300]}"
+            assert "LT00 9999 8888 7777 6666" in text, "Custom IBAN not in PDF"
+            assert "CUSTLT99" in text, "Custom SWIFT not in PDF"
+            assert "USD" in text, "Overridden currency not in PDF"
+
+        # Cleanup
+        admin_api.delete(f"/invoice-templates/{tpl_id}")
