@@ -13,14 +13,30 @@ class BrokerAssignmentSerializer(serializers.ModelSerializer):
 
 class ClientListSerializer(serializers.ModelSerializer):
     brokers = BrokerAssignmentSerializer(source="broker_assignments", many=True, read_only=True)
+    placement_summary = serializers.SerializerMethodField()
 
     class Meta:
         model = Client
         fields = [
             "id", "company_name", "registration_number", "vat_number",
             "billing_address", "country", "default_currency", "payment_terms_days",
-            "is_active", "brokers", "created_at",
+            "is_active", "brokers", "placement_summary", "created_at",
         ]
+
+    def get_placement_summary(self, obj):
+        placements = obj.placements.select_related("contractor").all()
+        active = [p for p in placements if p.status == "ACTIVE"]
+        inactive = [p for p in placements if p.status != "ACTIVE"]
+        recent = sorted(active, key=lambda p: p.start_date, reverse=True)[:2]
+        labels = []
+        for p in recent:
+            label = f"{p.contractor.full_name} → {p.title}" if p.title else p.contractor.full_name
+            labels.append(label)
+        return {
+            "recent_active": labels,
+            "active_count": len(active),
+            "inactive_count": len(inactive),
+        }
 
 
 class ClientDetailSerializer(ClientListSerializer):

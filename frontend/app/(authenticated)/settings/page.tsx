@@ -77,12 +77,9 @@ function Field({ value, onChange, placeholder, className = "", mono = false }: {
 }
 
 /* Read-only placeholder — amber/yellow tint, clearly not editable */
-function Placeholder({ children, className = "" }: { children: string; className?: string }) {
-  return (
-    <span className={`text-amber-600/60 text-sm bg-amber-50 px-1 py-0.5 rounded-sm border-b border-dashed border-amber-200 ${className}`}>
-      {children}
-    </span>
-  );
+function Placeholder({ children, className = "", block = false }: { children: string; className?: string; block?: boolean }) {
+  const cls = `text-amber-600/60 text-sm bg-amber-50 px-1 py-0.5 rounded-sm border-b border-dashed border-amber-200 ${className}`;
+  return block ? <div className={cls}>{children}</div> : <span className={cls}>{children}</span>;
 }
 
 /* Legend shown above the A4 page */
@@ -272,24 +269,22 @@ export default function SettingsPage() {
             <div className="grid grid-cols-2 gap-8 mb-10">
               <div>
                 <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">From</div>
-                <div className="space-y-1">
-                  <Field value={form.company_name} onChange={(v) => u("company_name", v)} placeholder="Company name" className="text-sm font-medium w-full" />
-                  <Field value={form.billing_address} onChange={(v) => u("billing_address", v)} placeholder="Billing address" className="text-xs w-full" />
-                  <div className="flex gap-2">
-                    <Field value={form.country} onChange={(v) => u("country", v)} placeholder="Country" className="text-xs w-20" />
-                    <Field value={form.registration_number} onChange={(v) => u("registration_number", v)} placeholder="Reg. number" className="text-xs w-32" />
-                  </div>
-                  {(form.vat_registered || form.vat_number) && (
-                    <div className="text-xs">VAT: <Field value={form.vat_number} onChange={(v) => u("vat_number", v)} placeholder="VAT number" className="text-xs w-32" /></div>
-                  )}
-                </div>
+                <textarea
+                  value={form.billing_address}
+                  onChange={(e) => u("billing_address", e.target.value)}
+                  placeholder={"Company name\nReg. code: 123456789\nVAT: LT100001234\nAddress line 1\nCity, Country\nEmail / website"}
+                  rows={7}
+                  className="w-full bg-blue-50/60 border-2 border-brand-200 focus:border-brand-600 focus:bg-blue-50 focus:outline-none rounded px-2 py-1.5 text-sm text-gray-900 placeholder:text-brand-300 resize-none leading-relaxed"
+                />
               </div>
               <div>
                 <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Bill To</div>
-                <div className="space-y-1 text-sm text-amber-600/60">
-                  <div>Recipient company name</div>
-                  <div className="text-xs">Recipient address</div>
-                  <div className="text-xs">Recipient VAT</div>
+                <div className="w-full bg-amber-50 border-2 border-dashed border-amber-200 rounded px-2 py-1.5 text-sm text-amber-600/60 leading-relaxed" style={{ minHeight: "calc(7 * 1.625em + 0.75rem)" }}>
+                  Recipient company name<br />
+                  Reg. code: auto-filled<br />
+                  VAT: auto-filled<br />
+                  Recipient address<br />
+                  City, Country
                 </div>
               </div>
             </div>

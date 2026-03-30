@@ -66,7 +66,6 @@ export default function ClientsPage() {
   const columns: Column<Client>[] = [
     { key: "company_name", label: "Company", sortable: true },
     { key: "country", label: "Country", sortable: true },
-    { key: "default_currency", label: "Currency", sortable: true },
     {
       key: "brokers",
       label: "Brokers",
@@ -75,6 +74,30 @@ export default function ClientsPage() {
           {row.brokers.map((b) => b.full_name).join(", ") || "\u2014"}
         </span>
       ),
+    },
+    {
+      key: "placement_summary" as keyof Client,
+      label: "Placements",
+      render: (row) => {
+        const s = row.placement_summary;
+        if (!s || (s.active_count === 0 && s.inactive_count === 0)) {
+          return <span className="text-gray-400">\u2014</span>;
+        }
+        return (
+          <div className="text-sm">
+            {s.recent_active.length > 0 && (
+              <div className="space-y-0.5">
+                {s.recent_active.map((label, i) => (
+                  <div key={i} className="text-gray-700 truncate max-w-[220px]">{label}</div>
+                ))}
+              </div>
+            )}
+            <span className="text-xs text-gray-400">
+              {s.active_count} active{s.inactive_count > 0 ? ` / ${s.inactive_count} inactive` : ""}
+            </span>
+          </div>
+        );
+      },
     },
     {
       key: "is_active",

@@ -44,6 +44,12 @@ export interface BrokerAssignment {
   assigned_at: string;
 }
 
+export interface PlacementSummary {
+  recent_active: string[];
+  active_count: number;
+  inactive_count: number;
+}
+
 export interface Client {
   id: string;
   company_name: string;
@@ -56,6 +62,7 @@ export interface Client {
   is_active: boolean;
   notes?: string;
   brokers: BrokerAssignment[];
+  placement_summary?: PlacementSummary;
   contact_count?: number;
   created_at: string;
   updated_at?: string;
