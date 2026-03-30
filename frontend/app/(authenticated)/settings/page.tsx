@@ -76,10 +76,10 @@ function Field({ value, onChange, placeholder, className = "", mono = false }: {
   );
 }
 
-/* Read-only placeholder — striped background so it's clearly not editable */
+/* Read-only placeholder — amber/yellow tint, clearly not editable */
 function Placeholder({ children, className = "" }: { children: string; className?: string }) {
   return (
-    <span className={`text-gray-400 text-sm bg-gray-50 px-1 py-0.5 rounded-sm ${className}`}>
+    <span className={`text-amber-600/60 text-sm bg-amber-50 px-1 py-0.5 rounded-sm border-b border-dashed border-amber-200 ${className}`}>
       {children}
     </span>
   );
@@ -94,8 +94,8 @@ function Legend() {
         Editable — saved to template
       </div>
       <div className="flex items-center gap-1.5">
-        <span className="inline-block w-4 h-3 bg-gray-50 rounded-sm" />
-        Auto-filled — populated at invoice generation
+        <span className="inline-block w-4 h-3 bg-amber-50 border-b border-dashed border-amber-200 rounded-sm" />
+        Auto-filled at generation time
       </div>
     </div>
   );
@@ -286,7 +286,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Bill To</div>
-                <div className="space-y-1 text-sm text-gray-300 italic">
+                <div className="space-y-1 text-sm text-amber-600/60">
                   <div>Recipient company name</div>
                   <div className="text-xs">Recipient address</div>
                   <div className="text-xs">Recipient VAT</div>
@@ -302,7 +302,7 @@ export default function SettingsPage() {
                 <div className="col-span-2 text-right">Rate</div>
                 <div className="col-span-2 text-right">Amount</div>
               </div>
-              <div className="grid grid-cols-12 gap-2 py-3 text-sm text-gray-300 italic border-b">
+              <div className="grid grid-cols-12 gap-2 py-3 text-sm text-amber-600/60 border-b">
                 <div className="col-span-6">Consulting — contractor — month year</div>
                 <div className="col-span-2 text-right">0.00</div>
                 <div className="col-span-2 text-right">0.00 <Field value={form.default_currency} onChange={(v) => u("default_currency", v)} placeholder="EUR" className="text-xs w-10 text-center" /></div>
@@ -323,7 +323,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="flex justify-between font-bold text-gray-900 border-t pt-1 text-base">
                   <span>Total</span>
-                  <Placeholder className="font-bold not-italic text-gray-400">{`0.00 ${form.default_currency || "EUR"}`}</Placeholder>
+                  <Placeholder className="font-bold">{`0.00 ${form.default_currency || "EUR"}`}</Placeholder>
                 </div>
               </div>
             </div>

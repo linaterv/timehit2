@@ -49,6 +49,7 @@ class BugReportView(APIView):
         user_role = request.data.get("user_role", "unknown")
         user_agent = request.data.get("user_agent", "")
         timestamp = request.data.get("timestamp", datetime.utcnow().isoformat() + "Z")
+        page_context = request.data.get("context", {})
 
         # Build filename: YYMMDD-HHMMSS-slug.md
         now = datetime.utcnow()
@@ -63,9 +64,16 @@ class BugReportView(APIView):
             f"- **Page:** {url}\n"
             f"- **User:** {user_email} ({user_role})\n"
             f"- **Browser:** {user_agent}\n"
-            f"- **Time:** {timestamp}\n\n"
-            f"## Description\n{message}\n"
+            f"- **Time:** {timestamp}\n"
         )
+
+        if page_context and isinstance(page_context, dict):
+            content += "\n## Page Context\n"
+            for key, value in page_context.items():
+                label = key.replace("_", " ").replace("-", " ").title()
+                content += f"- **{label}:** {value}\n"
+
+        content += f"\n## Description\n{message}\n"
 
         filepath = bug_dir / filename
         filepath.write_text(content, encoding="utf-8")
