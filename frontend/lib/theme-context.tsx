@@ -97,10 +97,10 @@ function FalloutSplash({ onDone }: { onDone: () => void }) {
           transition: "opacity 0.8s ease-out",
         }}
       >
-        <p style={{ fontFamily: "var(--font-gothic), serif", fontSize: "2.5rem", color: "#4ade80", letterSpacing: "0.05em" }}>
+        <p style={{ fontFamily: "var(--font-fira-code), 'Courier New', monospace", fontSize: "2.5rem", color: "#4ade80", letterSpacing: "0.05em" }}>
           WAR.
         </p>
-        <p style={{ fontFamily: "var(--font-gothic), serif", fontSize: "1.5rem", color: "#4ade80", opacity: 0.7, marginTop: "0.5rem" }}>
+        <p style={{ fontFamily: "var(--font-fira-code), 'Courier New', monospace", fontSize: "1.5rem", color: "#4ade80", opacity: 0.7, marginTop: "0.5rem" }}>
           War never changes...
         </p>
       </div>
