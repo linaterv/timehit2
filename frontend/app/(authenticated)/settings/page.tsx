@@ -125,7 +125,13 @@ export default function SettingsPage() {
   });
 
   const openNew = () => { setEditing(null); setIsNew(true); setForm(emptyForm()); setError(""); };
-  const openEdit = (t: InvoiceTemplate) => { setEditing(t); setIsNew(false); setForm(tplToForm(t)); setError(""); };
+  const openEdit = async (t: InvoiceTemplate) => {
+    setError("");
+    try {
+      const detail = await api<InvoiceTemplate>(`/invoice-templates/${t.id}`);
+      setEditing(detail); setIsNew(false); setForm(tplToForm(detail));
+    } catch { setEditing(t); setIsNew(false); setForm(tplToForm(t)); }
+  };
   const close = () => { setEditing(null); setIsNew(false); };
 
   const handleSave = async () => {
