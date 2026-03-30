@@ -1210,6 +1210,67 @@ Returns notification history for an invoice. Admin/Broker see all. Contractor se
 
 ---
 
+## 13b. Invoice Templates
+
+**Access:** Admin — all. Broker — CLIENT templates for assigned clients. Contractor — own CONTRACTOR templates. Client Contact — read-only own client templates.
+
+### `GET /invoice-templates`
+
+Query params: `template_type` (CONTRACTOR, CLIENT, AGENCY), `contractor_id`, `client_id`, `status` (comma-separated), `page`, `per_page`
+
+### `POST /invoice-templates`
+
+```json
+// Request
+{
+  "name": "string",
+  "template_type": "CONTRACTOR",
+  "contractor_id": "uuid",        // required for CONTRACTOR type
+  "client_id": "uuid",            // required for CLIENT type
+  "placement_id": "uuid",         // optional scope
+  "parent_id": "uuid",            // optional parent template
+  "is_default": false,
+  "company_name": "string",
+  "registration_number": "string",
+  "billing_address": "string",
+  "country": "string",
+  "default_currency": "EUR",
+  "vat_registered": true,
+  "vat_number": "string",
+  "vat_rate_percent": "21.00",
+  "bank_name": "string",
+  "bank_account_iban": "string",
+  "bank_swift_bic": "string",
+  "invoice_series_prefix": "AT-2026-",
+  "next_invoice_number": 1,
+  "payment_terms_days": 14
+}
+
+// 201 — created template
+```
+
+### `GET /invoice-templates/:id`
+
+Returns full template detail including all billing fields.
+
+### `PATCH /invoice-templates/:id`
+
+All fields optional. `next_invoice_number` cannot decrease.
+
+### `DELETE /invoice-templates/:id`
+
+Only DRAFT or ARCHIVED templates can be deleted.
+
+### `POST /invoice-templates/:id/activate`
+
+DRAFT -> ACTIVE. Only one default ACTIVE template per (contractor, template_type).
+
+### `POST /invoice-templates/:id/archive`
+
+ACTIVE -> ARCHIVED.
+
+---
+
 ## 14. Control Screen
 
 **Access:** Admin — all data. Broker — assigned clients only.

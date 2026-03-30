@@ -155,7 +155,8 @@ The primary operational view. Maps to `GET /control/overview` + `GET /control/su
   - **Contacts** — table + add contact button
   - **Brokers** — list with assign/remove buttons
   - **Placements** — filtered placement table
-- data-testid: `client-detail`, `client-tab-contacts`, `client-tab-brokers`, `client-tab-placements`
+  - **Billing Templates** — card list of CLIENT-type invoice templates. Create/edit via slide-over. Activate/archive/delete actions. Admin/broker can CRUD.
+- data-testid: `client-detail`, `client-tab-contacts`, `client-tab-brokers`, `client-tab-placements`, `tab-templates`
 
 ### 5. Contractors (`/contractors`)
 - Table: name, company, country, currency, VAT status (badge), active
@@ -163,7 +164,8 @@ The primary operational view. Maps to `GET /control/overview` + `GET /control/su
 - data-testid: `contractors-table`
 
 **Contractor Detail** (`/contractors/[id]`):
-- Profile card with all fields. Editable by contractor (own) and admin
+- Tabs (admin only): **Profile** (existing sections) and **Templates** (CONTRACTOR-type invoice templates, card list + slide-over CRUD)
+- Profile tab: all fields. Editable by contractor (own) and admin
 - Sections: Company Info, VAT Settings, Bank Details, Invoice Settings
 - data-testid: `contractor-detail`, `contractor-edit-btn`, `contractor-save`
 
@@ -176,12 +178,13 @@ Two subtabs: **Account** and **Invoice Settings**.
 - Company Info section: company name, registration number, country, default currency (editable)
 
 **Invoice Settings tab:**
-- VAT section: VAT registered toggle, VAT number, VAT rate
-- Bank section: bank name, IBAN, SWIFT/BIC
-- Invoice Settings section: invoice series prefix, next invoice number, payment terms (days), billing address
-
-Save button in header saves all fields across both tabs (single PATCH to contractor profile).
-- data-testid: `profile-page`, `tab-account`, `tab-invoice`, `btn-change-password`, `pwd-dialog`
+- Card list of CONTRACTOR-type invoice templates for the logged-in contractor.
+- Each card: name, status badge (DRAFT/ACTIVE/ARCHIVED), "Default" badge, company + prefix summary.
+- Click card → slide-over with full form: name, is_default toggle, company info, VAT, bank, invoice series, payment terms.
+- "New Template" button creates a DRAFT template.
+- Slide-over actions: Activate (DRAFT→ACTIVE), Archive (ACTIVE→ARCHIVED), Delete (DRAFT/ARCHIVED only).
+- Account tab Save button saves company info (PATCH to contractor profile). Template saves are per-template (PATCH to `/invoice-templates/:id`).
+- data-testid: `profile-page`, `tab-account`, `tab-invoice`, `btn-change-password`, `pwd-dialog`, `btn-new-template`, `tpl-slideover`
 
 ### 7. Placements (`/placements`)
 - Table: client, contractor, **title** (position), rates (admin/broker only — **hidden for contractor and client contact**), currency, dates, status (badge), approval flow

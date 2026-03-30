@@ -183,34 +183,34 @@ POST   /api/v1/invoice-templates/:id/archive  — ACTIVE → ARCHIVED
 
 ### Phase 1: Backend Model & API
 
-- [ ] **1. Add InvoiceTemplate model** — Add model class to `apps/invoices/models.py` with all fields, enums, Meta, constraint. Run `makemigrations` + `migrate`.
-- [ ] **2. Add template serializers** — In `apps/invoices/serializers.py`: InvoiceTemplateListSerializer, InvoiceTemplateDetailSerializer, InvoiceTemplateCreateSerializer, InvoiceTemplateUpdateSerializer. Include validation (type↔FK, next_invoice_number can't decrease, placement matches contractor/client).
-- [ ] **3. Add InvoiceTemplateViewSet** — In `apps/invoices/views.py`: ViewSet with list/create/retrieve/update/destroy + `activate` and `archive` actions. Access control per role. Filter by template_type, contractor_id, client_id, status.
-- [ ] **4. Register URL routes** — In `apps/invoices/urls.py`: `router.register("invoice-templates", views.InvoiceTemplateViewSet)`.
-- [ ] **5. Add resolve_template()** — In `apps/invoices/views.py` (or new `template_resolver.py`): resolution function with placement → client → default → fallback chain.
-- [ ] **6. Wire into GenerateInvoicesView** — Modify `post()` to call `resolve_template()` for contractor and client side. If template found → snapshot from it + use its numbering. If not → existing fallback. Add `template_id` to billing_snapshot.
-- [ ] **7. Run existing backend tests** — Verify all 73 tests pass unchanged (fallback path exercised, no templates exist yet).
+- [x] **1. Add InvoiceTemplate model** — Add model class to `apps/invoices/models.py` with all fields, enums, Meta, constraint. Run `makemigrations` + `migrate`.
+- [x] **2. Add template serializers** — In `apps/invoices/serializers.py`: InvoiceTemplateListSerializer, InvoiceTemplateDetailSerializer, InvoiceTemplateCreateSerializer, InvoiceTemplateUpdateSerializer. Include validation (type↔FK, next_invoice_number can't decrease, placement matches contractor/client).
+- [x] **3. Add InvoiceTemplateViewSet** — In `apps/invoices/views.py`: ViewSet with list/create/retrieve/update/destroy + `activate` and `archive` actions. Access control per role. Filter by template_type, contractor_id, client_id, status.
+- [x] **4. Register URL routes** — In `apps/invoices/urls.py`: `router.register("invoice-templates", views.InvoiceTemplateViewSet)`.
+- [x] **5. Add resolve_template()** — In `apps/invoices/views.py` (or new `template_resolver.py`): resolution function with placement → client → default → fallback chain.
+- [x] **6. Wire into GenerateInvoicesView** — Modify `post()` to call `resolve_template()` for contractor and client side. If template found → snapshot from it + use its numbering. If not → existing fallback. Add `template_id` to billing_snapshot.
+- [x] **7. Run existing backend tests** — Verify all 73 tests pass unchanged (fallback path exercised, no templates exist yet).
 
 ### Phase 2: Data Migration & Populate
 
-- [ ] **8. Update populate command** — After creating ContractorProfiles and Clients, also create default ACTIVE InvoiceTemplates for each. Copy billing fields from profile/client.
-- [ ] **9. Create migrate_billing_to_templates command** — Management command that creates templates from existing ContractorProfile + Client data for production use.
+- [x] **8. Update populate command** — After creating ContractorProfiles and Clients, also create default ACTIVE InvoiceTemplates for each. Copy billing fields from profile/client.
+- [ ] **9. (SKIPPED) Create migrate_billing_to_templates command** — Management command that creates templates from existing ContractorProfile + Client data for production use.
 
 ### Phase 3: Frontend — TypeScript Types
 
-- [ ] **10. Add InvoiceTemplate types** — In `frontend/types/api.ts`: add InvoiceTemplateType, InvoiceTemplateStatus, InvoiceTemplate interface.
+- [x] **10. Add InvoiceTemplate types** — In `frontend/types/api.ts`: add InvoiceTemplateType, InvoiceTemplateStatus, InvoiceTemplate interface.
 
 ### Phase 4: Frontend — Profile Page Template Manager
 
-- [ ] **11. Profile "Invoice Settings" tab — template list** — Replace current inline form with a list of template cards (name, status badge, default badge). Add "New Template" button.
-- [ ] **12. Profile — template edit slide-over** — Click a template card → opens slide-over with full form (same fields: company, VAT, bank, series, payment terms). Save = PATCH, delete = DELETE.
-- [ ] **13. Profile — activate/archive actions** — Status transition buttons in slide-over: "Activate" (DRAFT→ACTIVE), "Archive" (ACTIVE→ARCHIVED).
+- [x] **11. Profile "Invoice Settings" tab — template list** — Replace current inline form with a list of template cards (name, status badge, default badge). Add "New Template" button.
+- [x] **12. Profile — template edit slide-over** — Click a template card → opens slide-over with full form (same fields: company, VAT, bank, series, payment terms). Save = PATCH, delete = DELETE.
+- [x] **13. Profile — activate/archive actions** — Status transition buttons in slide-over: "Activate" (DRAFT→ACTIVE), "Archive" (ACTIVE→ARCHIVED).
 
 ### Phase 5: Frontend — Admin Pages
 
-- [ ] **14. Contractor detail — Templates tab** — Add tab to `contractors/[id]/page.tsx` showing CONTRACTOR templates for that user. Same card list + slide-over. Admin can CRUD.
-- [ ] **15. Client detail — Billing Templates tab** — Add tab to `clients/[id]/page.tsx` showing CLIENT templates for that client. Admin/broker can CRUD.
+- [x] **14. Contractor detail — Templates tab** — Add tab to `contractors/[id]/page.tsx` showing CONTRACTOR templates for that user. Same card list + slide-over. Admin can CRUD.
+- [x] **15. Client detail — Billing Templates tab** — Add tab to `clients/[id]/page.tsx` showing CLIENT templates for that client. Admin/broker can CRUD.
 
 ### Phase 6: Verify
 
-- [ ] **16. Build + test** — `npm run build`, run 73 backend tests, run 54 Playwright tests. Manual test: create template → generate invoice → verify billing_snapshot uses template data → verify PDF.
+- [x] **16. Build + test** — `npm run build`, run 73 backend tests, run 54 Playwright tests. Manual test: create template → generate invoice → verify billing_snapshot uses template data → verify PDF.

@@ -236,6 +236,38 @@ Visibility: Admin/Broker see all notifications. Contractor/Client Contact only s
 | corrective_invoice_id | FK -> Invoice | |
 | reason | text | optional |
 
+### 2.14 Invoice Template
+
+| Field | Type | Notes |
+|---|---|---|
+| id | UUID | |
+| name | string | e.g. "Default", "German Entity" |
+| template_type | enum | CONTRACTOR, CLIENT, AGENCY |
+| status | enum | DRAFT, ACTIVE, ARCHIVED |
+| contractor | FK -> User | nullable, owner for CONTRACTOR type |
+| client | FK -> Client | nullable, owner for CLIENT type or scope |
+| placement | FK -> Placement | nullable, most specific scope |
+| parent | FK -> self | nullable, for nested/inherited templates (Phase 2) |
+| company_name | string | |
+| registration_number | string | |
+| billing_address | text | |
+| country | string | |
+| default_currency | string | |
+| vat_registered | boolean | nullable (null = inherit from parent) |
+| vat_number | string | |
+| vat_rate_percent | decimal | |
+| bank_name | string | |
+| bank_account_iban | string | |
+| bank_swift_bic | string | |
+| invoice_series_prefix | string | |
+| next_invoice_number | integer | nullable |
+| payment_terms_days | integer | nullable |
+| is_default | boolean | marks the default template per type+owner |
+
+**Constraint:** At most one default ACTIVE template per (contractor, template_type).
+
+**Template Resolution** (invoice generation): placement-specific -> client-scoped -> default -> fallback to ContractorProfile/Client fields.
+
 ---
 
 ## 3. State Machines
