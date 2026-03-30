@@ -101,6 +101,7 @@ export interface ContractorProfile {
   default_currency: string;
   is_active?: boolean;
   current_placement?: PlacementRef | null;
+  placement_summary?: PlacementSummary;
 }
 
 export interface Placement {

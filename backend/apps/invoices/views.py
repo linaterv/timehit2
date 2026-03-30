@@ -335,7 +335,10 @@ class InvoiceTemplateViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         user = self.request.user
         if user.is_contractor:
-            qs = qs.filter(contractor=user, template_type=InvoiceTemplate.Type.CONTRACTOR)
+            qs = qs.filter(
+                models.Q(contractor=user) | models.Q(contractor__isnull=True, client__isnull=True),
+                template_type=InvoiceTemplate.Type.CONTRACTOR,
+            )
         elif user.is_broker:
             qs = qs.filter(
                 models.Q(template_type=InvoiceTemplate.Type.CLIENT, client__broker_assignments__broker=user)

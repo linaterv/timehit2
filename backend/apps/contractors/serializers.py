@@ -7,39 +7,30 @@ class ContractorProfileListSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source="user.email")
     full_name = serializers.CharField(source="user.full_name")
     is_active = serializers.BooleanField(source="user.is_active")
-    current_placement = serializers.SerializerMethodField()
+    placement_summary = serializers.SerializerMethodField()
 
     class Meta:
         model = ContractorProfile
         fields = [
             "id", "user_id", "email", "full_name", "company_name",
             "country", "default_currency", "vat_registered", "is_active",
-            "current_placement",
+            "placement_summary",
         ]
 
-    def get_current_placement(self, obj):
-        from django.db.models import Case, When, Value, IntegerField
-        qs = obj.user.placements.select_related("client").annotate(
-            status_rank=Case(
-                When(status="ACTIVE", then=Value(0)),
-                When(status="COMPLETED", then=Value(1)),
-                default=Value(2),
-                output_field=IntegerField(),
-            ),
-            has_title=Case(
-                When(title="", then=Value(1)),
-                default=Value(0),
-                output_field=IntegerField(),
-            ),
-        ).order_by("has_title", "status_rank", "-start_date")
-        placement = qs.first()
-        if not placement:
-            return None
+    def get_placement_summary(self, obj):
+        placements = list(obj.user.placements.select_related("client").all())
+        active = [p for p in placements if p.status == "ACTIVE"]
+        inactive = [p for p in placements if p.status != "ACTIVE"]
+        # 2 most recent active, prefer ones with title
+        recent = sorted(active, key=lambda p: (not p.title, -p.start_date.toordinal()))[:2]
+        labels = []
+        for p in recent:
+            label = f"{p.client.company_name} → {p.title}" if p.title else p.client.company_name
+            labels.append(label)
         return {
-            "id": str(placement.id),
-            "label": f"{placement.client.company_name} → {placement.title}" if placement.title else placement.client.company_name,
-            "status": placement.status,
-            "end_date": str(placement.end_date) if placement.end_date else None,
+            "recent_active": labels,
+            "active_count": len(active),
+            "inactive_count": len(inactive),
         }
 
 

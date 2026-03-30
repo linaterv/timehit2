@@ -36,46 +36,42 @@ export default function ContractorsPage() {
   const columns: Column<ContractorProfile>[] = [
     { key: "full_name", label: "Name", sortable: true },
     {
-      key: "current_placement" as keyof ContractorProfile,
-      label: "Placement",
+      key: "placement_summary" as keyof ContractorProfile,
+      label: "Placements",
       render: (row) => {
-        const p = row.current_placement;
-        if (!p) return <span className="text-gray-400">—</span>;
+        const s = row.placement_summary;
+        if (!s || (s.active_count === 0 && s.inactive_count === 0)) return null;
         return (
-          <span className="text-sm">
-            {p.label}
-            {p.status !== "ACTIVE" && (
-              <span className="ml-1.5 text-xs text-gray-400">({p.status.toLowerCase()})</span>
+          <div className="text-sm">
+            {s.recent_active.length > 0 && (
+              <div className="space-y-0.5">
+                {s.recent_active.map((label, i) => (
+                  <div key={i} className="text-gray-700 truncate max-w-[220px]">{label}</div>
+                ))}
+              </div>
             )}
-          </span>
+            <span className="text-xs text-gray-400">
+              {s.active_count} active{s.inactive_count > 0 ? ` / ${s.inactive_count} inactive` : ""}
+            </span>
+          </div>
         );
-      },
-    },
-    {
-      key: "end_date" as keyof ContractorProfile,
-      label: "Ends",
-      render: (row) => {
-        const p = row.current_placement;
-        if (!p || p.status !== "ACTIVE") return <span className="text-gray-400">—</span>;
-        if (!p.end_date) return <span className="text-xs text-gray-400">open-ended</span>;
-        return <span className="text-sm">{formatDate(p.end_date)}</span>;
       },
     },
     {
       key: "is_active" as keyof ContractorProfile,
       label: "Status",
       render: (row) => {
-        const hasActive = row.current_placement?.status === "ACTIVE";
+        const inPlacement = (row.placement_summary?.active_count ?? 0) > 0;
         return (
           <span
             data-testid={`active-badge-${row.id}`}
             className={
-              hasActive
+              inPlacement
                 ? "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700"
                 : "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500"
             }
           >
-            {hasActive ? "In Effect" : "No Placement"}
+            {inPlacement ? "In Placement" : "No Placement"}
           </span>
         );
       },
