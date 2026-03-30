@@ -67,10 +67,11 @@ function profileToForm(p: ContractorProfile): ContractorFormData {
 
 export default function ContractorDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const contractorId = params.id as string;
   const { user } = useAuth();
 
-  const [tab, setTab] = useState<"profile" | "templates">("profile");
+  const [tab, setTab] = useState<"placements" | "profile" | "templates">("placements");
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<ContractorFormData>(emptyForm());
   const [error, setError] = useState("");
@@ -94,6 +95,13 @@ export default function ContractorDetailPage() {
     !!contractor?.user_id && user?.role === "ADMIN"
   );
   const templates = templatesQ.data?.data ?? [];
+
+  const placementsQ = useApiQuery<PaginatedResponse<Placement>>(
+    ["placements", "contractor", contractor?.user_id],
+    `/placements?contractor_id=${contractor?.user_id}&per_page=50&sort=start_date&order=desc`,
+    !!contractor?.user_id
+  );
+  const placements = placementsQ.data?.data ?? [];
 
   const mutation = useApiMutation<ContractorProfile, ContractorFormData>(
     "PATCH",
@@ -192,17 +200,57 @@ export default function ContractorDetailPage() {
         </div>
       </div>
 
-      {/* Tabs (admin sees Templates tab) */}
-      {isAdmin && (
-        <div className="flex gap-1 border-b">
-          <button onClick={() => setTab("profile")}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === "profile" ? "border-brand-600 text-brand-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
-            Profile
-          </button>
+      {/* Tabs */}
+      <div className="flex gap-1 border-b">
+        <button onClick={() => setTab("placements")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === "placements" ? "border-brand-600 text-brand-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+          Placements
+        </button>
+        <button onClick={() => setTab("profile")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === "profile" ? "border-brand-600 text-brand-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+          Profile
+        </button>
+        {isAdmin && (
           <button data-testid="tab-templates" onClick={() => setTab("templates")}
             className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === "templates" ? "border-brand-600 text-brand-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
             Templates
           </button>
+        )}
+      </div>
+
+      {/* ── PLACEMENTS TAB ── */}
+      {tab === "placements" && (
+        <div className="space-y-3">
+          {placementsQ.isLoading && <p className="text-sm text-gray-400 py-4 text-center">Loading...</p>}
+          {!placementsQ.isLoading && placements.length === 0 && (
+            <p className="text-sm text-gray-400 py-4 text-center">No placements.</p>
+          )}
+          {placements.length > 0 && (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-gray-500 border-b">
+                  <th className="py-2 pr-4">Client</th>
+                  <th className="py-2 pr-4">Position</th>
+                  <th className="py-2 pr-4">Status</th>
+                  <th className="py-2 pr-4">Start</th>
+                  <th className="py-2 pr-4">End</th>
+                </tr>
+              </thead>
+              <tbody>
+                {placements.map((p) => (
+                  <tr key={p.id}
+                    onClick={() => router.push(`/placements/${p.id}`)}
+                    className="border-b hover:bg-gray-50 cursor-pointer">
+                    <td className="py-2 pr-4">{p.client.company_name}</td>
+                    <td className="py-2 pr-4">{p.title || "—"}</td>
+                    <td className="py-2 pr-4"><StatusBadge value={p.status} /></td>
+                    <td className="py-2 pr-4">{formatDate(p.start_date)}</td>
+                    <td className="py-2 pr-4">{p.end_date ? formatDate(p.end_date) : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
 

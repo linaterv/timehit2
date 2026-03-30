@@ -141,13 +141,14 @@ The primary operational view. Maps to `GET /control/overview` + `GET /control/su
 - data-testid: `control-table`, `control-row-{id}`, `bulk-generate`, `bulk-export`
 
 ### 3. Users (`/users`) — ADMIN only
-- Table: name, email, role (badge), active (toggle), created
+- Table: name, email, role (badge), placement (current/last for contractors/client contacts as "Client → Title"), active (dot), created
 - Create/edit via slide-over: email, full_name, password, role dropdown, client_id (if CLIENT_CONTACT)
 - data-testid: `users-table`, `user-create-btn`, `user-form`, `user-save`
 
 ### 4. Clients (`/clients`)
-- Table: company name, country, currency, brokers (avatar chips), active, contacts count
+- Table: company name, country, brokers (comma-separated names), placements (2 most recent active as "Contractor → Title" + counts "N active / M inactive"), active (dot)
 - Filters: search, is_active
+- Default sort: company_name ascending
 - data-testid: `clients-table`, `client-create-btn`
 
 **Client Detail** (`/clients/[id]`):
@@ -160,12 +161,13 @@ The primary operational view. Maps to `GET /control/overview` + `GET /control/su
 - data-testid: `client-detail`, `client-tab-contacts`, `client-tab-brokers`, `client-tab-placements`, `tab-templates`
 
 ### 5. Contractors (`/contractors`)
-- Table: name, company, country, currency, VAT status (badge), active
+- Table: name, placement (current/last active as "Client → Title"), ends (active placement end date), status ("In Effect" green if active placement, "No Placement" gray otherwise)
 - Filters: search, is_active
 - data-testid: `contractors-table`
 
 **Contractor Detail** (`/contractors/[id]`):
-- Tabs (admin only): **Profile** (existing sections) and **Templates** (CONTRACTOR-type invoice templates, card list + slide-over CRUD)
+- Tabs: **Placements** (default tab, all roles), **Profile**, **Templates** (admin only, CONTRACTOR-type invoice templates, card list + slide-over CRUD)
+- Placements tab: table of all contractor's placements (client, position, status badge, start, end) — clickable rows navigate to placement detail
 - Profile tab: all fields. Editable by contractor (own) and admin
 - Sections: Company Info, VAT Settings, Bank Details, Invoice Settings
 - data-testid: `contractor-detail`, `contractor-edit-btn`, `contractor-save`

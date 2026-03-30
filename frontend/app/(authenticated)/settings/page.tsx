@@ -340,7 +340,11 @@ export default function SettingsPage() {
                   <Placeholder>{`0.00 ${form.default_currency || "EUR"}`}</Placeholder>
                 </div>
                 <div className="flex justify-between text-gray-500 items-center">
-                  <span>VAT (<Field value={form.vat_rate_percent} onChange={(v) => u("vat_rate_percent", v)} placeholder="0" className="text-xs w-8 text-center" />%)</span>
+                  {isContractorType ? (
+                    <span>VAT (<Placeholder>auto</Placeholder>%)</span>
+                  ) : (
+                    <span>VAT (<Field value={form.vat_rate_percent} onChange={(v) => u("vat_rate_percent", v)} placeholder="0" className="text-xs w-8 text-center" />%)</span>
+                  )}
                   <Placeholder>0.00</Placeholder>
                 </div>
                 <div className="flex justify-between font-bold text-gray-900 border-t pt-1 text-base">
@@ -366,10 +370,15 @@ export default function SettingsPage() {
 
             {/* VAT toggle */}
             <div className="border-t pt-4 flex items-center gap-4 text-xs text-gray-500">
-              <label className="flex items-center gap-1.5">
-                <input type="checkbox" checked={!!form.vat_registered} onChange={(e) => u("vat_registered", e.target.checked)} className="rounded" />
-                VAT Registered
-              </label>
+              {!isContractorType && (
+                <label className="flex items-center gap-1.5">
+                  <input type="checkbox" checked={!!form.vat_registered} onChange={(e) => u("vat_registered", e.target.checked)} className="rounded" />
+                  VAT Registered
+                </label>
+              )}
+              {isContractorType && (
+                <span className="text-amber-600/60">VAT: from contractor</span>
+              )}
               <span>&middot;</span>
               <span>Series: <Field value={form.invoice_series_prefix} onChange={(v) => u("invoice_series_prefix", v)} placeholder="PREFIX-" className="text-xs w-24 font-mono" mono /></span>
               <span>&middot;</span>
