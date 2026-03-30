@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useApiQuery, useApiMutation } from "@/hooks/use-api";
 import { useAuth } from "@/hooks/use-auth";
 import { api } from "@/lib/api";
 import { SlideOver } from "@/components/forms/slide-over";
-import type { ContractorProfile, InvoiceTemplate } from "@/types/api";
+import { StatusBadge } from "@/components/shared/status-badge";
+import { formatDate } from "@/lib/utils";
+import type { ContractorProfile, InvoiceTemplate, Placement, PaginatedResponse } from "@/types/api";
 
 interface ContractorFormData {
   company_name: string;

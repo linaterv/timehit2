@@ -272,27 +272,47 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* From / To */}
+            {/* From / To — swaps editable side based on type */}
             <div className="grid grid-cols-2 gap-8 mb-10">
               <div>
                 <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">From</div>
-                <textarea
-                  value={form.billing_address}
-                  onChange={(e) => u("billing_address", e.target.value)}
-                  placeholder={"Company name\nReg. code: 123456789\nVAT: LT100001234\nAddress line 1\nCity, Country\nEmail / website"}
-                  rows={7}
-                  className="w-full bg-blue-50/60 border-2 border-brand-200 focus:border-brand-600 focus:bg-blue-50 focus:outline-none rounded px-2 py-1.5 text-sm text-gray-900 placeholder:text-brand-300 resize-none leading-relaxed"
-                />
+                {isContractorType ? (
+                  <div className="w-full bg-amber-50 border-2 border-dashed border-amber-200 rounded px-2 py-1.5 text-sm text-amber-600/60 leading-relaxed" style={{ minHeight: "calc(7 * 1.625em + 0.75rem)" }}>
+                    Contractor company name<br />
+                    Reg. code: auto-filled<br />
+                    VAT: auto-filled<br />
+                    Contractor address<br />
+                    City, Country
+                  </div>
+                ) : (
+                  <textarea
+                    value={form.billing_address}
+                    onChange={(e) => u("billing_address", e.target.value)}
+                    placeholder={"Agency name\nReg. code: 123456789\nVAT: LT100001234\nAddress line 1\nCity, Country\nEmail / website"}
+                    rows={7}
+                    className="w-full bg-blue-50/60 border-2 border-brand-200 focus:border-brand-600 focus:bg-blue-50 focus:outline-none rounded px-2 py-1.5 text-sm text-gray-900 placeholder:text-brand-300 resize-none leading-relaxed"
+                  />
+                )}
               </div>
               <div>
                 <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Bill To</div>
-                <div className="w-full bg-amber-50 border-2 border-dashed border-amber-200 rounded px-2 py-1.5 text-sm text-amber-600/60 leading-relaxed" style={{ minHeight: "calc(7 * 1.625em + 0.75rem)" }}>
-                  Recipient company name<br />
-                  Reg. code: auto-filled<br />
-                  VAT: auto-filled<br />
-                  Recipient address<br />
-                  City, Country
-                </div>
+                {isContractorType ? (
+                  <textarea
+                    value={form.billing_address}
+                    onChange={(e) => u("billing_address", e.target.value)}
+                    placeholder={"Agency name\nReg. code: 123456789\nVAT: LT100001234\nAddress line 1\nCity, Country\nEmail / website"}
+                    rows={7}
+                    className="w-full bg-blue-50/60 border-2 border-brand-200 focus:border-brand-600 focus:bg-blue-50 focus:outline-none rounded px-2 py-1.5 text-sm text-gray-900 placeholder:text-brand-300 resize-none leading-relaxed"
+                  />
+                ) : (
+                  <div className="w-full bg-amber-50 border-2 border-dashed border-amber-200 rounded px-2 py-1.5 text-sm text-amber-600/60 leading-relaxed" style={{ minHeight: "calc(7 * 1.625em + 0.75rem)" }}>
+                    Client company name<br />
+                    Reg. code: auto-filled<br />
+                    VAT: auto-filled<br />
+                    Client address<br />
+                    City, Country
+                  </div>
+                )}
               </div>
             </div>
 
