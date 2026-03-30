@@ -81,7 +81,7 @@ export default function ClientsPage() {
       render: (row) => {
         const s = row.placement_summary;
         if (!s || (s.active_count === 0 && s.inactive_count === 0)) {
-          return <span className="text-gray-400">\u2014</span>;
+          return null;
         }
         return (
           <div className="text-sm">

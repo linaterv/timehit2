@@ -105,7 +105,7 @@ export default function SettingsPage() {
   const { user } = useAuth();
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [scopeFilter, setScopeFilter] = useState<"" | "global" | "assigned">("");
+  const [scopeFilter, setScopeFilter] = useState<"" | "global" | "assigned">("global");
   const [editing, setEditing] = useState<InvoiceTemplate | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [form, setForm] = useState<TplForm>(emptyForm());
@@ -181,11 +181,6 @@ export default function SettingsPage() {
               <option value="">All Types</option>
               <option value="CONTRACTOR">Contractor → Agency</option>
               <option value="CLIENT">Agency → Client</option>
-            </select>
-            <select value={scopeFilter} onChange={(e) => setScopeFilter(e.target.value as typeof scopeFilter)} className="px-3 py-2 border rounded text-sm">
-              <option value="">All Scope</option>
-              <option value="global">Global</option>
-              <option value="assigned">Assigned</option>
             </select>
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 border rounded text-sm">
               <option value="">All Statuses</option>
