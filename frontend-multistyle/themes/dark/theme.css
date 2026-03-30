@@ -1,0 +1,57 @@
+[data-theme="dark"] {
+  --color-brand-50: rgba(59, 130, 246, 0.12);
+  --color-brand-100: rgba(59, 130, 246, 0.18);
+  --color-brand-200: rgba(59, 130, 246, 0.25);
+  --color-brand-300: rgba(59, 130, 246, 0.35);
+  --color-brand-600: #3b82f6;
+  --color-brand-700: #60a5fa;
+
+  --color-surface: #232336;
+  --color-surface-alt: #1c1c2e;
+  --background: #13131f;
+  --foreground: #cdd6f4;
+
+  /* Gray scale — better contrast for dark */
+  --color-gray-50: #1e1e30;
+  --color-gray-100: #272740;
+  --color-gray-200: #3a3a52;
+  --color-gray-300: #4a4a64;
+  --color-gray-400: #6e6e8a;
+  --color-gray-500: #9090a8;
+  --color-gray-600: #b0b0c4;
+  --color-gray-700: #c8c8dc;
+  --color-gray-800: #dcdce8;
+  --color-gray-900: #ececf4;
+  --color-gray-950: #f5f5fa;
+
+  /* Semantic status colors — darkened backgrounds, brighter text */
+  --color-green-50: rgba(22, 163, 74, 0.12);
+  --color-green-100: rgba(22, 163, 74, 0.18);
+  --color-green-200: rgba(22, 163, 74, 0.25);
+  --color-green-500: #22c55e;
+  --color-green-700: #4ade80;
+  --color-green-800: #86efac;
+
+  --color-red-50: rgba(220, 38, 38, 0.12);
+  --color-red-100: rgba(220, 38, 38, 0.18);
+  --color-red-200: rgba(220, 38, 38, 0.25);
+  --color-red-500: #ef4444;
+  --color-red-600: #f87171;
+  --color-red-700: #fca5a5;
+  --color-red-800: #fecaca;
+
+  --color-blue-100: rgba(59, 130, 246, 0.18);
+  --color-blue-700: #60a5fa;
+
+  --color-amber-100: rgba(245, 158, 11, 0.18);
+  --color-amber-700: #fbbf24;
+
+  --color-emerald-100: rgba(16, 185, 129, 0.18);
+  --color-emerald-700: #6ee7b7;
+
+  --color-purple-100: rgba(147, 51, 234, 0.18);
+  --color-purple-700: #c084fc;
+
+  --color-yellow-50: rgba(234, 179, 8, 0.12);
+  --color-yellow-800: #fde047;
+}

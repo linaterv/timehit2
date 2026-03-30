@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TimeHit API Specification</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 960px; margin: 0 auto; padding: 2rem; color: #24292e; }
+  h1 { border-bottom: 2px solid #e1e4e8; padding-bottom: .5rem; }
+  h2 { border-bottom: 1px solid #e1e4e8; padding-bottom: .3rem; margin-top: 2rem; }
+  h3 { margin-top: 1.5rem; }
+  h4 { margin-top: 1.2rem; font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace; color: #0366d6; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { border: 1px solid #dfe2e5; padding: .5rem .75rem; text-align: left; }
+  th { background: #f6f8fa; font-weight: 600; }
+  tr:nth-child(even) { background: #f9fafb; }
+  code { background: #f6f8fa; padding: .15rem .3rem; border-radius: 3px; font-size: .9em; }
+  pre { background: #1e1e1e; color: #d4d4d4; padding: 1rem; border-radius: 6px; overflow-x: auto; }
+  pre code { background: none; padding: 0; color: inherit; }
+  strong { font-weight: 600; }
+  hr { border: none; border-top: 1px solid #e1e4e8; margin: 2rem 0; }
+  ul, ol { padding-left: 1.5rem; }
+  @media print { body { max-width: 100%; padding: 1rem; } pre { background: #f6f8fa; color: #24292e; } }
+</style>
+</head>
+<body>
+<h1>TimeHit API Specification</h1>
+<p>REST JSON API with JWT authentication. All requests and responses use <code>Content-Type: application/json</code> unless noted (file uploads use <code>multipart/form-data</code>).</p>
+<p>Base URL: <code>/api/v1</code></p>
+<hr>
+<h2>1. Authentication</h2>
+<h3>JWT Structure</h3>
+<p><strong>Access token</strong> (short-lived, 15 min):</p>
+<pre><code class="language-json">{
+  &quot;sub&quot;: &quot;uuid&quot;,
+  &quot;email&quot;: &quot;user@example.com&quot;,
+  &quot;role&quot;: &quot;ADMIN | BROKER | CONTRACTOR | CLIENT_CONTACT&quot;,
+  &quot;is_active&quot;: true,
+  &quot;iat&quot;: 1711612800,
+  &quot;exp&quot;: 1711613700
+}
+</code></pre>
+<p><strong>Refresh token</strong> (long-lived, 7 days): opaque token stored server-side.</p>
+<p>All protected endpoints require header: <code>Authorization: Bearer &lt;access_token&gt;</code></p>
+<h3>Endpoints</h3>
+<h4><code>POST /auth/login</code></h4>
+<pre><code class="language-json">// Request
+{ &quot;email&quot;: &quot;string&quot;, &quot;password&quot;: &quot;string&quot; }
+
+// 200 Response
+{
+  &quot;access_token&quot;: &quot;string&quot;,
+  &quot;refresh_token&quot;: &quot;string&quot;,
+  &quot;expires_in&quot;: 900,
+  &quot;user&quot;: {
+    &quot;id&quot;: &quot;uuid&quot;,
+    &quot;email&quot;: &quot;string&quot;,
+    &quot;full_name&quot;: &quot;string&quot;,
+    &quot;role&quot;: &quot;ADMIN&quot;
+  }
+}
+
+// 401 — invalid credentials
+</code></pre>
+<h4><code>POST /auth/refresh</code></h4>
+<pre><code class="language-json">// Request
+{ &quot;refresh_token&quot;: &quot;string&quot; }
+
+// 200 Response
+{ &quot;access_token&quot;: &quot;string&quot;, &quot;refresh_token&quot;: &quot;string&quot;, &quot;expires_in&quot;: 900 }
+
+// 401 — invalid or expired refresh token
+</code></pre>
+<h4><code>POST /auth/logout</code></h4>
+<p>Invalidates the refresh token.</p>
+<pre><code class="language-json">// Request
+{ &quot;refresh_token&quot;: &quot;string&quot; }
+
+// 204 No Content
+</code></pre>
+<h4><code>POST /auth/change-password</code></h4>
+<p>Requires valid access token.</p>
+<pre><code class="language-json">// Request
+{ &quot;current_password&quot;: &quot;string&quot;, &quot;new_password&quot;: &quot;string&quot; }
+
+// 204 No Content
+// 400 — validation error
+// 401 — wrong current password
+</code></pre>
+<hr>
+<h2>2. Common Conventions</h2>
+<h3>Pagination</h3>
+<p>List endpoints return paginated results:</p>
+<pre><code>GET /resources?page=1&amp;per_page=25
+</code></pre>
+<pre><code class="language-json">// Response wrapper
+{
+  &quot;data&quot;: [ ... ],
+  &quot;meta&quot;: {
+    &quot;page&quot;: 1,
+    &quot;per_page&quot;: 25,
+    &quot;total&quot;: 142,
+    &quot;total_pages&quot;: 6
+  }
+}
+</code></pre>
+<h3>Sorting</h3>
+<pre><code>GET /resources?sort=created_at&amp;order=desc
+</code></pre>
+<h3>Filtering</h3>
+<p>Query params per endpoint. Enums are comma-separated for multi-value:</p>
+<pre><code>GET /placements?status=ACTIVE,DRAFT&amp;client_id=uuid
+</code></pre>
+<h3>Error Response</h3>
+<p>All errors follow:</p>
+<pre><code class="language-json">{
+  &quot;error&quot;: {
+    &quot;code&quot;: &quot;VALIDATION_ERROR&quot;,
+    &quot;message&quot;: &quot;Human-readable message&quot;,
+    &quot;details&quot;: [
+      { &quot;field&quot;: &quot;email&quot;, &quot;message&quot;: &quot;must be a valid email&quot; }
+    ]
+  }
+}
+</code></pre>
+<p>Standard codes: <code>VALIDATION_ERROR</code>, <code>NOT_FOUND</code>, <code>FORBIDDEN</code>, <code>UNAUTHORIZED</code>, <code>CONFLICT</code>, <code>INVALID_STATE_TRANSITION</code>.</p>
+<h3>Timestamps</h3>
+<p>All timestamps are ISO 8601 UTC: <code>&quot;2026-03-15T10:30:00Z&quot;</code>. Dates are <code>&quot;2026-03-15&quot;</code>.</p>
+<h3>UUIDs</h3>
+<p>All <code>id</code> fields are UUID v4.</p>
+<hr>
+<h2>3. Users</h2>
+<p><strong>Roles:</strong> ADMIN — full access. Others — restricted per matrix in functional-spec.</p>
+<h3><code>GET /users</code></h3>
+<p>List users. Admin only.</p>
+<p>Query params: <code>role</code>, <code>is_active</code>, <code>search</code> (email/name), <code>page</code>, <code>per_page</code></p>
+<pre><code class="language-json">// 200
+{
+  &quot;data&quot;: [
+    {
+      &quot;id&quot;: &quot;uuid&quot;,
+      &quot;email&quot;: &quot;string&quot;,
+      &quot;full_name&quot;: &quot;string&quot;,
+      &quot;role&quot;: &quot;BROKER&quot;,
+      &quot;is_active&quot;: true,
+      &quot;created_at&quot;: &quot;2026-03-15T10:30:00Z&quot;
+    }
+  ],
+  &quot;meta&quot;: { ... }
+}
+</code></pre>
+<h3><code>POST /users</code></h3>
+<p>Create user. Admin only.</p>
+<pre><code class="language-json">// Request
+{
+  &quot;email&quot;: &quot;string&quot;,
+  &quot;full_name&quot;: &quot;string&quot;,
+  &quot;password&quot;: &quot;string&quot;,
+  &quot;role&quot;: &quot;BROKER | CONTRACTOR | CLIENT_CONTACT | ADMIN&quot;,
+  &quot;client_id&quot;: &quot;uuid | null&quot;  // required if role = CLIENT_CONTACT
+}
+
+// 201 Response — same as GET /users/:id
+// 409 — email already exists
+</code></pre>
+<p>When role = CONTRACTOR, a Contractor Profile is auto-created with defaults.
+When role = CLIENT_CONTACT, a Client Contact record is auto-created linked to <code>client_id</code>.</p>
+<h3><code>GET /users/:id</code></h3>
+<p>Admin: any user. Others: own record only.</p>
+<pre><code class="language-json">// 200
+{
+  &quot;id&quot;: &quot;uuid&quot;,
+  &quot;email&quot;: &quot;string&quot;,
+  &quot;full_name&quot;: &quot;string&quot;,
+  &quot;role&quot;: &quot;CONTRACTOR&quot;,
+  &quot;is_active&quot;: true,
+  &quot;created_at&quot;: &quot;2026-03-15T10:30:00Z&quot;,
+  &quot;updated_at&quot;: &quot;2026-03-15T10:30:00Z&quot;
+}
+</code></pre>
+<h3><code>PATCH /users/:id</code></h3>
+<p>Admin: any user. Others: own <code>full_name</code> only.</p>
+<pre><code class="language-json">// Request (all fields optional)
+{
+  &quot;full_name&quot;: &quot;string&quot;,
+  &quot;email&quot;: &quot;string&quot;,       // admin only
+  &quot;is_active&quot;: false        // admin only
+}
+
+// 200 — updated user
+</code></pre>
+<h3><code>GET /users/me</code></h3>
+<p>Returns current authenticated user with role-specific profile included.</p>
+<pre><code class="language-json">// 200
+{
+  &quot;id&quot;: &quot;uuid&quot;,
+  &quot;email&quot;: &quot;string&quot;,
+  &quot;full_name&quot;: &quot;string&quot;,
+  &quot;role&quot;: &quot;CONTRACTOR&quot;,
+  &quot;is_active&quot;: true,
+  &quot;contractor_profile&quot;: { ... },  // if role = CONTRACTOR
+  &quot;client_contact&quot;: { ... }       // if role = CLIENT_CONTACT
+}
+</code></pre>
+<hr>
+<h2>4. Clients</h2>
+<p><strong>Access:</strong> Admin — all. Broker — assigned only. Client Contact — own client (read only).</p>
+<h3><code>GET /clients</code></h3>
+<p>Query params: <code>is_active</code>, <code>search</code> (company_name), <code>broker_id</code> (admin only), <code>page</code>, <code>per_page</code></p>
+<pre><code class="language-json">// 200
+{
+  &quot;data&quot;: [
+    {
+      &quot;id&quot;: &quot;uuid&quot;,
+      &quot;company_name&quot;: &quot;string&quot;,
+      &quot;registration_number&quot;: &quot;string | null&quot;,
+      &quot;vat_number&quot;: &quot;string | null&quot;,
+      &quot;billing_address&quot;: &quot;string&quot;,
+      &quot;country&quot;: &quot;string&quot;,
+      &quot;default_currency&quot;: &quot;EUR&quot;,
+      &quot;payment_terms_days&quot;: 30,
+      &quot;is_active&quot;: true,
+      &quot;brokers&quot;: [
+        { &quot;user_id&quot;: &quot;uuid&quot;, &quot;full_name&quot;: &quot;string&quot;, &quot;assigned_at&quot;: &quot;2026-03-15T10:30:00Z&quot; }
+      ],
+      &quot;created_at&quot;: &quot;2026-03-15T10:30:00Z&quot;
+    }
+  ],
+  &quot;meta&quot;: { ... }
+}
+</code></pre>
+<h3><code>POST /clients</code></h3>
+<p>Admin or Broker.</p>
+<pre><code class="language-json">// Request
+{
+  &quot;company_name&quot;: &quot;string&quot;,
+  &quot;registration_number&quot;: &quot;string | null&quot;,
+  &quot;vat_number&quot;: &quot;string | null&quot;,
+  &quot;billing_address&quot;: &quot;string&quot;,
+  &quot;country&quot;: &quot;string&quot;,
+  &quot;default_currency&quot;: &quot;EUR&quot;,
+  &quot;payment_terms_days&quot;: 30,
+  &quot;notes&quot;: &quot;string | null&quot;,
+  &quot;broker_ids&quot;: [&quot;uuid&quot;]  // at least one broker; auto-includes current broker if omitted
+}
+
+// 201
+</code></pre>
+<h3><code>GET /clients/:id</code></h3>
+<pre><code class="language-json">// 200 — full client object with brokers array and contact_count
+</code></pre>
+<h3><code>PATCH /clients/:id</code></h3>
+<p>Admin or assigned Broker.</p>
+<pre><code class="language-json">// Request (all optional)
+{
+  &quot;company_name&quot;: &quot;string&quot;,
+  &quot;billing_address&quot;: &quot;string&quot;,
+  &quot;country&quot;: &quot;string&quot;,
+  &quot;default_currency&quot;: &quot;EUR&quot;,
+  &quot;payment_terms_days&quot;: 30,
+  &quot;vat_number&quot;: &quot;string&quot;,
+  &quot;registration_number&quot;: &quot;string&quot;,
+  &quot;is_active&quot;: false,  // admin only
+  &quot;notes&quot;: &quot;string&quot;
+}
+
+// 200
+</code></pre>
+<h3><code>POST /clients/:id/brokers</code></h3>
+<p>Assign broker(s). Admin or assigned Broker.</p>
+<pre><code class="language-json">// Request
+{ &quot;broker_ids&quot;: [&quot;uuid&quot;] }
+
+// 200 — updated brokers array
+</code></pre>
+<h3><code>DELETE /clients/:id/brokers/:broker_user_id</code></h3>
+<p>Unassign broker. Admin or assigned Broker. Returns 409 if last broker on client with active placements.</p>
+<pre><code class="language-json">// 204 No Content
+// 409 — cannot remove last broker from client with active placements
+</code></pre>
+<hr>
+<h2>5. Client Contacts</h2>
+<p><strong>Access:</strong> Admin — all. Broker — assigned clients. Client Contact — own record.</p>
+<h3><code>GET /clients/:client_id/contacts</code></h3>
+<pre><code class="language-json">// 200
+{
+  &quot;data&quot;: [
+    {
+      &quot;id&quot;: &quot;uuid&quot;,
+      &quot;user_id&quot;: &quot;uuid&quot;,
+      &quot;email&quot;: &quot;string&quot;,
+      &quot;full_name&quot;: &quot;string&quot;,
+      &quot;job_title&quot;: &quot;string | null&quot;,
+      &quot;phone&quot;: &quot;string | null&quot;,
+      &quot;is_primary&quot;: false,
+      &quot;is_active&quot;: true
+    }
+  ]
+}
+</code></pre>
+<h3><code>POST /clients/:client_id/contacts</code></h3>
+<p>Creates both a User (role=CLIENT_CONTACT) and Client Contact record.</p>
+<pre><code class="language-json">// Request
+{
+  &quot;email&quot;: &quot;string&quot;,
+  &quot;full_name&quot;: &quot;string&quot;,
+  &quot;password&quot;: &quot;string&quot;,
+  &quot;job_title&quot;: &quot;string | null&quot;,
+  &quot;phone&quot;: &quot;string | null&quot;,
+  &quot;is_primary&quot;: false
+}
+
+// 201
+</code></pre>
+<h3><code>PATCH /clients/:client_id/contacts/:id</code></h3>
+<pre><code class="language-json">// Request (all optional)
+{ &quot;job_title&quot;: &quot;string&quot;, &quot;phone&quot;: &quot;string&quot;, &quot;is_primary&quot;: true }
+
+// 200
+</code></pre>
+<hr>
+<h2>6. Contractor Profiles</h2>
+<p><strong>Access:</strong> Admin — all. Broker — read all. Contractor — own only (read/write).</p>
+<h3><code>GET /contractors</code></h3>
+<p>List all contractors. Visible to Admin and all Brokers (needed for placement creation).</p>
+<p>Query params: <code>search</code> (name/company), <code>is_active</code>, <code>page</code>, <code>per_page</code></p>
+<pre><code class="language-json">// 200
+{
+  &quot;data&quot;: [
+    {
+      &quot;id&quot;: &quot;uuid&quot;,
+      &quot;user_id&quot;: &quot;uuid&quot;,
+      &quot;email&quot;: &quot;string&quot;,
+      &quot;full_name&quot;: &quot;string&quot;,
+      &quot;company_name&quot;: &quot;string | null&quot;,
+      &quot;country&quot;: &quot;string&quot;,
+      &quot;default_currency&quot;: &quot;EUR&quot;,
+      &quot;vat_registered&quot;: false,
+      &quot;is_active&quot;: true
+    }
+  ],
+  &quot;meta&quot;: { ... }
+}
+</code></pre>
+<h3><code>GET /contractors/:id</code></h3>
+<p>Full profile. Admin/Broker: any. Contractor: own only.</p>
+<pre><code class="language-json">// 200
+{
+  &quot;id&quot;: &quot;uuid&quot;,
+  &quot;user_id&quot;: &quot;uuid&quot;,
+  &quot;email&quot;: &quot;string&quot;,
+  &quot;full_name&quot;: &quot;string&quot;,
+  &quot;company_name&quot;: &quot;string | null&quot;,
+  &quot;registration_number&quot;: &quot;string | null&quot;,
+  &quot;vat_registered&quot;: false,
+  &quot;vat_number&quot;: &quot;string | null&quot;,
+  &quot;vat_rate_percent&quot;: &quot;decimal | null&quot;,
+  &quot;invoice_series_prefix&quot;: &quot;string | null&quot;,
+  &quot;next_invoice_number&quot;: 1,
+  &quot;bank_name&quot;: &quot;string | null&quot;,
+  &quot;bank_account_iban&quot;: &quot;string | null&quot;,
+  &quot;bank_swift_bic&quot;: &quot;string | null&quot;,
+  &quot;payment_terms_days&quot;: 14,
+  &quot;billing_address&quot;: &quot;string | null&quot;,
+  &quot;country&quot;: &quot;string&quot;,
+  &quot;default_currency&quot;: &quot;EUR&quot;
+}
+</code></pre>
+<h3><code>PATCH /contractors/:id</code></h3>
+<p>Admin: any. Contractor: own only. Brokers: no access.</p>
+<pre><code class="language-json">// Request (all optional)
+{
+  &quot;company_name&quot;: &quot;string&quot;,
+  &quot;registration_number&quot;: &quot;string&quot;,
+  &quot;vat_registered&quot;: true,
+  &quot;vat_number&quot;: &quot;string&quot;,       // required if vat_registered = true
+  &quot;vat_rate_percent&quot;: 21.0,     // required if vat_registered = true
+  &quot;invoice_series_prefix&quot;: &quot;JD-2026-&quot;,
+  &quot;next_invoice_number&quot;: 5,     // must be &gt;= current value
+  &quot;bank_name&quot;: &quot;string&quot;,
+  &quot;bank_account_iban&quot;: &quot;string&quot;,
+  &quot;bank_swift_bic&quot;: &quot;string&quot;,
+  &quot;payment_terms_days&quot;: 14,
+  &quot;billing_address&quot;: &quot;string&quot;,
+  &quot;country&quot;: &quot;string&quot;,
+  &quot;default_currency&quot;: &quot;EUR&quot;
+}
+
+// 200 — updated profile
+// 400 — next_invoice_number &lt; current value
+</code></pre>
+<hr>
+<h2>7. Placements</h2>
+<p><strong>Access:</strong> Admin — all. Broker — assigned clients only. Contractor — own placements (read only). Client Contact — per placement config (read only).</p>
+<h3><code>GET /placements</code></h3>
+<p>Query params: <code>client_id</code>, <code>contractor_id</code>, <code>status</code> (comma-separated), <code>broker_id</code> (admin only), <code>page</code>, <code>per_page</code>, <code>sort</code>, <code>order</code></p>
+<pre><code class="language-json">// 200
+{
+  &quot;data&quot;: [
+    {
+      &quot;id&quot;: &quot;uuid&quot;,
+      &quot;client&quot;: { &quot;id&quot;: &quot;uuid&quot;, &quot;company_name&quot;: &quot;string&quot; },
+      &quot;contractor&quot;: { &quot;id&quot;: &quot;uuid&quot;, &quot;full_name&quot;: &quot;string&quot; },
+      &quot;client_rate&quot;: &quot;80.00&quot;,
+      &quot;contractor_rate&quot;: &quot;60.00&quot;,
+      &quot;currency&quot;: &quot;EUR&quot;,
+      &quot;start_date&quot;: &quot;2026-03-01&quot;,
+      &quot;end_date&quot;: &quot;2026-12-31&quot;,
+      &quot;status&quot;: &quot;ACTIVE&quot;,
+      &quot;approval_flow&quot;: &quot;CLIENT_THEN_BROKER&quot;,
+      &quot;require_timesheet_attachment&quot;: false,
+      &quot;client_can_view_invoices&quot;: true,
+      &quot;client_can_view_documents&quot;: true,
+      &quot;notes&quot;: &quot;string | null&quot;,
+      &quot;created_at&quot;: &quot;2026-03-15T10:30:00Z&quot;
+    }
+  ],
+  &quot;meta&quot;: { ... }
+}
+</code></pre>
+<h3><code>POST /placements</code></h3>
+<p>Admin or Broker (for assigned clients).</p>
+<pre><code class="language-json">// Request
+{
+  &quot;client_id&quot;: &quot;uuid&quot;,
+  &quot;contractor_id&quot;: &quot;uuid&quot;,
+  &quot;client_rate&quot;: &quot;80.00&quot;,
+  &quot;contractor_rate&quot;: &quot;60.00&quot;,
+  &quot;currency&quot;: &quot;EUR&quot;,
+  &quot;start_date&quot;: &quot;2026-04-01&quot;,
+  &quot;end_date&quot;: &quot;2026-12-31&quot;,     // optional
+  &quot;approval_flow&quot;: &quot;BROKER_ONLY&quot;,
+  &quot;require_timesheet_attachment&quot;: false,
+  &quot;client_can_view_invoices&quot;: false,
+  &quot;client_can_view_documents&quot;: false,
+  &quot;notes&quot;: &quot;string | null&quot;
+}
+
+// 201 — placement in DRAFT status
+</code></pre>
+<h3><code>GET /placements/:id</code></h3>
+<pre><code class="language-json">// 200 — full placement object
+</code></pre>
+<h3><code>PATCH /placements/:id</code></h3>
+<p>Only when status = DRAFT: all fields editable.
+When status = ACTIVE: only <code>end_date</code>, <code>approval_flow</code>, <code>require_timesheet_attachment</code>, <code>client_can_view_invoices</code>, <code>client_can_view_documents</code>, <code>notes</code> editable.</p>
+<pre><code class="language-json">// Request (fields as in POST, all optional)
+// 200 — updated placement
+// 409 — attempted to change locked fields on ACTIVE placement
+</code></pre>
+<h3><code>POST /placements/:id/activate</code></h3>
+<p>Transition DRAFT -&gt; ACTIVE. Validates all required fields are set. Rates become immutable.</p>
+<pre><code class="language-json">// 200 — placement with status: &quot;ACTIVE&quot;
+// 409 — missing required fields or invalid current status
+</code></pre>
+<h3><code>POST /placements/:id/complete</code></h3>
+<p>Transition ACTIVE -&gt; COMPLETED.</p>
+<pre><code class="language-json">// 200
+{
+  &quot;id&quot;: &quot;uuid&quot;,
+  &quot;status&quot;: &quot;COMPLETED&quot;,
+  &quot;warnings&quot;: [&quot;2 timesheets in non-terminal state&quot;]  // if applicable
+}
+
+// 409 — invalid current status
+</code></pre>
+<h3><code>POST /placements/:id/cancel</code></h3>
+<p>Transition ACTIVE -&gt; CANCELLED.</p>
+<pre><code class="language-json">// 200 — same shape as complete, with warnings if applicable
+// 409 — invalid current status
+</code></pre>
+<h3><code>POST /placements/:id/copy</code></h3>
+<p>Creates a new DRAFT placement pre-filled from source. Returns the new placement.</p>
+<pre><code class="language-json">// Request (all optional overrides)
+{
+  &quot;client_rate&quot;: &quot;85.00&quot;,       // override, else copied
+  &quot;contractor_rate&quot;: &quot;65.00&quot;,   // override, else copied
+  &quot;start_date&quot;: &quot;2027-01-01&quot;   // default: day after source end_date, or tomorrow
+}
+
+// 201 — new placement in DRAFT
+</code></pre>
+<h3><code>DELETE /placements/:id</code></h3>
+<p>Only DRAFT placements with no timesheets.</p>
+<pre><code class="language-json">// 204 No Content
+// 409 — has timesheets or not in DRAFT status
+</code></pre>
+<hr>
+<h2>8. Placement Documents</h2>
+<p><strong>Access:</strong> Admin/Broker (assigned) — full. Contractor — own placement (upload/download). Client Contact — download if <code>client_can_view_documents</code>.</p>
+<h3><code>GET /placements/:placement_id/documents</code></h3>
+<pre><code class="language-json">// 200
+{
+  &quot;data&quot;: [
+    {
+      &quot;id&quot;: &quot;uuid&quot;,
+      &quot;file_name&quot;: &quot;nda.pdf&quot;,
+      &quot;file_size_bytes&quot;: 245000,
+      &quot;mime_type&quot;: &quot;application/pdf&quot;,
+      &quot;label&quot;: &quot;NDA&quot;,
+      &quot;uploaded_by&quot;: { &quot;id&quot;: &quot;uuid&quot;, &quot;full_name&quot;: &quot;string&quot; },
+      &quot;uploaded_at&quot;: &quot;2026-03-15T10:30:00Z&quot;
+    }
+  ]
+}
+</code></pre>
+<h3><code>POST /placements/:placement_id/documents</code></h3>
+<p><code>Content-Type: multipart/form-data</code></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>file</td>
+<td>binary</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>label</td>
+<td>string</td>
+<td>no</td>
+</tr>
+</tbody></table>
+<pre><code class="language-json">// 201 — document object
+</code></pre>
+<h3><code>GET /placements/:placement_id/documents/:id/download</code></h3>
+<p>Returns the file binary with appropriate <code>Content-Type</code> and <code>Content-Disposition</code> headers.</p>
+<pre><code>// 200 — binary file
+</code></pre>
+<h3><code>DELETE /placements/:placement_id/documents/:id</code></h3>
+<p>Admin or assigned Broker only.</p>
+<pre><code class="language-json">// 204 No Content
+</code></pre>
+<hr>
+<h2>9. Timesheets</h2>
+<p><strong>Access:</strong> Contractor — own (create/edit/submit). Admin/Broker — view, approve, reject. Client Contact — view/approve per config.</p>
+<h3><code>GET /placements/:placement_id/timesheets</code></h3>
+<p>Query params: <code>year</code>, <code>month</code>, <code>status</code>, <code>page</code>, <code>per_page</code></p>
+<pre><code class="language-json">// 200
+{
+  &quot;data&quot;: [
+    {
+      &quot;id&quot;: &quot;uuid&quot;,
+      &quot;placement_id&quot;: &quot;uuid&quot;,
+      &quot;year&quot;: 2026,
+      &quot;month&quot;: 3,
+      &quot;status&quot;: &quot;DRAFT&quot;,
+      &quot;total_hours&quot;: &quot;120.50&quot;,
+      &quot;submitted_at&quot;: null,
+      &quot;approved_at&quot;: null,
+      &quot;approved_by&quot;: null,
+      &quot;rejected_at&quot;: null,
+      &quot;rejected_by&quot;: null,
+      &quot;rejection_reason&quot;: null,
+      &quot;has_attachments&quot;: false,
+      &quot;entry_count&quot;: 22,
+      &quot;created_at&quot;: &quot;2026-03-01T08:00:00Z&quot;
+    }
+  ],
+  &quot;meta&quot;: { ... }
+}
+</code></pre>
+<h3><code>POST /placements/:placement_id/timesheets</code></h3>
+<p>Contractor only. Creates a DRAFT timesheet for a given month.</p>
+<pre><code class="language-json">// Request
+{ &quot;year&quot;: 2026, &quot;month&quot;: 3 }
+
+// 201 — timesheet object
+// 409 — timesheet already exists for this placement+month
+</code></pre>
+<p>Validates: month falls within placement date range.</p>
+<h3><code>GET /timesheets/:id</code></h3>
+<p>Returns timesheet with entries included.</p>
+<pre><code class="language-json">// 200
+{
+  &quot;id&quot;: &quot;uuid&quot;,
+  &quot;placement_id&quot;: &quot;uuid&quot;,
+  &quot;placement&quot;: {
+    &quot;client&quot;: { &quot;id&quot;: &quot;uuid&quot;, &quot;company_name&quot;: &quot;string&quot; },
+    &quot;contractor&quot;: { &quot;id&quot;: &quot;uuid&quot;, &quot;full_name&quot;: &quot;string&quot; },
+    &quot;client_rate&quot;: &quot;80.00&quot;,
+    &quot;contractor_rate&quot;: &quot;60.00&quot;,
+    &quot;currency&quot;: &quot;EUR&quot;,
+    &quot;approval_flow&quot;: &quot;CLIENT_THEN_BROKER&quot;,
+    &quot;require_timesheet_attachment&quot;: true
+  },
+  &quot;year&quot;: 2026,
+  &quot;month&quot;: 3,
+  &quot;status&quot;: &quot;DRAFT&quot;,
+  &quot;total_hours&quot;: &quot;120.50&quot;,
+  &quot;submitted_at&quot;: null,
+  &quot;approved_at&quot;: null,
+  &quot;approved_by&quot;: null,
+  &quot;rejected_at&quot;: null,
+  &quot;rejected_by&quot;: null,
+  &quot;rejection_reason&quot;: null,
+  &quot;entries&quot;: [
+    {
+      &quot;id&quot;: &quot;uuid&quot;,
+      &quot;date&quot;: &quot;2026-03-01&quot;,
+      &quot;hours&quot;: &quot;8.00&quot;,
+      &quot;task_name&quot;: &quot;Backend API development&quot;,
+      &quot;notes&quot;: &quot;string | null&quot;
+    }
+  ],
+  &quot;attachments&quot;: [
+    {
+      &quot;id&quot;: &quot;uuid&quot;,
+      &quot;file_name&quot;: &quot;sap-approval.png&quot;,
+      &quot;file_size_bytes&quot;: 120000,
+      &quot;mime_type&quot;: &quot;image/png&quot;,
+      &quot;uploaded_at&quot;: &quot;2026-03-28T10:00:00Z&quot;
+    }
+  ],
+  &quot;created_at&quot;: &quot;2026-03-01T08:00:00Z&quot;
+}
+</code></pre>
+<h3><code>DELETE /timesheets/:id</code></h3>
+<p>DRAFT with no entries only. Contractor or Admin.</p>
+<pre><code class="language-json">// 204
+// 409 — has entries or not in DRAFT
+</code></pre>
+<hr>
+<h2>10. Timesheet Entries</h2>
+<p><strong>Access:</strong> Contractor only, when parent timesheet is DRAFT.</p>
+<h3><code>PUT /timesheets/:timesheet_id/entries</code></h3>
+<p><strong>Bulk upsert</strong> — replaces all entries for the timesheet. This is the primary editing endpoint. The client sends the full set of entries each time.</p>
+<pre><code class="language-json">// Request
+{
+  &quot;entries&quot;: [
+    { &quot;date&quot;: &quot;2026-03-01&quot;, &quot;hours&quot;: &quot;8.00&quot;, &quot;task_name&quot;: &quot;API development&quot;, &quot;notes&quot;: null },
+    { &quot;date&quot;: &quot;2026-03-01&quot;, &quot;hours&quot;: &quot;1.00&quot;, &quot;task_name&quot;: &quot;Code review&quot;, &quot;notes&quot;: null },
+    { &quot;date&quot;: &quot;2026-03-02&quot;, &quot;hours&quot;: &quot;7.50&quot;, &quot;task_name&quot;: null, &quot;notes&quot;: &quot;Short day&quot; }
+  ]
+}
+
+// 200
+{
+  &quot;entries&quot;: [ ... ],  // saved entries with ids
+  &quot;total_hours&quot;: &quot;16.50&quot;,
+  &quot;warnings&quot;: []       // e.g., [&quot;2026-03-01: total 9.00h exceeds 8h typical day&quot;]
+}
+</code></pre>
+<p><strong>Validation:</strong></p>
+<ul>
+<li>Each <code>date</code> must be within the timesheet&#39;s year/month AND within placement date range.</li>
+<li>Sum of hours per date must be &lt;= 24.</li>
+<li><code>hours</code> must be &gt;= 0.</li>
+<li>Timesheet must be in DRAFT status.</li>
+</ul>
+<pre><code class="language-json">// 400 — validation errors
+// 409 — timesheet not in DRAFT status
+</code></pre>
+<h3><code>GET /timesheets/:timesheet_id/entries</code></h3>
+<p>Returns all entries for the timesheet (also available nested in <code>GET /timesheets/:id</code>).</p>
+<pre><code class="language-json">// 200
+{
+  &quot;data&quot;: [
+    { &quot;id&quot;: &quot;uuid&quot;, &quot;date&quot;: &quot;2026-03-01&quot;, &quot;hours&quot;: &quot;8.00&quot;, &quot;task_name&quot;: &quot;string | null&quot;, &quot;notes&quot;: &quot;string | null&quot; }
+  ],
+  &quot;total_hours&quot;: &quot;120.50&quot;
+}
+</code></pre>
+<hr>
+<h2>11. Timesheet Attachments</h2>
+<p><strong>Access:</strong> Contractor — upload/delete when DRAFT. All authorized viewers — download.</p>
+<h3><code>POST /timesheets/:timesheet_id/attachments</code></h3>
+<p>Timesheet must be in DRAFT. <code>Content-Type: multipart/form-data</code></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>file</td>
+<td>binary</td>
+<td>yes</td>
+</tr>
+</tbody></table>
+<pre><code class="language-json">// 201 — attachment object
+// 409 — timesheet not in DRAFT
+</code></pre>
+<h3><code>GET /timesheets/:timesheet_id/attachments/:id/download</code></h3>
+<pre><code>// 200 — binary file
+</code></pre>
+<h3><code>DELETE /timesheets/:timesheet_id/attachments/:id</code></h3>
+<p>Contractor only, DRAFT status.</p>
+<pre><code class="language-json">// 204
+// 409 — timesheet not in DRAFT
+</code></pre>
+<hr>
+<h2>12. Timesheet State Transitions</h2>
+<p>All transition endpoints return the updated timesheet object.</p>
+<h3><code>POST /timesheets/:id/submit</code></h3>
+<p>Contractor only. DRAFT -&gt; SUBMITTED.</p>
+<p><strong>Validates:</strong></p>
+<ul>
+<li>At least one entry exists (or confirm zero-hours — see <code>confirm_zero</code> flag).</li>
+<li>If <code>require_timesheet_attachment</code> is true on placement, at least one attachment exists.</li>
+<li>No single date exceeds 24 hours.</li>
+</ul>
+<pre><code class="language-json">// Request
+{ &quot;confirm_zero&quot;: false }  // set true to submit zero-hour timesheet without entries
+
+// 200 — timesheet with status: &quot;SUBMITTED&quot;
+// 400 — validation failed
+// 409 — invalid current status
+</code></pre>
+<h3><code>POST /timesheets/:id/approve</code></h3>
+<p><strong>BROKER_ONLY flow:</strong> Broker/Admin. SUBMITTED -&gt; APPROVED.
+<strong>CLIENT_THEN_BROKER flow, broker step:</strong> Broker/Admin. CLIENT_APPROVED -&gt; APPROVED.</p>
+<pre><code class="language-json">// 200 — timesheet with status: &quot;APPROVED&quot;
+// 403 — not authorized for this step
+// 409 — invalid current status for this action
+</code></pre>
+<h3><code>POST /timesheets/:id/client-approve</code></h3>
+<p>CLIENT_THEN_BROKER flow only. Client Contact. SUBMITTED -&gt; CLIENT_APPROVED.</p>
+<pre><code class="language-json">// 200 — timesheet with status: &quot;CLIENT_APPROVED&quot;
+// 403 — placement approval_flow is not CLIENT_THEN_BROKER, or user is not a contact of this client
+// 409 — invalid current status
+</code></pre>
+<h3><code>POST /timesheets/:id/reject</code></h3>
+<p>Broker/Admin: rejects from SUBMITTED or CLIENT_APPROVED.
+Client Contact: rejects from SUBMITTED (CLIENT_THEN_BROKER flow only).</p>
+<p>Transitions to REJECTED, then immediately to DRAFT (contractor can edit).</p>
+<pre><code class="language-json">// Request
+{ &quot;reason&quot;: &quot;string&quot; }  // required
+
+// 200 — timesheet with status: &quot;DRAFT&quot;, rejection_reason populated
+// 400 — reason is required
+// 409 — invalid current status
+</code></pre>
+<hr>
+<h2>13. Invoices</h2>
+<p><strong>Access:</strong> Admin/Broker — full management. Contractor — own contractor invoices (read + PDF). Client Contact — client invoices if configured (read + PDF).</p>
+<h3><code>POST /invoices/generate</code></h3>
+<p>Generate invoice pairs for one or more approved timesheets. Broker/Admin only.</p>
+<pre><code class="language-json">// Request
+{
+  &quot;timesheet_ids&quot;: [&quot;uuid&quot;, &quot;uuid&quot;],
+  &quot;auto_issue&quot;: false  // if true, skip DRAFT and go straight to ISSUED
+}
+
+// 201
+{
+  &quot;generated&quot;: [
+    {
+      &quot;timesheet_id&quot;: &quot;uuid&quot;,
+      &quot;client_invoice&quot;: { &quot;id&quot;: &quot;uuid&quot;, &quot;invoice_number&quot;: &quot;AGY-2026-0001&quot;, &quot;total_amount&quot;: &quot;12000.00&quot;, &quot;status&quot;: &quot;DRAFT&quot; },
+      &quot;contractor_invoice&quot;: { &quot;id&quot;: &quot;uuid&quot;, &quot;invoice_number&quot;: &quot;JD-2026-0005&quot;, &quot;total_amount&quot;: &quot;9000.00&quot;, &quot;status&quot;: &quot;DRAFT&quot; }
+    }
+  ],
+  &quot;errors&quot;: [
+    { &quot;timesheet_id&quot;: &quot;uuid&quot;, &quot;error&quot;: &quot;Non-voided invoices already exist for this timesheet&quot; }
+  ]
+}
+
+// 400 — no valid timesheet_ids
+</code></pre>
+<p><strong>Validation per timesheet:</strong></p>
+<ul>
+<li>Status must be APPROVED.</li>
+<li>No non-VOIDED invoices must exist for this timesheet.</li>
+<li>Contractor profile must have sufficient data (bank details recommended but not blocked).</li>
+</ul>
+<h3><code>GET /invoices</code></h3>
+<p>Query params: <code>invoice_type</code> (CLIENT_INVOICE, CONTRACTOR_INVOICE), <code>status</code> (comma-separated), <code>client_id</code>, <code>contractor_id</code>, <code>placement_id</code>, <code>year</code>, <code>month</code>, <code>page</code>, <code>per_page</code>, <code>sort</code>, <code>order</code></p>
+<pre><code class="language-json">// 200
+{
+  &quot;data&quot;: [
+    {
+      &quot;id&quot;: &quot;uuid&quot;,
+      &quot;invoice_number&quot;: &quot;AGY-2026-0001&quot;,
+      &quot;invoice_type&quot;: &quot;CLIENT_INVOICE&quot;,
+      &quot;client&quot;: { &quot;id&quot;: &quot;uuid&quot;, &quot;company_name&quot;: &quot;string&quot; },
+      &quot;contractor&quot;: { &quot;id&quot;: &quot;uuid&quot;, &quot;full_name&quot;: &quot;string&quot; },
+      &quot;placement_id&quot;: &quot;uuid&quot;,
+      &quot;year&quot;: 2026,
+      &quot;month&quot;: 3,
+      &quot;currency&quot;: &quot;EUR&quot;,
+      &quot;hourly_rate&quot;: &quot;80.00&quot;,
+      &quot;total_hours&quot;: &quot;150.00&quot;,
+      &quot;subtotal&quot;: &quot;12000.00&quot;,
+      &quot;vat_rate_percent&quot;: null,
+      &quot;vat_amount&quot;: null,
+      &quot;total_amount&quot;: &quot;12000.00&quot;,
+      &quot;status&quot;: &quot;ISSUED&quot;,
+      &quot;issue_date&quot;: &quot;2026-04-01&quot;,
+      &quot;due_date&quot;: &quot;2026-05-01&quot;,
+      &quot;payment_date&quot;: null,
+      &quot;payment_reference&quot;: null,
+      &quot;generated_by&quot;: { &quot;id&quot;: &quot;uuid&quot;, &quot;full_name&quot;: &quot;string&quot; },
+      &quot;created_at&quot;: &quot;2026-04-01T09:00:00Z&quot;
+    }
+  ],
+  &quot;meta&quot;: { ... }
+}
+</code></pre>
+<h3><code>GET /invoices/:id</code></h3>
+<p>Full invoice with snapshotted billing details.</p>
+<pre><code class="language-json">// 200
+{
+  &quot;id&quot;: &quot;uuid&quot;,
+  &quot;invoice_number&quot;: &quot;JD-2026-0005&quot;,
+  &quot;invoice_type&quot;: &quot;CONTRACTOR_INVOICE&quot;,
+  &quot;timesheet_id&quot;: &quot;uuid&quot;,
+  &quot;placement_id&quot;: &quot;uuid&quot;,
+  &quot;client&quot;: { &quot;id&quot;: &quot;uuid&quot;, &quot;company_name&quot;: &quot;string&quot; },
+  &quot;contractor&quot;: { &quot;id&quot;: &quot;uuid&quot;, &quot;full_name&quot;: &quot;string&quot; },
+  &quot;year&quot;: 2026,
+  &quot;month&quot;: 3,
+  &quot;currency&quot;: &quot;EUR&quot;,
+  &quot;hourly_rate&quot;: &quot;60.00&quot;,
+  &quot;total_hours&quot;: &quot;150.00&quot;,
+  &quot;subtotal&quot;: &quot;9000.00&quot;,
+  &quot;vat_rate_percent&quot;: &quot;21.00&quot;,
+  &quot;vat_amount&quot;: &quot;1890.00&quot;,
+  &quot;total_amount&quot;: &quot;10890.00&quot;,
+  &quot;status&quot;: &quot;ISSUED&quot;,
+  &quot;issue_date&quot;: &quot;2026-04-01&quot;,
+  &quot;due_date&quot;: &quot;2026-04-15&quot;,
+  &quot;payment_date&quot;: null,
+  &quot;payment_reference&quot;: null,
+  &quot;billing_snapshot&quot;: {
+    &quot;contractor_company_name&quot;: &quot;John Doe Consulting&quot;,
+    &quot;contractor_vat_number&quot;: &quot;LT123456789&quot;,
+    &quot;contractor_bank_iban&quot;: &quot;LT12 3456 7890 1234 5678&quot;,
+    &quot;contractor_bank_swift&quot;: &quot;CBVILT2X&quot;,
+    &quot;contractor_bank_name&quot;: &quot;SEB&quot;,
+    &quot;contractor_billing_address&quot;: &quot;123 Main St, Vilnius&quot;,
+    &quot;contractor_payment_terms_days&quot;: 14,
+    &quot;contractor_invoice_series_prefix&quot;: &quot;JD-2026-&quot;
+  },
+  &quot;generated_by&quot;: { &quot;id&quot;: &quot;uuid&quot;, &quot;full_name&quot;: &quot;string&quot; },
+  &quot;correction_link&quot;: null,
+  &quot;created_at&quot;: &quot;2026-04-01T09:00:00Z&quot;
+}
+</code></pre>
+<p>For CLIENT_INVOICE, <code>billing_snapshot</code> contains client fields instead:</p>
+<pre><code class="language-json">&quot;billing_snapshot&quot;: {
+  &quot;client_company_name&quot;: &quot;string&quot;,
+  &quot;client_billing_address&quot;: &quot;string&quot;,
+  &quot;client_vat_number&quot;: &quot;string | null&quot;,
+  &quot;client_payment_terms_days&quot;: 30
+}
+</code></pre>
+<h3><code>POST /invoices/:id/issue</code></h3>
+<p>DRAFT -&gt; ISSUED. Triggers PDF generation. Broker/Admin.</p>
+<pre><code class="language-json">// 200 — invoice with status: &quot;ISSUED&quot;, pdf available
+// 409 — not in DRAFT status
+</code></pre>
+<h3><code>POST /invoices/:id/mark-paid</code></h3>
+<p>ISSUED -&gt; PAID. Broker/Admin.</p>
+<pre><code class="language-json">// Request
+{
+  &quot;payment_date&quot;: &quot;2026-04-20&quot;,
+  &quot;payment_reference&quot;: &quot;string | null&quot;  // optional, e.g. bank transfer ref
+}
+
+// 200 — invoice with status: &quot;PAID&quot;
+// 400 — payment_date required
+// 409 — not in ISSUED status
+</code></pre>
+<h3><code>POST /invoices/:id/void</code></h3>
+<p>ISSUED or PAID -&gt; VOIDED. Broker/Admin.</p>
+<pre><code class="language-json">// Request
+{ &quot;reason&quot;: &quot;string | null&quot; }
+
+// 200 — invoice with status: &quot;VOIDED&quot;
+// 409 — not in ISSUED or PAID status
+</code></pre>
+<h3><code>POST /invoices/:id/correct</code></h3>
+<p>ISSUED -&gt; CORRECTED. Creates a new corrective invoice in DRAFT. Broker/Admin.</p>
+<pre><code class="language-json">// Request — fields to override on the corrective invoice (all optional)
+{
+  &quot;hourly_rate&quot;: &quot;82.00&quot;,
+  &quot;total_hours&quot;: &quot;148.00&quot;,
+  &quot;vat_rate_percent&quot;: &quot;21.00&quot;,
+  &quot;reason&quot;: &quot;Rate correction per client agreement&quot;
+}
+
+// 201
+{
+  &quot;original_invoice&quot;: { &quot;id&quot;: &quot;uuid&quot;, &quot;status&quot;: &quot;CORRECTED&quot; },
+  &quot;corrective_invoice&quot;: { &quot;id&quot;: &quot;uuid&quot;, &quot;invoice_number&quot;: &quot;...&quot;, &quot;status&quot;: &quot;DRAFT&quot;, &quot;total_amount&quot;: &quot;...&quot; }
+}
+
+// 409 — not in ISSUED status
+</code></pre>
+<h3><code>GET /invoices/:id/pdf</code></h3>
+<p>Download generated PDF. Available to anyone who can view the invoice.</p>
+<pre><code>// 200 — Content-Type: application/pdf, Content-Disposition: attachment
+// 404 — PDF not yet generated (invoice still in DRAFT)
+</code></pre>
+<h3><code>DELETE /invoices/:id</code></h3>
+<p>DRAFT only. Broker/Admin.</p>
+<pre><code class="language-json">// 204
+// 409 — not in DRAFT status
+</code></pre>
+<hr>
+<h2>14. Control Screen</h2>
+<p><strong>Access:</strong> Admin — all data. Broker — assigned clients only.</p>
+<h3><code>GET /control/overview</code></h3>
+<p>The main control screen endpoint. Returns one row per active placement for the selected month.</p>
+<p>Query params: <code>year</code> (required), <code>month</code> (required), <code>client_id</code>, <code>contractor_id</code>, <code>broker_id</code> (admin only), <code>timesheet_status</code>, <code>invoice_status</code>, <code>needs_attention</code> (boolean), <code>page</code>, <code>per_page</code>, <code>sort</code>, <code>order</code></p>
+<pre><code class="language-json">// 200
+{
+  &quot;data&quot;: [
+    {
+      &quot;placement&quot;: {
+        &quot;id&quot;: &quot;uuid&quot;,
+        &quot;start_date&quot;: &quot;2026-01-01&quot;,
+        &quot;end_date&quot;: &quot;2026-12-31&quot;,
+        &quot;client_rate&quot;: &quot;80.00&quot;,
+        &quot;contractor_rate&quot;: &quot;60.00&quot;,
+        &quot;currency&quot;: &quot;EUR&quot;,
+        &quot;approval_flow&quot;: &quot;CLIENT_THEN_BROKER&quot;,
+        &quot;require_timesheet_attachment&quot;: true
+      },
+      &quot;client&quot;: { &quot;id&quot;: &quot;uuid&quot;, &quot;company_name&quot;: &quot;Acme Corp&quot; },
+      &quot;contractor&quot;: { &quot;id&quot;: &quot;uuid&quot;, &quot;full_name&quot;: &quot;John Doe&quot; },
+      &quot;timesheet&quot;: {
+        &quot;id&quot;: &quot;uuid | null&quot;,
+        &quot;status&quot;: &quot;APPROVED&quot;,
+        &quot;total_hours&quot;: &quot;150.00&quot;,
+        &quot;submitted_at&quot;: &quot;2026-03-28T10:00:00Z&quot;,
+        &quot;approved_at&quot;: &quot;2026-03-29T14:00:00Z&quot;
+      },
+      &quot;client_invoice&quot;: {
+        &quot;id&quot;: &quot;uuid | null&quot;,
+        &quot;invoice_number&quot;: &quot;AGY-2026-0001&quot;,
+        &quot;status&quot;: &quot;ISSUED&quot;,
+        &quot;total_amount&quot;: &quot;12000.00&quot;
+      },
+      &quot;contractor_invoice&quot;: {
+        &quot;id&quot;: &quot;uuid | null&quot;,
+        &quot;invoice_number&quot;: &quot;JD-2026-0005&quot;,
+        &quot;status&quot;: &quot;ISSUED&quot;,
+        &quot;total_amount&quot;: &quot;10890.00&quot;
+      },
+      &quot;margin&quot;: &quot;1110.00&quot;,
+      &quot;flags&quot;: [&quot;missing_attachment&quot;]
+    }
+  ],
+  &quot;meta&quot;: { ... }
+}
+</code></pre>
+<p><strong><code>timesheet</code></strong> is null if no timesheet created for that month. <strong><code>client_invoice</code></strong> / <strong><code>contractor_invoice</code></strong> are null if not yet generated.</p>
+<p><strong><code>flags</code></strong> array — possible values:</p>
+<ul>
+<li><code>&quot;no_timesheet&quot;</code> — no timesheet for this month</li>
+<li><code>&quot;timesheet_draft&quot;</code> — timesheet started but not submitted</li>
+<li><code>&quot;missing_attachment&quot;</code> — attachment required but none uploaded</li>
+<li><code>&quot;pending_approval&quot;</code> — timesheet awaiting approval</li>
+<li><code>&quot;approved_no_invoice&quot;</code> — approved but invoices not generated</li>
+<li><code>&quot;missing_bank_details&quot;</code> — contractor profile missing bank info</li>
+<li><code>&quot;invoice_unpaid&quot;</code> — invoice issued but not marked paid</li>
+</ul>
+<h3><code>GET /control/summary</code></h3>
+<p>Aggregate counters for the selected month.</p>
+<p>Query params: <code>year</code> (required), <code>month</code> (required), <code>broker_id</code> (admin only)</p>
+<pre><code class="language-json">// 200
+{
+  &quot;timesheets_awaiting_approval&quot;: 12,
+  &quot;approved_without_invoices&quot;: 5,
+  &quot;invoices_awaiting_payment&quot;: 18,
+  &quot;placements_with_issues&quot;: 3,
+  &quot;total_active_placements&quot;: 45,
+  &quot;total_hours&quot;: &quot;5400.00&quot;,
+  &quot;total_client_revenue&quot;: &quot;432000.00&quot;,
+  &quot;total_contractor_cost&quot;: &quot;324000.00&quot;,
+  &quot;total_margin&quot;: &quot;108000.00&quot;,
+  &quot;currency_breakdown&quot;: [
+    { &quot;currency&quot;: &quot;EUR&quot;, &quot;revenue&quot;: &quot;400000.00&quot;, &quot;cost&quot;: &quot;300000.00&quot;, &quot;margin&quot;: &quot;100000.00&quot; },
+    { &quot;currency&quot;: &quot;GBP&quot;, &quot;revenue&quot;: &quot;32000.00&quot;, &quot;cost&quot;: &quot;24000.00&quot;, &quot;margin&quot;: &quot;8000.00&quot; }
+  ]
+}
+</code></pre>
+<h3><code>GET /control/export</code></h3>
+<p>Export control screen data as CSV. Same filters as <code>/control/overview</code>.</p>
+<p>Query params: same as overview.</p>
+<pre><code>// 200 — Content-Type: text/csv, Content-Disposition: attachment; filename=&quot;control-2026-03.csv&quot;
+</code></pre>
+<hr>
+<h2>15. Authorization Rules Summary</h2>
+<p>Middleware checks on every request:</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Logic</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>JWT valid</strong></td>
+<td>Token not expired, user exists, <code>is_active = true</code></td>
+</tr>
+<tr>
+<td><strong>Role gate</strong></td>
+<td>Endpoint specifies allowed roles</td>
+</tr>
+<tr>
+<td><strong>Broker scope</strong></td>
+<td>If role = BROKER, verify client is in broker&#39;s assignments via <code>broker_client_assignments</code></td>
+</tr>
+<tr>
+<td><strong>Contractor scope</strong></td>
+<td>If role = CONTRACTOR, verify resource belongs to own placements</td>
+</tr>
+<tr>
+<td><strong>Client Contact scope</strong></td>
+<td>If role = CLIENT_CONTACT, verify resource belongs to own client AND placement config allows access</td>
+</tr>
+<tr>
+<td><strong>State guard</strong></td>
+<td>Mutation endpoints verify entity is in valid state for the transition</td>
+</tr>
+</tbody></table>
+<h3>Role -&gt; Endpoint Matrix (summary)</h3>
+<table>
+<thead>
+<tr>
+<th>Endpoint Pattern</th>
+<th>ADMIN</th>
+<th>BROKER</th>
+<th>CONTRACTOR</th>
+<th>CLIENT_CONTACT</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>POST /auth/*</code></td>
+<td>all</td>
+<td>all</td>
+<td>all</td>
+<td>all</td>
+</tr>
+<tr>
+<td><code>* /users*</code></td>
+<td>all</td>
+<td>own only</td>
+<td>own only</td>
+<td>own only</td>
+</tr>
+<tr>
+<td><code>* /clients*</code></td>
+<td>all</td>
+<td>assigned</td>
+<td>-</td>
+<td>own client (read)</td>
+</tr>
+<tr>
+<td><code>* /contractors*</code></td>
+<td>all</td>
+<td>read all</td>
+<td>own</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>* /placements*</code></td>
+<td>all</td>
+<td>assigned clients</td>
+<td>own (read)</td>
+<td>per config (read)</td>
+</tr>
+<tr>
+<td><code>* /timesheets*</code> (create/edit/submit)</td>
+<td>-</td>
+<td>-</td>
+<td>own</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>* /timesheets*</code> (approve/reject)</td>
+<td>all</td>
+<td>assigned</td>
+<td>-</td>
+<td>per config</td>
+</tr>
+<tr>
+<td><code>* /invoices*</code> (manage)</td>
+<td>all</td>
+<td>assigned</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>* /invoices*</code> (read)</td>
+<td>all</td>
+<td>assigned</td>
+<td>own contractor</td>
+<td>per config (client)</td>
+</tr>
+<tr>
+<td><code>GET /control/*</code></td>
+<td>all</td>
+<td>scoped</td>
+<td>-</td>
+<td>-</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>16. Validation Rules Reference</h2>
+<table>
+<thead>
+<tr>
+<th>Entity</th>
+<th>Rule</th>
+<th>HTTP Code</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Timesheet Entry</td>
+<td><code>hours</code> per date sum &lt;= 24</td>
+<td>400</td>
+</tr>
+<tr>
+<td>Timesheet Entry</td>
+<td><code>date</code> within month AND placement range</td>
+<td>400</td>
+</tr>
+<tr>
+<td>Timesheet</td>
+<td>Submit requires entries (or <code>confirm_zero</code>)</td>
+<td>400</td>
+</tr>
+<tr>
+<td>Timesheet</td>
+<td>Submit requires attachment if placement flag set</td>
+<td>400</td>
+</tr>
+<tr>
+<td>Placement</td>
+<td>ACTIVE -&gt; rates/currency immutable</td>
+<td>409</td>
+</tr>
+<tr>
+<td>Placement</td>
+<td>Activate requires rates + dates + contractor + client</td>
+<td>409</td>
+</tr>
+<tr>
+<td>Placement</td>
+<td>Delete only if DRAFT + no timesheets</td>
+<td>409</td>
+</tr>
+<tr>
+<td>Invoice</td>
+<td>Generate requires APPROVED timesheet</td>
+<td>409</td>
+</tr>
+<tr>
+<td>Invoice</td>
+<td>Generate blocked if non-VOIDED invoices exist</td>
+<td>409</td>
+</tr>
+<tr>
+<td>Invoice</td>
+<td>Delete only if DRAFT</td>
+<td>409</td>
+</tr>
+<tr>
+<td>Contractor Profile</td>
+<td><code>next_invoice_number</code> can only increase</td>
+<td>400</td>
+</tr>
+<tr>
+<td>Contractor Profile</td>
+<td><code>vat_number</code> + <code>vat_rate_percent</code> required if <code>vat_registered</code></td>
+<td>400</td>
+</tr>
+<tr>
+<td>Client</td>
+<td>Cannot deactivate client with active placements (admin can force)</td>
+<td>409</td>
+</tr>
+<tr>
+<td>Broker Assignment</td>
+<td>Cannot remove last broker from client with active placements</td>
+<td>409</td>
+</tr>
+</tbody></table>
+</body>
+</html>

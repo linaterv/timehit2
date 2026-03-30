@@ -1,0 +1,13 @@
+[data-theme="light"] {
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-300: #93c5fd;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+
+  --color-surface: #ffffff;
+  --color-surface-alt: #f9fafb;
+  --background: #f9fafb;
+  --foreground: #111827;
+}

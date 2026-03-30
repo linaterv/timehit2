@@ -1,0 +1,63 @@
+[data-theme="matrix"] {
+  --color-brand-50: rgba(0, 255, 65, 0.06);
+  --color-brand-100: rgba(0, 255, 65, 0.12);
+  --color-brand-200: rgba(0, 255, 65, 0.2);
+  --color-brand-300: rgba(0, 255, 65, 0.3);
+  --color-brand-600: #00ff41;
+  --color-brand-700: #33ff66;
+
+  --color-surface: #0a1a0a;
+  --color-surface-alt: #061206;
+  --background: #000000;
+  --foreground: #00dd35;
+
+  /* Grays → greens */
+  --color-gray-50: #0a1a0a;
+  --color-gray-100: #0f220f;
+  --color-gray-200: #1a331a;
+  --color-gray-300: #2a4a2a;
+  --color-gray-400: #3d6b3d;
+  --color-gray-500: #5a8f5a;
+  --color-gray-600: #7ab87a;
+  --color-gray-700: #90d890;
+  --color-gray-800: #b0f0b0;
+  --color-gray-900: #d0ffd0;
+  --color-gray-950: #e8ffe8;
+
+  /* Status colors — keep semantic but green-tinted */
+  --color-green-50: rgba(0, 255, 65, 0.08);
+  --color-green-100: rgba(0, 255, 65, 0.15);
+  --color-green-200: rgba(0, 255, 65, 0.25);
+  --color-green-500: #00ff41;
+  --color-green-700: #66ff88;
+  --color-green-800: #99ffaa;
+
+  --color-red-50: rgba(255, 50, 50, 0.08);
+  --color-red-100: rgba(255, 50, 50, 0.15);
+  --color-red-200: rgba(255, 50, 50, 0.25);
+  --color-red-500: #ff3232;
+  --color-red-600: #ff5555;
+  --color-red-700: #ff8888;
+  --color-red-800: #ffaaaa;
+
+  --color-blue-100: rgba(0, 200, 255, 0.15);
+  --color-blue-700: #00ccff;
+
+  --color-amber-100: rgba(255, 200, 0, 0.15);
+  --color-amber-700: #ffcc00;
+
+  --color-emerald-100: rgba(0, 255, 100, 0.15);
+  --color-emerald-700: #00ff66;
+
+  --color-purple-100: rgba(180, 100, 255, 0.15);
+  --color-purple-700: #bb77ff;
+
+  --color-yellow-50: rgba(255, 255, 0, 0.08);
+  --color-yellow-800: #ffff44;
+
+  /* White stays for text on buttons */
+  --color-white: #fff;
+
+  /* Monospace terminal font */
+  --font-sans: var(--font-fira-code), ui-monospace, SFMono-Regular, Menlo, monospace;
+}

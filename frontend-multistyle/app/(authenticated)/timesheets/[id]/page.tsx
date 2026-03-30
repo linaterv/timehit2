@@ -1,0 +1,532 @@
+"use client";
+
+import { useState, useMemo, useEffect } from "react";
+import { useParams } from "next/navigation";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
+import { api, apiUpload } from "@/lib/api";
+import { StatusBadge } from "@/components/shared/status-badge";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { FileUpload } from "@/components/shared/file-upload";
+import { formatCurrency, formatDate } from "@/lib/utils";
+import type { Timesheet, TimesheetEntry, TimesheetAttachment } from "@/types/api";
+
+interface LocalEntry {
+  _key: string;
+  id?: string;
+  date: string;
+  task_name: string;
+  hours: string;
+  notes: string;
+}
+
+function makeKey() {
+  return Math.random().toString(36).slice(2, 10);
+}
+
+function getEnabledDates(year: number, month: number, startDate: string, endDate: string | null): string[] {
+  const dates: string[] = [];
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const pStart = new Date(startDate + "T00:00:00");
+  const pEnd = endDate ? new Date(endDate + "T00:00:00") : null;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dt = new Date(year, month - 1, d);
+    if (dt < pStart) continue;
+    if (pEnd && dt > pEnd) continue;
+    dates.push(`${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`);
+  }
+  return dates;
+}
+
+export default function TimesheetDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const qc = useQueryClient();
+  const { user } = useAuth();
+
+  // ---- All hooks at the top, unconditionally ----
+  const [entries, setEntries] = useState<LocalEntry[] | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const [confirmSubmitEmpty, setConfirmSubmitEmpty] = useState(false);
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [confirmFutureSubmit, setConfirmFutureSubmit] = useState(false);
+  const [showDetailed, setShowDetailed] = useState(false);
+
+  const tsQuery = useQuery<Timesheet>({
+    queryKey: ["timesheet", id],
+    queryFn: () => api<Timesheet>(`/timesheets/${id}`),
+  });
+
+  const ts = tsQuery.data;
+  const placementId = ts?.placement_id ?? "";
+
+  const placementQuery = useQuery<{ start_date: string; end_date: string | null }>({
+    queryKey: ["placement-for-ts", placementId],
+    queryFn: () => api(`/placements/${placementId}`),
+    enabled: !!placementId,
+  });
+
+  // Hydrate entries from server
+  useEffect(() => {
+    if (ts?.entries && entries === null) {
+      setEntries(ts.entries.map((e) => ({
+        _key: makeKey(), id: e.id, date: e.date,
+        task_name: e.task_name, hours: e.hours, notes: e.notes,
+      })));
+    }
+  }, [ts?.entries, entries]);
+
+  // Derived values
+  const placement = ts?.placement;
+  const placementDates = placementQuery.data;
+  const isContractor = user?.role === "CONTRACTOR";
+  const isClientContact = user?.role === "CLIENT_CONTACT";
+  const isBrokerOrAdmin = user?.role === "BROKER" || user?.role === "ADMIN";
+  const ownsTimesheet = isContractor && placement?.contractor.id === user?.id;
+  const isDraft = ts?.status === "DRAFT";
+  const canEdit = isDraft && ownsTimesheet;
+
+  const enabledDates = useMemo(() => {
+    if (!ts || !placementDates) return [] as string[];
+    return getEnabledDates(ts.year, ts.month, placementDates.start_date, placementDates.end_date);
+  }, [ts, placementDates]);
+
+  const enabledDateSet = useMemo(() => new Set(enabledDates), [enabledDates]);
+
+  const localEntries = entries ?? [];
+  const dailyTotals = useMemo(() => {
+    const t: Record<string, number> = {};
+    for (const e of localEntries) { t[e.date] = (t[e.date] || 0) + (parseFloat(e.hours) || 0); }
+    return t;
+  }, [localEntries]);
+  const monthlyTotal = useMemo(() => localEntries.reduce((s, e) => s + (parseFloat(e.hours) || 0), 0), [localEntries]);
+
+  const entriesByDate = useMemo(() => {
+    const m: Record<string, LocalEntry[]> = {};
+    for (const e of localEntries) { if (!m[e.date]) m[e.date] = []; m[e.date].push(e); }
+    return m;
+  }, [localEntries]);
+
+  const allMonthDates = useMemo(() => {
+    if (!ts) return [];
+    const dim = new Date(ts.year, ts.month, 0).getDate();
+    return Array.from({ length: dim }, (_, i) => {
+      const d = i + 1;
+      return `${ts.year}-${String(ts.month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    });
+  }, [ts]);
+
+  // Mutations
+  const saveMut = useMutation({
+    mutationFn: (body: { entries: Omit<LocalEntry, "_key">[] }) =>
+      api(`/timesheets/${id}/entries/bulk_upsert`, { method: "PUT", body: JSON.stringify(body) }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["timesheet", id] }); setDirty(false); },
+  });
+
+  const submitMut = useMutation({
+    mutationFn: (body: { confirm_zero?: boolean }) =>
+      api(`/timesheets/${id}/submit`, { method: "POST", body: JSON.stringify(body) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["timesheet", id] }),
+  });
+
+  const clientApproveMut = useMutation({
+    mutationFn: () => api(`/timesheets/${id}/client-approve`, { method: "POST" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["timesheet", id] }),
+  });
+
+  const approveMut = useMutation({
+    mutationFn: () => api(`/timesheets/${id}/approve`, { method: "POST" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["timesheet", id] }),
+  });
+
+  const rejectMut = useMutation({
+    mutationFn: (body: { reason: string }) =>
+      api(`/timesheets/${id}/reject`, { method: "POST", body: JSON.stringify(body) }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["timesheet", id] }); setRejectModalOpen(false); setRejectReason(""); },
+  });
+
+  // Handlers
+  const updateEntry = (key: string, field: keyof LocalEntry, value: string) => {
+    setEntries((prev) => (prev ?? []).map((e) => (e._key === key ? { ...e, [field]: value } : e)));
+    setDirty(true);
+  };
+  const addEntry = (date: string) => {
+    setEntries((prev) => [...(prev ?? []), { _key: makeKey(), date, task_name: "", hours: "", notes: "" }]);
+    setDirty(true);
+  };
+  const removeEntry = (key: string) => {
+    setEntries((prev) => (prev ?? []).filter((e) => e._key !== key));
+    setDirty(true);
+  };
+  const handleSave = () => {
+    saveMut.mutate({ entries: localEntries.map(({ _key, ...rest }) => rest) });
+  };
+  const isFutureMonth = ts ? (() => {
+    const now = new Date();
+    return ts.year > now.getFullYear() || (ts.year === now.getFullYear() && ts.month > now.getMonth() + 1);
+  })() : false;
+
+  const doSubmit = (confirmZero = false) => {
+    submitMut.mutate(confirmZero ? { confirm_zero: true } : {});
+  };
+
+  const handleSubmit = () => {
+    if (monthlyTotal === 0) { setConfirmSubmitEmpty(true); return; }
+    if (isFutureMonth) { setConfirmFutureSubmit(true); return; }
+    doSubmit();
+  };
+  const handleAttachUpload = async (file: File) => {
+    const fd = new FormData(); fd.append("file", file);
+    await apiUpload(`/timesheets/${id}/attachments`, fd);
+    qc.invalidateQueries({ queryKey: ["timesheet", id] });
+  };
+  const handleAttachDelete = async (attId: string) => {
+    await api(`/timesheets/${id}/attachments/${attId}`, { method: "DELETE" });
+    qc.invalidateQueries({ queryKey: ["timesheet", id] });
+  };
+
+  // ---- Render ----
+  if (tsQuery.isLoading) return <div className="flex items-center justify-center h-64 text-gray-400">Loading...</div>;
+  if (!ts) return <div className="flex items-center justify-center h-64 text-gray-400">Timesheet not found</div>;
+
+  const approvalFlow = placement?.approval_flow;
+  const attachments: TimesheetAttachment[] = ts.attachments ?? [];
+  const showSubmit = ownsTimesheet && isDraft;
+  const showClientApprove = isClientContact && ts.status === "SUBMITTED" && approvalFlow === "CLIENT_THEN_BROKER";
+  const showBrokerApprove = isBrokerOrAdmin && (ts.status === "SUBMITTED" || ts.status === "CLIENT_APPROVED");
+  const showReject = (isClientContact && ts.status === "SUBMITTED" && approvalFlow === "CLIENT_THEN_BROKER") ||
+    (isBrokerOrAdmin && (ts.status === "SUBMITTED" || ts.status === "CLIENT_APPROVED"));
+
+  return (
+    <div data-testid="timesheet-detail" className="space-y-6">
+      {/* Rejection Banner */}
+      {ts.rejection_reason && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <p className="text-sm font-medium text-yellow-800">
+            Rejected{ts.rejected_by ? ` by ${ts.rejected_by.full_name}` : ""}
+          </p>
+          <p className="text-sm text-yellow-700 mt-1">{ts.rejection_reason}</p>
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="bg-surface border rounded-lg p-6">
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <h1 className="text-xl font-semibold">
+                Timesheet &mdash; {new Date(ts.year, ts.month - 1).toLocaleDateString("en-US", { year: "numeric", month: "long" })}
+              </h1>
+              <StatusBadge value={ts.status} />
+            </div>
+            {placement && (
+              <p className="text-sm text-gray-500">{placement.client.company_name} &rarr; {placement.contractor.full_name}</p>
+            )}
+          </div>
+          <div className="text-right text-sm">
+            <p><span className="text-gray-500">Total Hours:</span> <span className="font-semibold text-lg">{ts.total_hours}</span></p>
+            {placement && placement.client_rate && isBrokerOrAdmin && (
+              <p className="text-gray-500 mt-1">
+                {formatCurrency(placement.client_rate, placement.currency)} / {formatCurrency(placement.contractor_rate, placement.currency)} {placement.currency}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Time Entries — Calendar / Detailed unified view */}
+      <div data-testid="entry-grid" className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-medium">Time Entries</h2>
+          <div className="flex items-center gap-2">
+            <button
+              data-testid="ts-toggle-detailed"
+              onClick={() => setShowDetailed(!showDetailed)}
+              className="px-3 py-1 border rounded text-sm text-gray-600 hover:bg-gray-50"
+            >
+              {showDetailed ? "Calendar View" : "Detailed View"}
+            </button>
+            {canEdit && (
+              <button data-testid="ts-calendar-save" onClick={handleSave} disabled={!dirty || saveMut.isPending}
+                className="px-4 py-1 bg-brand-600 text-white rounded text-sm hover:bg-brand-700 disabled:opacity-50">
+                {saveMut.isPending ? "Saving..." : "Save"}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {!showDetailed ? (
+          /* ── Calendar month grid ── */
+          <div data-testid="ts-calendar">
+            {(() => {
+              const daysInMonth = new Date(ts.year, ts.month, 0).getDate();
+              const firstDow = (new Date(ts.year, ts.month - 1, 1).getDay() + 6) % 7;
+              const pStart = placementDates?.start_date ? new Date(placementDates.start_date + "T00:00:00") : null;
+              const pEnd = placementDates?.end_date ? new Date(placementDates.end_date + "T00:00:00") : null;
+
+              // Build hours-by-date from local entries (editable) or server entries (read-only)
+              const sourceEntries = canEdit ? localEntries : (ts.entries ?? []);
+              const hoursByDate: Record<string, number> = {};
+              const countByDate: Record<string, number> = {};
+              for (const e of sourceEntries) {
+                const d = "date" in e ? e.date : "";
+                const h = parseFloat(String("hours" in e ? e.hours : 0)) || 0;
+                hoursByDate[d] = (hoursByDate[d] || 0) + h;
+                countByDate[d] = (countByDate[d] || 0) + 1;
+              }
+
+              const handleCalendarChange = (iso: string, value: string) => {
+                const count = countByDate[iso] || 0;
+                if (count > 1) return; // multi-entry — blocked
+                const hours = value;
+                if (count === 1) {
+                  // Update the single existing entry
+                  const entry = localEntries.find((e) => e.date === iso);
+                  if (entry) updateEntry(entry._key, "hours", hours);
+                } else {
+                  // Create new entry
+                  const key = makeKey();
+                  setEntries((prev) => [...(prev ?? []), { _key: key, date: iso, task_name: "", hours, notes: "" }]);
+                  setDirty(true);
+                }
+              };
+
+              const calTotal = Object.values(hoursByDate).reduce((s, h) => s + h, 0);
+
+              const cells: React.ReactNode[] = [];
+              for (let i = 0; i < firstDow; i++) {
+                cells.push(<div key={`e-${i}`} className="h-18 border border-gray-100 bg-gray-50/50" />);
+              }
+              for (let d = 1; d <= daysInMonth; d++) {
+                const dt = new Date(ts.year, ts.month - 1, d);
+                const iso = `${ts.year}-${String(ts.month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+                const isWeekend = dt.getDay() === 0 || dt.getDay() === 6;
+                const outOfRange = (pStart && dt < pStart) || (pEnd && dt > pEnd);
+                const hours = hoursByDate[iso] || 0;
+                const entryCount = countByDate[iso] || 0;
+                const isMulti = entryCount > 1;
+                const cellEditable = canEdit && !outOfRange;
+
+                cells.push(
+                  <div
+                    key={iso}
+                    data-testid={`ts-calendar-day-${iso}`}
+                    className={`h-18 border p-1.5 flex flex-col ${
+                      outOfRange ? "border-gray-100 bg-gray-100 opacity-40"
+                      : isMulti && cellEditable ? "border-dashed border-amber-300 bg-amber-50/30"
+                      : isWeekend ? "border-gray-100 bg-gray-50"
+                      : "border-gray-100 bg-surface"
+                    }`}
+                    title={isMulti && cellEditable ? "Multiple entries — use Detailed View to edit" : ""}
+                  >
+                    <span className={`text-xs ${isWeekend ? "text-gray-400" : "text-gray-500"}`}>{d}</span>
+                    {cellEditable && !isMulti ? (
+                      <input
+                        type="number"
+                        step="0.25"
+                        min="0"
+                        max="24"
+                        value={hours || ""}
+                        onChange={(e) => handleCalendarChange(iso, e.target.value)}
+                        className="mt-auto w-full text-sm font-semibold text-brand-600 bg-transparent border-0 border-b border-gray-200 focus:outline-none focus:border-brand-600 p-0 text-center"
+                        placeholder="—"
+                      />
+                    ) : (
+                      <>
+                        {hours > 0 && !outOfRange && (
+                          <span className={`mt-auto text-sm font-semibold ${isMulti ? "text-amber-600" : "text-brand-600"}`}>
+                            {hours}h{isMulti ? " *" : ""}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                );
+              }
+
+              return (
+                <div>
+                  <div className="grid grid-cols-7 text-center text-xs font-medium text-gray-500 mb-1">
+                    {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((dn) => (
+                      <div key={dn} className="py-1">{dn}</div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-7">{cells}</div>
+                  <div className="mt-2 flex items-center justify-between text-sm text-gray-600">
+                    <span>Total: <span className="font-semibold">{calTotal.toFixed(2)}h</span></span>
+                    {canEdit && Object.values(countByDate).some((c) => c > 1) && (
+                      <span className="text-xs text-amber-600">* Days with multiple entries — switch to Detailed View to edit</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        ) : (
+          /* ── Detailed entry list ── */
+          <div>
+            {canEdit && (
+              <div className="mb-2 flex gap-2">
+                {allMonthDates.filter((d) => enabledDateSet.has(d)).slice(0, 1).length > 0 && (
+                  <button onClick={() => {
+                    const firstAvail = allMonthDates.find((d) => enabledDateSet.has(d));
+                    if (firstAvail) addEntry(firstAvail);
+                  }} className="text-xs text-brand-600 hover:underline">+ Add Entry</button>
+                )}
+              </div>
+            )}
+            <div className="border rounded-lg overflow-hidden bg-surface">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Task</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-24">Hours</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Notes</th>
+                    {canEdit && <th className="px-4 py-2 w-16" />}
+                  </tr>
+                </thead>
+                <tbody className="bg-surface divide-y divide-gray-200">
+                  {canEdit ? (
+                    localEntries.map((entry) => {
+                      const enabled = enabledDateSet.has(entry.date);
+                      return (
+                        <tr key={entry._key}>
+                          <td className="px-4 py-2">
+                            <select value={entry.date} onChange={(e) => updateEntry(entry._key, "date", e.target.value)}
+                              className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-brand-600">
+                              {allMonthDates.filter((d) => enabledDateSet.has(d)).map((d) => (
+                                <option key={d} value={d}>{d}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="px-4 py-2">
+                            <input type="text" placeholder="Task" value={entry.task_name} onChange={(e) => updateEntry(entry._key, "task_name", e.target.value)}
+                              disabled={!enabled} className="w-full border rounded px-2 py-1 text-sm disabled:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-brand-600" />
+                          </td>
+                          <td className="px-4 py-2">
+                            <input type="number" step="0.25" min="0" max="24" placeholder="0" value={entry.hours} onChange={(e) => updateEntry(entry._key, "hours", e.target.value)}
+                              disabled={!enabled} className="w-full border rounded px-2 py-1 text-sm disabled:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-brand-600" />
+                          </td>
+                          <td className="px-4 py-2">
+                            <input type="text" placeholder="Notes" value={entry.notes} onChange={(e) => updateEntry(entry._key, "notes", e.target.value)}
+                              disabled={!enabled} className="w-full border rounded px-2 py-1 text-sm disabled:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-brand-600" />
+                          </td>
+                          <td className="px-2 py-2">
+                            <button onClick={() => removeEntry(entry._key)} className="text-red-400 hover:text-red-600 text-xs">Remove</button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    (ts.entries ?? []).map((entry) => (
+                      <tr key={entry.id}>
+                        <td className="px-4 py-2 text-sm">{entry.date}</td>
+                        <td className="px-4 py-2 text-sm">{entry.task_name}</td>
+                        <td className="px-4 py-2 text-sm">{entry.hours}h</td>
+                        <td className="px-4 py-2 text-sm text-gray-500">{entry.notes || "—"}</td>
+                      </tr>
+                    ))
+                  )}
+                  {((canEdit ? localEntries : (ts.entries ?? [])).length === 0) && (
+                    <tr><td colSpan={canEdit ? 5 : 4} className="px-4 py-8 text-center text-gray-400 text-sm">No entries</td></tr>
+                  )}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-gray-50 font-medium">
+                    <td className="px-4 py-2 text-sm" colSpan={2}>Total</td>
+                    <td className="px-4 py-2 text-sm">{canEdit ? monthlyTotal.toFixed(2) : ts.total_hours}h</td>
+                    <td colSpan={canEdit ? 2 : 1} />
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Attachments */}
+      <div className="space-y-3">
+        <h2 className="text-lg font-medium">Attachments</h2>
+        {canEdit && <FileUpload onUpload={handleAttachUpload} />}
+        {attachments.length > 0 ? (
+          <div className="border rounded-lg divide-y bg-surface">
+            {attachments.map((att) => (
+              <div key={att.id} className="flex items-center justify-between px-4 py-3">
+                <div>
+                  <a href={`/api/v1/timesheets/${id}/attachments/${att.id}/download`} className="text-sm font-medium text-brand-600 hover:underline" target="_blank" rel="noopener noreferrer">
+                    {att.file_name}
+                  </a>
+                  <p className="text-xs text-gray-500">{(att.file_size_bytes / 1024).toFixed(1)} KB &middot; {formatDate(att.uploaded_at)}</p>
+                </div>
+                {canEdit && (
+                  <button onClick={() => handleAttachDelete(att.id)} className="text-red-600 hover:text-red-700 text-sm">Delete</button>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-400">No attachments</p>
+        )}
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex gap-3 pt-2">
+        {showSubmit && (
+          <button data-testid="ts-submit-btn" onClick={handleSubmit} disabled={submitMut.isPending}
+            className="px-4 py-2 bg-brand-600 text-white rounded text-sm hover:bg-brand-700 disabled:opacity-50">
+            {submitMut.isPending ? "Submitting..." : "Submit"}
+          </button>
+        )}
+        {showClientApprove && (
+          <button data-testid="ts-approve-btn" onClick={() => clientApproveMut.mutate()} disabled={clientApproveMut.isPending}
+            className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 disabled:opacity-50">
+            {clientApproveMut.isPending ? "Approving..." : "Approve"}
+          </button>
+        )}
+        {showBrokerApprove && (
+          <button data-testid="ts-approve-btn" onClick={() => approveMut.mutate()} disabled={approveMut.isPending}
+            className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 disabled:opacity-50">
+            {approveMut.isPending ? "Approving..." : "Approve"}
+          </button>
+        )}
+        {showReject && (
+          <button data-testid="ts-reject-btn" onClick={() => setRejectModalOpen(true)}
+            className="px-4 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700">Reject</button>
+        )}
+      </div>
+
+      {/* Confirm empty submit */}
+      <ConfirmDialog open={confirmSubmitEmpty} title="Submit with 0 Hours?"
+        message="This timesheet has no logged hours. Are you sure?" confirmLabel="Submit Anyway"
+        onConfirm={() => { setConfirmSubmitEmpty(false); doSubmit(true); }}
+        onCancel={() => setConfirmSubmitEmpty(false)} />
+
+      <ConfirmDialog open={confirmFutureSubmit} title="Future Month"
+        message="You are submitting a timesheet for a future month. Are you sure?" confirmLabel="Submit"
+        onConfirm={() => { setConfirmFutureSubmit(false); doSubmit(); }}
+        onCancel={() => setConfirmFutureSubmit(false)} />
+
+      {/* Reject Modal */}
+      {rejectModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/30" onClick={() => setRejectModalOpen(false)} />
+          <div data-testid="reject-modal" className="relative bg-surface rounded-lg shadow-lg max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold mb-3">Reject Timesheet</h3>
+            <textarea data-testid="reject-reason" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)}
+              rows={4} className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600"
+              placeholder="Reason for rejection..." />
+            <div className="flex gap-2 justify-end mt-4">
+              <button onClick={() => { setRejectModalOpen(false); setRejectReason(""); }} className="px-4 py-2 border rounded text-sm">Cancel</button>
+              <button data-testid="reject-confirm" onClick={() => rejectMut.mutate({ reason: rejectReason })}
+                disabled={!rejectReason.trim() || rejectMut.isPending}
+                className="px-4 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700 disabled:opacity-50">
+                {rejectMut.isPending ? "Rejecting..." : "Reject"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

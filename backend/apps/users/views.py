@@ -1,0 +1,91 @@
+from django.db.models import Q
+from rest_framework import viewsets
+from rest_framework.decorators import action
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
+from rest_framework.exceptions import PermissionDenied
+from drf_spectacular.utils import extend_schema
+from .models import User
+from .serializers import (
+    UserListSerializer, UserDetailSerializer, UserCreateSerializer,
+    UserUpdateSerializer, UserMeSerializer,
+)
+from .permissions import IsAdmin
+
+
+class TestUsersView(APIView):
+    """Public endpoint listing all users for dev/test login dropdown. Remove in production."""
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    @extend_schema(tags=["Auth"])
+    def get(self, request):
+        users = User.objects.filter(is_active=True).order_by("role", "email")
+        return Response([
+            {"email": u.email, "full_name": u.full_name, "role": u.role}
+            for u in users
+        ])
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all().order_by("-created_at")
+    http_method_names = ["get", "post", "patch"]
+
+    def get_permissions(self):
+        if self.action in ("list", "create"):
+            return [IsAdmin()]
+        return super().get_permissions()
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return UserListSerializer
+        if self.action == "create":
+            return UserCreateSerializer
+        if self.action in ("partial_update",):
+            return UserUpdateSerializer
+        if self.action == "me":
+            return UserMeSerializer
+        return UserDetailSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        p = self.request.query_params
+        if p.get("role"):
+            qs = qs.filter(role=p["role"])
+        if p.get("is_active") is not None:
+            qs = qs.filter(is_active=p["is_active"].lower() == "true")
+        if p.get("search"):
+            qs = qs.filter(Q(email__icontains=p["search"]) | Q(full_name__icontains=p["search"]))
+        return qs
+
+    def get_object(self):
+        obj = super().get_object()
+        if not self.request.user.is_admin and obj.id != self.request.user.id:
+            raise PermissionDenied()
+        return obj
+
+    @extend_schema(tags=["Users"])
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(tags=["Users"])
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @extend_schema(tags=["Users"])
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(tags=["Users"])
+    def partial_update(self, request, *args, **kwargs):
+        if not request.user.is_admin:
+            extra = set(request.data.keys()) - {"full_name", "theme"}
+            if extra:
+                raise PermissionDenied(f"Cannot update fields: {extra}")
+        return super().partial_update(request, *args, **kwargs)
+
+    @extend_schema(tags=["Users"])
+    @action(detail=False, methods=["get"])
+    def me(self, request):
+        return Response(UserMeSerializer(request.user).data)

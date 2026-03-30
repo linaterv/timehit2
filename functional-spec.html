@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Functional Requirements Specification</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 960px; margin: 0 auto; padding: 2rem; color: #24292e; }
+  h1 { border-bottom: 2px solid #e1e4e8; padding-bottom: .5rem; }
+  h2 { border-bottom: 1px solid #e1e4e8; padding-bottom: .3rem; margin-top: 2rem; }
+  h3 { margin-top: 1.5rem; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { border: 1px solid #dfe2e5; padding: .5rem .75rem; text-align: left; }
+  th { background: #f6f8fa; font-weight: 600; }
+  tr:nth-child(even) { background: #f9fafb; }
+  code { background: #f6f8fa; padding: .15rem .3rem; border-radius: 3px; font-size: .9em; }
+  pre { background: #f6f8fa; padding: 1rem; border-radius: 6px; overflow-x: auto; }
+  pre code { background: none; padding: 0; }
+  strong { font-weight: 600; }
+  hr { border: none; border-top: 1px solid #e1e4e8; margin: 2rem 0; }
+  ul, ol { padding-left: 1.5rem; }
+  @media print { body { max-width: 100%; padding: 1rem; } }
+</style>
+</head>
+<body>
+<h1>Functional Requirements Specification: IT Contracting Agency Platform</h1>
+<h2>1. Glossary</h2>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Placement</td>
+<td>1 contractor placed at 1 client at agreed rates. The central business object.</td>
+</tr>
+<tr>
+<td>Broker</td>
+<td>Agency employee managing a portfolio of clients and their placements.</td>
+</tr>
+<tr>
+<td>Timesheet</td>
+<td>Monthly record of daily hours for one placement.</td>
+</tr>
+<tr>
+<td>Client Invoice</td>
+<td>Invoice TO the client (at client rate).</td>
+</tr>
+<tr>
+<td>Contractor Invoice</td>
+<td>Invoice as payment TO the contractor (at contractor rate).</td>
+</tr>
+<tr>
+<td>Margin</td>
+<td>Client rate - contractor rate, per hour.</td>
+</tr>
+<tr>
+<td>Control Screen</td>
+<td>Operational dashboard for brokers/admins.</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>2. Entity Model</h2>
+<h3>2.1 User</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>id</td>
+<td>UUID</td>
+<td>system-generated</td>
+</tr>
+<tr>
+<td>email</td>
+<td>string</td>
+<td>unique, used for login</td>
+</tr>
+<tr>
+<td>full_name</td>
+<td>string</td>
+<td></td>
+</tr>
+<tr>
+<td>role</td>
+<td>enum</td>
+<td>ADMIN, BROKER, CONTRACTOR, CLIENT_CONTACT</td>
+</tr>
+<tr>
+<td>is_active</td>
+<td>boolean</td>
+<td>default true</td>
+</tr>
+<tr>
+<td>created_at / updated_at</td>
+<td>timestamp</td>
+<td></td>
+</tr>
+</tbody></table>
+<h3>2.2 Client</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>id</td>
+<td>UUID</td>
+<td></td>
+</tr>
+<tr>
+<td>company_name</td>
+<td>string</td>
+<td></td>
+</tr>
+<tr>
+<td>registration_number</td>
+<td>string</td>
+<td>optional</td>
+</tr>
+<tr>
+<td>vat_number</td>
+<td>string</td>
+<td>optional</td>
+</tr>
+<tr>
+<td>billing_address</td>
+<td>text</td>
+<td>required for invoicing</td>
+</tr>
+<tr>
+<td>country</td>
+<td>string</td>
+<td></td>
+</tr>
+<tr>
+<td>default_currency</td>
+<td>currency_code</td>
+<td>default EUR</td>
+</tr>
+<tr>
+<td>payment_terms_days</td>
+<td>integer</td>
+<td>optional, e.g. 30</td>
+</tr>
+<tr>
+<td>is_active</td>
+<td>boolean</td>
+<td>default true</td>
+</tr>
+<tr>
+<td>notes</td>
+<td>text</td>
+<td>optional</td>
+</tr>
+</tbody></table>
+<p><strong>Relationships:</strong> has many Client Contacts, has many Placements, has many assigned Brokers (many-to-many).</p>
+<h3>2.3 Client Contact</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>id</td>
+<td>UUID</td>
+<td></td>
+</tr>
+<tr>
+<td>user_id</td>
+<td>FK -&gt; User</td>
+<td>role = CLIENT_CONTACT</td>
+</tr>
+<tr>
+<td>client_id</td>
+<td>FK -&gt; Client</td>
+<td></td>
+</tr>
+<tr>
+<td>job_title</td>
+<td>string</td>
+<td>optional</td>
+</tr>
+<tr>
+<td>phone</td>
+<td>string</td>
+<td>optional</td>
+</tr>
+<tr>
+<td>is_primary</td>
+<td>boolean</td>
+<td>default false</td>
+</tr>
+</tbody></table>
+<h3>2.4 Contractor Profile</h3>
+<p>Invoice settings that apply across ALL placements. Stored on profile, NOT per placement.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>id</td>
+<td>UUID</td>
+<td></td>
+</tr>
+<tr>
+<td>user_id</td>
+<td>FK -&gt; User</td>
+<td>role = CONTRACTOR</td>
+</tr>
+<tr>
+<td>company_name</td>
+<td>string</td>
+<td>optional (if invoicing via company)</td>
+</tr>
+<tr>
+<td>registration_number</td>
+<td>string</td>
+<td>optional</td>
+</tr>
+<tr>
+<td>vat_registered</td>
+<td>boolean</td>
+<td>default false</td>
+</tr>
+<tr>
+<td>vat_number</td>
+<td>string</td>
+<td>required if vat_registered</td>
+</tr>
+<tr>
+<td>vat_rate_percent</td>
+<td>decimal</td>
+<td>required if vat_registered</td>
+</tr>
+<tr>
+<td>invoice_series_prefix</td>
+<td>string</td>
+<td>e.g. &quot;INV-&quot;, &quot;JD-2026-&quot;</td>
+</tr>
+<tr>
+<td>next_invoice_number</td>
+<td>integer</td>
+<td>default 1, auto-increments</td>
+</tr>
+<tr>
+<td>bank_name</td>
+<td>string</td>
+<td>optional</td>
+</tr>
+<tr>
+<td>bank_account_iban</td>
+<td>string</td>
+<td>optional</td>
+</tr>
+<tr>
+<td>bank_swift_bic</td>
+<td>string</td>
+<td>optional</td>
+</tr>
+<tr>
+<td>payment_terms_days</td>
+<td>integer</td>
+<td>optional</td>
+</tr>
+<tr>
+<td>billing_address</td>
+<td>text</td>
+<td>optional</td>
+</tr>
+<tr>
+<td>country</td>
+<td>string</td>
+<td></td>
+</tr>
+<tr>
+<td>default_currency</td>
+<td>currency_code</td>
+<td>default EUR</td>
+</tr>
+</tbody></table>
+<p><strong>Critical rule:</strong> When a contractor invoice is generated, current profile values are snapshotted onto the invoice record so later edits don&#39;t alter issued invoices.</p>
+<h3>2.5 Broker-Client Assignment</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>broker_user_id</td>
+<td>FK -&gt; User</td>
+<td>role = BROKER</td>
+</tr>
+<tr>
+<td>client_id</td>
+<td>FK -&gt; Client</td>
+<td></td>
+</tr>
+<tr>
+<td>assigned_at</td>
+<td>timestamp</td>
+<td></td>
+</tr>
+</tbody></table>
+<h3>2.6 Placement</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>id</td>
+<td>UUID</td>
+<td></td>
+</tr>
+<tr>
+<td>client_id</td>
+<td>FK -&gt; Client</td>
+<td></td>
+</tr>
+<tr>
+<td>contractor_id</td>
+<td>FK -&gt; User</td>
+<td>role = CONTRACTOR</td>
+</tr>
+<tr>
+<td>client_rate</td>
+<td>decimal</td>
+<td>hourly rate billed to client</td>
+</tr>
+<tr>
+<td>contractor_rate</td>
+<td>decimal</td>
+<td>hourly rate paid to contractor</td>
+</tr>
+<tr>
+<td>currency</td>
+<td>currency_code</td>
+<td>default EUR</td>
+</tr>
+<tr>
+<td>start_date</td>
+<td>date</td>
+<td>required</td>
+</tr>
+<tr>
+<td>end_date</td>
+<td>date</td>
+<td>optional (null = open-ended)</td>
+</tr>
+<tr>
+<td>status</td>
+<td>enum</td>
+<td>DRAFT, ACTIVE, COMPLETED, CANCELLED</td>
+</tr>
+<tr>
+<td>approval_flow</td>
+<td>enum</td>
+<td>BROKER_ONLY, CLIENT_THEN_BROKER</td>
+</tr>
+<tr>
+<td>require_timesheet_attachment</td>
+<td>boolean</td>
+<td>default false</td>
+</tr>
+<tr>
+<td>client_can_view_invoices</td>
+<td>boolean</td>
+<td>default false</td>
+</tr>
+<tr>
+<td>client_can_view_documents</td>
+<td>boolean</td>
+<td>default false</td>
+</tr>
+<tr>
+<td>notes</td>
+<td>text</td>
+<td>optional</td>
+</tr>
+</tbody></table>
+<p><strong>Immutability rule:</strong> Once ACTIVE, <code>client_rate</code>, <code>contractor_rate</code>, and <code>currency</code> are locked. To change rates, create a new placement (system offers &quot;Copy Placement&quot; action).</p>
+<p>Same contractor CAN have multiple active placements with same client (different projects/rates). Overlapping date ranges allowed.</p>
+<h3>2.7 Placement Document</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>id</td>
+<td>UUID</td>
+<td></td>
+</tr>
+<tr>
+<td>placement_id</td>
+<td>FK -&gt; Placement</td>
+<td></td>
+</tr>
+<tr>
+<td>file_name</td>
+<td>string</td>
+<td>original name</td>
+</tr>
+<tr>
+<td>file_path</td>
+<td>string</td>
+<td>storage path</td>
+</tr>
+<tr>
+<td>file_size_bytes</td>
+<td>integer</td>
+<td></td>
+</tr>
+<tr>
+<td>mime_type</td>
+<td>string</td>
+<td></td>
+</tr>
+<tr>
+<td>label</td>
+<td>string</td>
+<td>optional, e.g. &quot;NDA&quot;, &quot;Contract&quot;</td>
+</tr>
+<tr>
+<td>uploaded_by_user_id</td>
+<td>FK -&gt; User</td>
+<td></td>
+</tr>
+<tr>
+<td>uploaded_at</td>
+<td>timestamp</td>
+<td></td>
+</tr>
+</tbody></table>
+<p>Simple upload/download/delete. No mandatory docs. No versioning or e-signatures.</p>
+<h3>2.8 Timesheet</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>id</td>
+<td>UUID</td>
+<td></td>
+</tr>
+<tr>
+<td>placement_id</td>
+<td>FK -&gt; Placement</td>
+<td></td>
+</tr>
+<tr>
+<td>year</td>
+<td>integer</td>
+<td>e.g. 2026</td>
+</tr>
+<tr>
+<td>month</td>
+<td>integer</td>
+<td>1-12</td>
+</tr>
+<tr>
+<td>status</td>
+<td>enum</td>
+<td>see state machines</td>
+</tr>
+<tr>
+<td>total_hours</td>
+<td>decimal</td>
+<td>computed from entries</td>
+</tr>
+<tr>
+<td>submitted_at</td>
+<td>timestamp</td>
+<td>nullable</td>
+</tr>
+<tr>
+<td>approved_at</td>
+<td>timestamp</td>
+<td>nullable</td>
+</tr>
+<tr>
+<td>approved_by_user_id</td>
+<td>FK -&gt; User</td>
+<td>nullable</td>
+</tr>
+<tr>
+<td>rejected_at</td>
+<td>timestamp</td>
+<td>nullable</td>
+</tr>
+<tr>
+<td>rejected_by_user_id</td>
+<td>FK -&gt; User</td>
+<td>nullable</td>
+</tr>
+<tr>
+<td>rejection_reason</td>
+<td>text</td>
+<td>nullable</td>
+</tr>
+</tbody></table>
+<p><strong>Unique constraint:</strong> One timesheet per (placement_id, year, month). On rejection, the SAME record transitions back to DRAFT (not a new record).</p>
+<h3>2.9 Timesheet Entry</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>id</td>
+<td>UUID</td>
+<td></td>
+</tr>
+<tr>
+<td>timesheet_id</td>
+<td>FK -&gt; Timesheet</td>
+<td></td>
+</tr>
+<tr>
+<td>date</td>
+<td>date</td>
+<td>within month AND placement date range</td>
+</tr>
+<tr>
+<td>hours</td>
+<td>decimal</td>
+<td>0-24</td>
+</tr>
+<tr>
+<td>task_name</td>
+<td>string</td>
+<td>optional, free-text (ad-hoc)</td>
+</tr>
+<tr>
+<td>notes</td>
+<td>text</td>
+<td>optional</td>
+</tr>
+</tbody></table>
+<p>Multiple entries per day allowed (one per task). Sum of hours per day &lt;= 24. Editable only when parent timesheet is DRAFT.</p>
+<h3>2.10 Timesheet Attachment</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>id</td>
+<td>UUID</td>
+<td></td>
+</tr>
+<tr>
+<td>timesheet_id</td>
+<td>FK -&gt; Timesheet</td>
+<td></td>
+</tr>
+<tr>
+<td>file_name / file_path / file_size_bytes / mime_type</td>
+<td></td>
+<td>standard file fields</td>
+</tr>
+<tr>
+<td>uploaded_by_user_id</td>
+<td>FK -&gt; User</td>
+<td></td>
+</tr>
+<tr>
+<td>uploaded_at</td>
+<td>timestamp</td>
+<td></td>
+</tr>
+</tbody></table>
+<p>If <code>require_timesheet_attachment = true</code> on placement, at least one attachment required before submission.</p>
+<h3>2.11 Invoice</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>id</td>
+<td>UUID</td>
+<td></td>
+</tr>
+<tr>
+<td>invoice_number</td>
+<td>string</td>
+<td>unique; see numbering rules</td>
+</tr>
+<tr>
+<td>invoice_type</td>
+<td>enum</td>
+<td>CLIENT_INVOICE, CONTRACTOR_INVOICE</td>
+</tr>
+<tr>
+<td>timesheet_id</td>
+<td>FK -&gt; Timesheet</td>
+<td></td>
+</tr>
+<tr>
+<td>placement_id</td>
+<td>FK -&gt; Placement</td>
+<td>denormalized</td>
+</tr>
+<tr>
+<td>client_id</td>
+<td>FK -&gt; Client</td>
+<td>denormalized</td>
+</tr>
+<tr>
+<td>contractor_id</td>
+<td>FK -&gt; User</td>
+<td>denormalized</td>
+</tr>
+<tr>
+<td>year / month</td>
+<td>integer</td>
+<td>billing period</td>
+</tr>
+<tr>
+<td>currency</td>
+<td>currency_code</td>
+<td>from placement</td>
+</tr>
+<tr>
+<td>hourly_rate</td>
+<td>decimal</td>
+<td>client_rate or contractor_rate</td>
+</tr>
+<tr>
+<td>total_hours</td>
+<td>decimal</td>
+<td>from timesheet</td>
+</tr>
+<tr>
+<td>subtotal</td>
+<td>decimal</td>
+<td>rate * hours</td>
+</tr>
+<tr>
+<td>vat_rate_percent</td>
+<td>decimal</td>
+<td>nullable</td>
+</tr>
+<tr>
+<td>vat_amount</td>
+<td>decimal</td>
+<td>nullable</td>
+</tr>
+<tr>
+<td>total_amount</td>
+<td>decimal</td>
+<td>subtotal + vat</td>
+</tr>
+<tr>
+<td>status</td>
+<td>enum</td>
+<td>DRAFT, ISSUED, PAID, VOIDED, CORRECTED</td>
+</tr>
+<tr>
+<td>issue_date</td>
+<td>date</td>
+<td></td>
+</tr>
+<tr>
+<td>due_date</td>
+<td>date</td>
+<td>nullable, from payment terms</td>
+</tr>
+<tr>
+<td>payment_date</td>
+<td>date</td>
+<td>nullable, broker-entered</td>
+</tr>
+<tr>
+<td>payment_reference</td>
+<td>string</td>
+<td>nullable</td>
+</tr>
+<tr>
+<td>generated_by_user_id</td>
+<td>FK -&gt; User</td>
+<td></td>
+</tr>
+<tr>
+<td>pdf_file_path</td>
+<td>string</td>
+<td>nullable</td>
+</tr>
+</tbody></table>
+<p><strong>Snapshotted fields</strong> at generation time (so profile/client edits don&#39;t affect issued invoices):</p>
+<ul>
+<li>Contractor invoices: company_name, vat_number, bank details, billing_address, payment_terms, series_prefix</li>
+<li>Client invoices: client billing details</li>
+</ul>
+<p><strong>Invoice numbering:</strong></p>
+<ul>
+<li>Client invoices: agency-controlled global sequence (e.g., &quot;AGY-2026-0001&quot;)</li>
+<li>Contractor invoices: contractor&#39;s own series prefix + next_invoice_number from profile, then increment</li>
+</ul>
+<h3>2.12 Invoice Correction Link</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>original_invoice_id</td>
+<td>FK -&gt; Invoice</td>
+<td></td>
+</tr>
+<tr>
+<td>corrective_invoice_id</td>
+<td>FK -&gt; Invoice</td>
+<td></td>
+</tr>
+<tr>
+<td>reason</td>
+<td>text</td>
+<td>optional</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>3. State Machines</h2>
+<h3>3.1 Placement</h3>
+<pre><code>DRAFT --[activate]--&gt; ACTIVE --[complete]--&gt; COMPLETED
+                             --[cancel]----&gt; CANCELLED
+</code></pre>
+<ul>
+<li>DRAFT -&gt; ACTIVE: rates, dates, contractor, client must be set. Rates become immutable.</li>
+<li>ACTIVE -&gt; COMPLETED/CANCELLED: warn if open timesheets exist.</li>
+</ul>
+<h3>3.2 Timesheet (BROKER_ONLY flow)</h3>
+<pre><code>DRAFT --[submit]--&gt; SUBMITTED --[approve]--&gt; APPROVED
+                              --[reject]---&gt; REJECTED --[edit]--&gt; DRAFT
+</code></pre>
+<h3>3.3 Timesheet (CLIENT_THEN_BROKER flow)</h3>
+<pre><code>DRAFT --[submit]--&gt; SUBMITTED --[client_approve]--&gt; CLIENT_APPROVED --[broker_approve]--&gt; APPROVED
+                              --[client_reject]---&gt; REJECTED --[edit]--&gt; DRAFT
+                                                    CLIENT_APPROVED --[broker_reject]--&gt; REJECTED --[edit]--&gt; DRAFT
+</code></pre>
+<h3>3.4 Invoice</h3>
+<pre><code>DRAFT --[issue]--&gt; ISSUED --[mark_paid]--&gt; PAID
+                          --[void]-------&gt; VOIDED
+                          --[correct]----&gt; CORRECTED (new invoice created)
+DRAFT --[delete]--&gt; (removed, DRAFT only)
+PAID  --[void]---&gt; VOIDED (mistake correction)
+</code></pre>
+<hr>
+<h2>4. User Flows</h2>
+<h3>4.1 Placement Creation</h3>
+<ol>
+<li>Admin/Broker creates client (if new), assigns broker(s).</li>
+<li>Creates placement: select client, contractor, set rates, currency, dates, approval flow, attachment requirement, client visibility flags.</li>
+<li>Created in DRAFT. Upload docs (optional). Activate when ready.</li>
+<li><strong>Copy Placement</strong>: pre-fills from existing placement, new start date = day after original&#39;s end date. Used for rate changes.</li>
+</ol>
+<h3>4.2 Timesheet Flow</h3>
+<ol>
+<li>Contractor navigates to placement, selects month -&gt; creates/opens timesheet (DRAFT).</li>
+<li>Enters daily hours with optional ad-hoc task names and notes.</li>
+<li>Attaches files if required by placement.</li>
+<li>Submits (validates: entries exist, attachment if required, no day &gt; 24h).</li>
+<li><strong>BROKER_ONLY</strong>: broker approves/rejects.</li>
+<li><strong>CLIENT_THEN_BROKER</strong>: client approves/rejects -&gt; if approved, broker confirms/rejects.</li>
+<li>Rejection -&gt; back to DRAFT with reason. Contractor edits and resubmits (goes through full approval again).</li>
+</ol>
+<h3>4.3 Invoice Generation</h3>
+<ol>
+<li>From control page, broker sees approved timesheets without invoices.</li>
+<li>Selects one or multiple -&gt; &quot;Generate Invoices&quot;.</li>
+<li>System creates TWO invoices per timesheet (client + contractor), both in DRAFT.</li>
+<li>Broker reviews, marks as ISSUED -&gt; PDF generated.</li>
+<li>Payment: broker enters payment_date -&gt; ISSUED -&gt; PAID.</li>
+<li>Void: ISSUED/PAID -&gt; VOIDED (remains in system).</li>
+<li>Correct: ISSUED -&gt; CORRECTED, new corrective invoice created.</li>
+<li>Re-generate: if both invoices VOIDED, generation available again for that timesheet.</li>
+</ol>
+<hr>
+<h2>5. Role-Based Access Matrix</h2>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Admin</th>
+<th>Broker</th>
+<th>Contractor</th>
+<th>Client Contact</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Users</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Create/edit/deactivate users</td>
+<td>YES</td>
+<td>NO</td>
+<td>NO</td>
+<td>NO</td>
+</tr>
+<tr>
+<td>Edit own profile</td>
+<td>YES</td>
+<td>YES</td>
+<td>YES</td>
+<td>YES</td>
+</tr>
+<tr>
+<td><strong>Clients</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Create/edit client</td>
+<td>YES</td>
+<td>Assigned only</td>
+<td>NO</td>
+<td>NO</td>
+</tr>
+<tr>
+<td>View client</td>
+<td>YES</td>
+<td>Assigned only</td>
+<td>NO</td>
+<td>Own client</td>
+</tr>
+<tr>
+<td><strong>Contractor Profile</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Edit</td>
+<td>YES</td>
+<td>NO</td>
+<td>Own only</td>
+<td>NO</td>
+</tr>
+<tr>
+<td>View</td>
+<td>YES</td>
+<td>YES (all)</td>
+<td>Own only</td>
+<td>NO</td>
+</tr>
+<tr>
+<td><strong>Placements</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Create/edit/activate/complete/cancel</td>
+<td>YES</td>
+<td>Assigned clients</td>
+<td>NO</td>
+<td>NO</td>
+</tr>
+<tr>
+<td>View</td>
+<td>YES</td>
+<td>Assigned clients</td>
+<td>Own placements</td>
+<td>Per config</td>
+</tr>
+<tr>
+<td><strong>Documents</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Upload</td>
+<td>YES</td>
+<td>Assigned clients</td>
+<td>Own placements</td>
+<td>NO</td>
+</tr>
+<tr>
+<td>Download</td>
+<td>YES</td>
+<td>Assigned clients</td>
+<td>Own placements</td>
+<td>If configured</td>
+</tr>
+<tr>
+<td>Delete</td>
+<td>YES</td>
+<td>Assigned clients</td>
+<td>NO</td>
+<td>NO</td>
+</tr>
+<tr>
+<td><strong>Timesheets</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Create/edit/submit</td>
+<td>NO</td>
+<td>NO</td>
+<td>Own, DRAFT only</td>
+<td>NO</td>
+</tr>
+<tr>
+<td>View</td>
+<td>YES</td>
+<td>Assigned clients</td>
+<td>Own only</td>
+<td>Per config</td>
+</tr>
+<tr>
+<td>Approve/reject (broker step)</td>
+<td>YES</td>
+<td>Assigned clients</td>
+<td>NO</td>
+<td>NO</td>
+</tr>
+<tr>
+<td>Approve/reject (client step)</td>
+<td>NO</td>
+<td>NO</td>
+<td>NO</td>
+<td>If configured</td>
+</tr>
+<tr>
+<td><strong>Invoices</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Generate/void/correct/mark paid</td>
+<td>YES</td>
+<td>Assigned clients</td>
+<td>NO</td>
+<td>NO</td>
+</tr>
+<tr>
+<td>View client invoice</td>
+<td>YES</td>
+<td>Assigned clients</td>
+<td>NO</td>
+<td>If configured</td>
+</tr>
+<tr>
+<td>View contractor invoice</td>
+<td>YES</td>
+<td>Assigned clients</td>
+<td>Own only</td>
+<td>NO</td>
+</tr>
+</tbody></table>
+<p><strong>Broker visibility rule</strong>: sees all contractors (needed for placement creation), but only clients assigned to them and everything underneath.</p>
+<hr>
+<h2>6. Control Screen</h2>
+<h3>Default View: Active Placements for Selected Month</h3>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Content</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Client</td>
+<td>Company name</td>
+</tr>
+<tr>
+<td>Contractor</td>
+<td>Full name</td>
+</tr>
+<tr>
+<td>Rates</td>
+<td>Client / Contractor rate + currency</td>
+</tr>
+<tr>
+<td>Margin</td>
+<td>(client_rate - contractor_rate) * hours</td>
+</tr>
+<tr>
+<td>Dates</td>
+<td>Start - End</td>
+</tr>
+<tr>
+<td>Timesheet status</td>
+<td>NOT_STARTED / DRAFT / SUBMITTED / CLIENT_APPROVED / APPROVED / REJECTED</td>
+</tr>
+<tr>
+<td>Invoice status</td>
+<td>NOT_GENERATED / DRAFT / ISSUED / PAID / VOIDED</td>
+</tr>
+<tr>
+<td>Flags</td>
+<td>Missing timesheet, missing attachment, approved but no invoice, missing bank details</td>
+</tr>
+</tbody></table>
+<h3>Filters</h3>
+<p>By client, contractor, broker (admin only), month/year, timesheet status, invoice status, &quot;needs attention&quot;.</p>
+<h3>Summary Counters (Header)</h3>
+<ul>
+<li>Timesheets awaiting approval</li>
+<li>Approved timesheets without invoices</li>
+<li>Invoices awaiting payment</li>
+<li>Placements with missing info</li>
+</ul>
+<h3>Actions</h3>
+<ul>
+<li><strong>Bulk</strong>: generate invoices for multiple approved timesheets, export CSV.</li>
+<li><strong>Per row</strong>: view/approve/reject timesheet, generate invoices, view invoices, view placement.</li>
+</ul>
+<hr>
+<h2>7. Business Rules &amp; Edge Cases</h2>
+<ol>
+<li><strong>Rate immutability</strong>: locked once ACTIVE. Copy placement for rate changes.</li>
+<li><strong>Month boundaries</strong>: if placement starts/ends mid-month, only those days are available for entry.</li>
+<li><strong>Duplicate invoice prevention</strong>: blocked if non-VOIDED invoices exist for timesheet. Re-enabled if all VOIDED.</li>
+<li><strong>Invoice number sequence</strong>: never recycled. Contractor can adjust next_number upward only.</li>
+<li><strong>Currency</strong>: single currency per placement, no conversion. Different placements can use different currencies.</li>
+<li><strong>Deletion rules</strong>: users deactivated (never deleted). DRAFT placements with no timesheets can be deleted. Invoices never deleted (VOIDED instead).</li>
+<li><strong>Deactivated contractor</strong>: can&#39;t log in, existing data stays, brokers can still process pending timesheets/invoices.</li>
+<li><strong>Deactivated client contact</strong>: if they were the approver, another contact must approve or broker switches to BROKER_ONLY flow.</li>
+<li><strong>Overlapping placements</strong>: same contractor + client allowed (different projects).</li>
+<li><strong>Zero-hour timesheets</strong>: allowed, warn before invoice generation.</li>
+<li><strong>Retrospective timesheets</strong>: allowed for past months within placement date range.</li>
+<li><strong>Partial month overlap (old/new placement)</strong>: both timesheets exist independently.</li>
+</ol>
+<hr>
+<h2>8. PDF Invoice Content</h2>
+<h3>Client Invoice</h3>
+<ul>
+<li>Agency logo and details (system settings)</li>
+<li>Invoice number (agency series), issue date, due date</li>
+<li>Client company name, billing address, VAT number</li>
+<li>Reference: Placement ID, contractor name, billing month</li>
+<li>Line: &quot;Consulting services - [Contractor Name] - [Month Year]&quot;, hours, rate, amount</li>
+<li>Subtotal, VAT (if applicable), total</li>
+<li>Agency bank details / payment instructions</li>
+</ul>
+<h3>Contractor Invoice</h3>
+<ul>
+<li>Contractor company/name and address (from profile)</li>
+<li>Invoice number (contractor series), issue date, due date</li>
+<li>Billed to: Agency name and address</li>
+<li>Reference: Placement ID, client name, billing month</li>
+<li>Line: hours, rate, amount</li>
+<li>Subtotal, VAT (if registered), total</li>
+<li>Contractor bank details</li>
+</ul>
+<hr>
+<h2>9. Out of Scope (Future)</h2>
+<ul>
+<li>Email notifications</li>
+<li>Reporting dashboards</li>
+<li>Multi-rate (overtime/weekend)</li>
+<li>E-invoicing standards (Peppol, UBL)</li>
+<li>Document versioning / e-signatures</li>
+<li>Accounting integrations</li>
+<li>Audit log</li>
+<li>Mobile app / 2FA</li>
+</ul>
+<hr>
+<h2>10. Open Design Decisions</h2>
+<table>
+<thead>
+<tr>
+<th>Decision</th>
+<th>Recommendation</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Invoice DRAFT-&gt;ISSUED: auto on generation or explicit?</td>
+<td>Explicit transition for safety. Bulk can offer &quot;generate and issue&quot;.</td>
+</tr>
+<tr>
+<td>Timesheet creation: auto per month or on-demand?</td>
+<td>On-demand. Control screen flags &quot;missing timesheet&quot;.</td>
+</tr>
+<tr>
+<td>Agency invoice numbering: global or per-client?</td>
+<td>Global sequence -- simpler.</td>
+</tr>
+<tr>
+<td>Audit logging</td>
+<td>At minimum log state transitions. Full audit recommended for financials.</td>
+</tr>
+</tbody></table>
+</body>
+</html>

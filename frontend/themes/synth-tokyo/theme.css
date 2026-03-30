@@ -1,0 +1,64 @@
+[data-theme="synth-tokyo"] {
+  /* Hot neon magenta accent */
+  --color-brand-50: rgba(255, 45, 149, 0.08);
+  --color-brand-100: rgba(255, 45, 149, 0.15);
+  --color-brand-200: rgba(255, 45, 149, 0.25);
+  --color-brand-300: rgba(255, 45, 149, 0.35);
+  --color-brand-600: #ff2d95;
+  --color-brand-700: #ff6db8;
+
+  /* Deep navy surfaces with strong neon blue tint */
+  --color-surface: #0f1535;
+  --color-surface-alt: #0a1028;
+  --background: #060c1e;
+  --foreground: #c8e0ff;
+
+  /* Electric blue-tinted grays — more blue, more visible */
+  --color-gray-50: #0a1028;
+  --color-gray-100: #0f1535;
+  --color-gray-200: #182048;
+  --color-gray-300: #22305a;
+  --color-gray-400: #3a4a78;
+  --color-gray-500: #5566aa;
+  --color-gray-600: #7788cc;
+  --color-gray-700: #99aadd;
+  --color-gray-800: #bbccee;
+  --color-gray-900: #d0ddff;
+  --color-gray-950: #e0eaff;
+
+  /* Neon status colors */
+  --color-green-50: rgba(0, 255, 180, 0.08);
+  --color-green-100: rgba(0, 255, 180, 0.15);
+  --color-green-200: rgba(0, 255, 180, 0.22);
+  --color-green-500: #00ffb4;
+  --color-green-700: #66ffd4;
+  --color-green-800: #99ffe6;
+
+  --color-red-50: rgba(255, 60, 80, 0.08);
+  --color-red-100: rgba(255, 60, 80, 0.15);
+  --color-red-200: rgba(255, 60, 80, 0.22);
+  --color-red-500: #ff3c50;
+  --color-red-600: #ff5566;
+  --color-red-700: #ff7788;
+  --color-red-800: #ff99aa;
+
+  --color-blue-100: rgba(0, 180, 255, 0.18);
+  --color-blue-700: #00b4ff;
+
+  --color-amber-100: rgba(255, 200, 0, 0.15);
+  --color-amber-700: #ffc800;
+
+  --color-emerald-100: rgba(0, 255, 180, 0.12);
+  --color-emerald-700: #00ffb4;
+
+  --color-purple-100: rgba(180, 80, 255, 0.15);
+  --color-purple-700: #b450ff;
+
+  --color-yellow-50: rgba(255, 230, 0, 0.08);
+  --color-yellow-800: #ffe600;
+
+  --color-white: #fff;
+
+  /* Monospace terminal font */
+  --font-sans: var(--font-fira-code), "Courier New", monospace;
+}

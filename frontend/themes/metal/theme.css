@@ -1,0 +1,64 @@
+[data-theme="metal"] {
+  /* Blood red accent */
+  --color-brand-50: rgba(180, 0, 0, 0.08);
+  --color-brand-100: rgba(180, 0, 0, 0.15);
+  --color-brand-200: rgba(180, 0, 0, 0.25);
+  --color-brand-300: rgba(180, 0, 0, 0.35);
+  --color-brand-600: #8b0000;
+  --color-brand-700: #b22222;
+
+  /* Blackened surfaces */
+  --color-surface: #1a1111;
+  --color-surface-alt: #120c0c;
+  --background: #0a0505;
+  --foreground: #c8b8b8;
+
+  /* Grays — cold, ashen, slightly red-tinted */
+  --color-gray-50: #1a1111;
+  --color-gray-100: #221818;
+  --color-gray-200: #332626;
+  --color-gray-300: #443535;
+  --color-gray-400: #665050;
+  --color-gray-500: #887070;
+  --color-gray-600: #a89090;
+  --color-gray-700: #c0a8a8;
+  --color-gray-800: #d4c0c0;
+  --color-gray-900: #e8d8d8;
+  --color-gray-950: #f0e8e8;
+
+  /* Status — blood-soaked semantic colors */
+  --color-green-50: rgba(80, 140, 80, 0.1);
+  --color-green-100: rgba(80, 140, 80, 0.18);
+  --color-green-200: rgba(80, 140, 80, 0.25);
+  --color-green-500: #4a8c4a;
+  --color-green-700: #6aaa6a;
+  --color-green-800: #90c490;
+
+  --color-red-50: rgba(200, 0, 0, 0.1);
+  --color-red-100: rgba(200, 0, 0, 0.18);
+  --color-red-200: rgba(200, 0, 0, 0.25);
+  --color-red-500: #cc0000;
+  --color-red-600: #dd2222;
+  --color-red-700: #ee4444;
+  --color-red-800: #ff7777;
+
+  --color-blue-100: rgba(100, 100, 180, 0.18);
+  --color-blue-700: #7777bb;
+
+  --color-amber-100: rgba(180, 120, 40, 0.18);
+  --color-amber-700: #cc8833;
+
+  --color-emerald-100: rgba(60, 120, 80, 0.18);
+  --color-emerald-700: #448855;
+
+  --color-purple-100: rgba(120, 60, 140, 0.18);
+  --color-purple-700: #9944bb;
+
+  --color-yellow-50: rgba(180, 160, 40, 0.1);
+  --color-yellow-800: #ccbb44;
+
+  --color-white: #fff;
+
+  /* Blackletter / gothic font */
+  --font-sans: var(--font-gothic), Georgia, "Times New Roman", serif;
+}

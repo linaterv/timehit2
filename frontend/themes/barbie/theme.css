@@ -1,0 +1,62 @@
+[data-theme="barbie"] {
+  /* Hot pink accent */
+  --color-brand-50: #fdf2f8;
+  --color-brand-100: #fce7f3;
+  --color-brand-200: #fbcfe8;
+  --color-brand-300: #f9a8d4;
+  --color-brand-600: #db2777;
+  --color-brand-700: #be185d;
+
+  /* Soft, warm surfaces */
+  --color-surface: #ffffff;
+  --color-surface-alt: #fdf2f8;
+  --background: #fdf2f8;
+  --foreground: #831843;
+
+  /* Warm pinkish grays */
+  --color-gray-50: #fdf2f8;
+  --color-gray-100: #fce7f3;
+  --color-gray-200: #f0c6d8;
+  --color-gray-300: #e2a3be;
+  --color-gray-400: #c880a0;
+  --color-gray-500: #a8607e;
+  --color-gray-600: #8b4466;
+  --color-gray-700: #6d3350;
+  --color-gray-800: #52253c;
+  --color-gray-900: #831843;
+  --color-gray-950: #500724;
+
+  /* Status colors — softened, pastel-ish */
+  --color-green-50: #f0fdf4;
+  --color-green-100: #dcfce7;
+  --color-green-200: #bbf7d0;
+  --color-green-500: #22c55e;
+  --color-green-700: #15803d;
+  --color-green-800: #166534;
+
+  --color-red-50: #fff1f2;
+  --color-red-100: #ffe4e6;
+  --color-red-200: #fecdd3;
+  --color-red-500: #f43f5e;
+  --color-red-600: #e11d48;
+  --color-red-700: #be123c;
+  --color-red-800: #9f1239;
+
+  --color-blue-100: #e0f2fe;
+  --color-blue-700: #7c3aed;
+
+  --color-amber-100: #fef3c7;
+  --color-amber-700: #b45309;
+
+  --color-emerald-100: #d1fae5;
+  --color-emerald-700: #047857;
+
+  --color-purple-100: #f3e8ff;
+  --color-purple-700: #7c3aed;
+
+  --color-yellow-50: #fefce8;
+  --color-yellow-800: #854d0e;
+
+  /* Rounded, playful font */
+  --font-sans: var(--font-comfortaa), "Nunito", system-ui, sans-serif;
+}

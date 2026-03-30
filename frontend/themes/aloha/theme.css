@@ -1,0 +1,62 @@
+[data-theme="aloha"] {
+  /* Tropical teal accent */
+  --color-brand-50: #f0fdfa;
+  --color-brand-100: #ccfbf1;
+  --color-brand-200: #99f6e4;
+  --color-brand-300: #5eead4;
+  --color-brand-600: #0d9488;
+  --color-brand-700: #0f766e;
+
+  /* Crystal water surfaces with sandy warmth */
+  --color-surface: #f8fcff;
+  --color-surface-alt: #eef7fb;
+  --background: #e8f4f8;
+  --foreground: #4a3f2e;
+
+  /* Sandy-aqua grays */
+  --color-gray-50: #eef7fb;
+  --color-gray-100: #e2eff5;
+  --color-gray-200: #cce0e8;
+  --color-gray-300: #b0c8d4;
+  --color-gray-400: #b8a080;
+  --color-gray-500: #9a8468;
+  --color-gray-600: #7d6a52;
+  --color-gray-700: #63543f;
+  --color-gray-800: #4d4030;
+  --color-gray-900: #3a3024;
+  --color-gray-950: #2a2018;
+
+  /* Tropical status colors */
+  --color-green-50: #f0fdf4;
+  --color-green-100: #dcfce7;
+  --color-green-200: #bbf7d0;
+  --color-green-500: #16a34a;
+  --color-green-700: #15803d;
+  --color-green-800: #166534;
+
+  --color-red-50: #fff1f2;
+  --color-red-100: #ffe4e6;
+  --color-red-200: #fecdd3;
+  --color-red-500: #e11d48;
+  --color-red-600: #be123c;
+  --color-red-700: #9f1239;
+  --color-red-800: #881337;
+
+  --color-blue-100: #e0f2fe;
+  --color-blue-700: #0369a1;
+
+  --color-amber-100: #fef3c7;
+  --color-amber-700: #b45309;
+
+  --color-emerald-100: #d1fae5;
+  --color-emerald-700: #047857;
+
+  --color-purple-100: #f3e8ff;
+  --color-purple-700: #7c3aed;
+
+  --color-yellow-50: #fefce8;
+  --color-yellow-800: #854d0e;
+
+  /* Chill rounded font */
+  --font-sans: var(--font-comfortaa), "Nunito", system-ui, sans-serif;
+}

@@ -1,0 +1,42 @@
+@import "tailwindcss";
+@import "../themes/default/theme.css";
+@import "../themes/dark/theme.css";
+@import "../themes/matrix/theme.css";
+@import "../themes/vscode-dark/theme.css";
+@import "../themes/vscode-light/theme.css";
+@import "../themes/metal/theme.css";
+@import "../themes/barbie/theme.css";
+@import "../themes/fallout/theme.css";
+
+@theme {
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-300: #93c5fd;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f9fafb;
+  --background: #f9fafb;
+  --foreground: #111827;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans, "Inter", system-ui, sans-serif);
+}
+
+/* Form controls inherit theme colors */
+input,
+select,
+textarea {
+  background-color: var(--color-surface);
+  color: inherit;
+  border-color: var(--color-gray-200);
+}
+
+option {
+  background-color: var(--color-surface);
+  color: inherit;
+}

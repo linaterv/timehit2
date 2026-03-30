@@ -1,0 +1,42 @@
+# Node
+node_modules/
+.next/
+.turbo/
+npm-debug.log*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+*.sqlite3
+
+# Django
+backend/media/
+
+# Environment
+.env
+.env.local
+.env*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Build
+dist/
+build/
+out/
+
+# Playwright
+test-results/
+playwright-report/
+
+# Temp scripts
+temp_*.js
+temp_*.py
+temp_*.sh

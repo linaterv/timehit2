@@ -1,0 +1,64 @@
+[data-theme="fallout"] {
+  /* Pip-Boy phosphor green accent */
+  --color-brand-50: rgba(136, 184, 104, 0.08);
+  --color-brand-100: rgba(136, 184, 104, 0.15);
+  --color-brand-200: rgba(136, 184, 104, 0.25);
+  --color-brand-300: rgba(136, 184, 104, 0.35);
+  --color-brand-600: #88b868;
+  --color-brand-700: #4aff4a;
+
+  /* Wasteland surfaces — olive-tinted darks */
+  --color-surface: #1b1c17;
+  --color-surface-alt: #14150f;
+  --background: #10110d;
+  --foreground: #a8b888;
+
+  /* Olive-brown gray ramp */
+  --color-gray-50: #14150f;
+  --color-gray-100: #1b1c17;
+  --color-gray-200: #2a2a20;
+  --color-gray-300: #3a3a2a;
+  --color-gray-400: #5a6a40;
+  --color-gray-500: #6a7a50;
+  --color-gray-600: #7a8a60;
+  --color-gray-700: #8a9a70;
+  --color-gray-800: #a8b888;
+  --color-gray-900: #c8d8a8;
+  --color-gray-950: #e0e8d0;
+
+  /* Status — wasteland semantic colors */
+  --color-green-50: rgba(74, 255, 74, 0.08);
+  --color-green-100: rgba(74, 255, 74, 0.15);
+  --color-green-200: rgba(74, 255, 74, 0.22);
+  --color-green-500: #4aff4a;
+  --color-green-700: #88ff88;
+  --color-green-800: #a0ffa0;
+
+  --color-red-50: rgba(201, 64, 64, 0.08);
+  --color-red-100: rgba(201, 64, 64, 0.15);
+  --color-red-200: rgba(201, 64, 64, 0.22);
+  --color-red-500: #c94040;
+  --color-red-600: #dd5050;
+  --color-red-700: #ee6666;
+  --color-red-800: #ff8888;
+
+  --color-blue-100: rgba(74, 136, 192, 0.15);
+  --color-blue-700: #4a88c0;
+
+  --color-amber-100: rgba(201, 168, 76, 0.15);
+  --color-amber-700: #c9a84c;
+
+  --color-emerald-100: rgba(74, 255, 74, 0.12);
+  --color-emerald-700: #88b868;
+
+  --color-purple-100: rgba(212, 132, 90, 0.15);
+  --color-purple-700: #d4845a;
+
+  --color-yellow-50: rgba(232, 196, 74, 0.08);
+  --color-yellow-800: #e8c44a;
+
+  --color-white: #fff;
+
+  /* Pip-Boy terminal font */
+  --font-sans: var(--font-fira-code), "Courier New", monospace;
+}

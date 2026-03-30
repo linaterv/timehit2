@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(curl -s http://localhost:8000/api/docs/)",
+      "Bash(open:*)",
+      "Bash(pip install:*)",
+      "Bash(source ~/.nvm/nvm.sh)",
+      "Bash(nvm install:*)",
+      "Bash(nvm use:*)",
+      "Bash(mkdir -p /Users/adomasurbanavicius/timehit3/frontend)",
+      "Bash(npm init:*)",
+      "Bash(npx next:*)",
+      "Bash(npm install:*)",
+      "Bash(bash /Users/adomasurbanavicius/timehit3/temp_sh.sh)",
+      "Bash(npx playwright:*)",
+      "Bash(cp:*)",
+      "Bash(ls:*)"
+    ]
+  }
+}

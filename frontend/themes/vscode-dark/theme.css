@@ -1,0 +1,62 @@
+[data-theme="vscode-dark"] {
+  /* VS Code blue accent */
+  --color-brand-50: rgba(0, 122, 204, 0.08);
+  --color-brand-100: rgba(0, 122, 204, 0.15);
+  --color-brand-200: rgba(0, 122, 204, 0.25);
+  --color-brand-300: rgba(0, 122, 204, 0.35);
+  --color-brand-600: #007acc;
+  --color-brand-700: #1a8ad4;
+
+  /* VS Code Dark+ surfaces */
+  --color-surface: #252526;
+  --color-surface-alt: #1e1e1e;
+  --background: #1e1e1e;
+  --foreground: #d4d4d4;
+
+  /* Gray scale — VS Code's warm grays */
+  --color-gray-50: #252526;
+  --color-gray-100: #2d2d2d;
+  --color-gray-200: #3c3c3c;
+  --color-gray-300: #474747;
+  --color-gray-400: #636363;
+  --color-gray-500: #858585;
+  --color-gray-600: #a0a0a0;
+  --color-gray-700: #cccccc;
+  --color-gray-800: #d4d4d4;
+  --color-gray-900: #e8e8e8;
+  --color-gray-950: #f0f0f0;
+
+  /* Status colors */
+  --color-green-50: rgba(78, 201, 176, 0.1);
+  --color-green-100: rgba(78, 201, 176, 0.18);
+  --color-green-200: rgba(78, 201, 176, 0.25);
+  --color-green-500: #4ec9b0;
+  --color-green-700: #73d7c4;
+  --color-green-800: #a3e4d7;
+
+  --color-red-50: rgba(244, 71, 71, 0.1);
+  --color-red-100: rgba(244, 71, 71, 0.18);
+  --color-red-200: rgba(244, 71, 71, 0.25);
+  --color-red-500: #f44747;
+  --color-red-600: #f06868;
+  --color-red-700: #f48a8a;
+  --color-red-800: #f8b0b0;
+
+  --color-blue-100: rgba(86, 156, 214, 0.18);
+  --color-blue-700: #569cd6;
+
+  --color-amber-100: rgba(206, 145, 120, 0.18);
+  --color-amber-700: #ce9178;
+
+  --color-emerald-100: rgba(78, 201, 176, 0.18);
+  --color-emerald-700: #4ec9b0;
+
+  --color-purple-100: rgba(198, 120, 221, 0.18);
+  --color-purple-700: #c678dd;
+
+  --color-yellow-50: rgba(220, 220, 170, 0.1);
+  --color-yellow-800: #dcdcaa;
+
+  /* VS Code uses monospace-friendly font */
+  --font-sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+}

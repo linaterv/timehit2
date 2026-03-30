@@ -1,0 +1,165 @@
+import csv
+from io import StringIO
+from decimal import Decimal
+from collections import defaultdict
+from django.http import HttpResponse
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied
+from drf_spectacular.utils import extend_schema
+from apps.placements.models import Placement
+from apps.timesheets.models import Timesheet
+from apps.invoices.models import Invoice
+from apps.users.permissions import IsAdminOrBroker
+
+
+class ControlOverviewView(APIView):
+    permission_classes = [IsAdminOrBroker]
+
+    @extend_schema(tags=["Control"])
+    def get(self, request):
+        year = int(request.query_params.get("year", 0))
+        month = int(request.query_params.get("month", 0))
+        if not year or not month:
+            return Response({"error": {"code": "VALIDATION_ERROR", "message": "year and month required", "details": []}}, status=400)
+
+        placements = Placement.objects.filter(status=Placement.Status.ACTIVE).select_related("client", "contractor")
+        user = request.user
+        if user.is_broker:
+            placements = placements.filter(client__broker_assignments__broker=user)
+        p = request.query_params
+        if p.get("client_id"):
+            placements = placements.filter(client_id=p["client_id"])
+        if p.get("contractor_id"):
+            placements = placements.filter(contractor_id=p["contractor_id"])
+
+        data = []
+        for pl in placements:
+            ts = Timesheet.objects.filter(placement=pl, year=year, month=month).first()
+            c_inv = Invoice.objects.filter(placement=pl, year=year, month=month, invoice_type=Invoice.Type.CLIENT_INVOICE).exclude(status=Invoice.Status.VOIDED).first()
+            co_inv = Invoice.objects.filter(placement=pl, year=year, month=month, invoice_type=Invoice.Type.CONTRACTOR_INVOICE).exclude(status=Invoice.Status.VOIDED).first()
+            hours = ts.total_hours if ts else Decimal("0")
+            margin = hours * (pl.client_rate - pl.contractor_rate)
+
+            flags = []
+            if not ts:
+                flags.append("no_timesheet")
+            elif ts.status == Timesheet.Status.DRAFT:
+                flags.append("timesheet_draft")
+            elif ts.status in (Timesheet.Status.SUBMITTED, Timesheet.Status.CLIENT_APPROVED):
+                flags.append("pending_approval")
+            if ts and ts.status == Timesheet.Status.APPROVED and not c_inv:
+                flags.append("approved_no_invoice")
+            if pl.require_timesheet_attachment and ts and not ts.attachments.exists():
+                flags.append("missing_attachment")
+            try:
+                prof = pl.contractor.contractor_profile
+                if not prof.bank_account_iban:
+                    flags.append("missing_bank_details")
+            except Exception:
+                flags.append("missing_bank_details")
+            if c_inv and c_inv.status == Invoice.Status.ISSUED:
+                flags.append("invoice_unpaid")
+
+            if p.get("needs_attention") == "true" and not flags:
+                continue
+            if p.get("timesheet_status") and (not ts or ts.status not in p["timesheet_status"].split(",")):
+                continue
+            if p.get("invoice_status"):
+                inv_statuses = p["invoice_status"].split(",")
+                if not c_inv and "NOT_GENERATED" not in inv_statuses:
+                    continue
+                if c_inv and c_inv.status not in inv_statuses:
+                    continue
+
+            data.append({
+                "placement": {
+                    "id": str(pl.id), "start_date": str(pl.start_date), "end_date": str(pl.end_date) if pl.end_date else None,
+                    "client_rate": str(pl.client_rate), "contractor_rate": str(pl.contractor_rate),
+                    "currency": pl.currency, "approval_flow": pl.approval_flow,
+                    "require_timesheet_attachment": pl.require_timesheet_attachment,
+                },
+                "client": {"id": str(pl.client_id), "company_name": pl.client.company_name},
+                "contractor": {"id": str(pl.contractor_id), "full_name": pl.contractor.full_name},
+                "timesheet": {"id": str(ts.id), "status": ts.status, "total_hours": str(ts.total_hours), "submitted_at": ts.submitted_at, "approved_at": ts.approved_at} if ts else None,
+                "client_invoice": {"id": str(c_inv.id), "invoice_number": c_inv.invoice_number, "status": c_inv.status, "total_amount": str(c_inv.total_amount)} if c_inv else None,
+                "contractor_invoice": {"id": str(co_inv.id), "invoice_number": co_inv.invoice_number, "status": co_inv.status, "total_amount": str(co_inv.total_amount)} if co_inv else None,
+                "margin": str(margin),
+                "flags": flags,
+            })
+        return Response({"data": data, "meta": {"total": len(data)}})
+
+
+class ControlSummaryView(APIView):
+    permission_classes = [IsAdminOrBroker]
+
+    @extend_schema(tags=["Control"])
+    def get(self, request):
+        year = int(request.query_params.get("year", 0))
+        month = int(request.query_params.get("month", 0))
+        if not year or not month:
+            return Response({"error": {"code": "VALIDATION_ERROR", "message": "year and month required", "details": []}}, status=400)
+
+        placements = Placement.objects.filter(status=Placement.Status.ACTIVE).select_related("client")
+        if request.user.is_broker:
+            placements = placements.filter(client__broker_assignments__broker=request.user)
+
+        awaiting, no_inv, unpaid, issues = 0, 0, 0, 0
+        total_hours, currency_data = Decimal("0"), defaultdict(lambda: {"revenue": Decimal("0"), "cost": Decimal("0"), "margin": Decimal("0")})
+
+        for pl in placements:
+            ts = Timesheet.objects.filter(placement=pl, year=year, month=month).first()
+            if ts:
+                if ts.status in (Timesheet.Status.SUBMITTED, Timesheet.Status.CLIENT_APPROVED):
+                    awaiting += 1
+                if ts.status == Timesheet.Status.APPROVED:
+                    if not ts.invoices.exclude(status=Invoice.Status.VOIDED).exists():
+                        no_inv += 1
+                    total_hours += ts.total_hours
+                    rev = ts.total_hours * pl.client_rate
+                    cost = ts.total_hours * pl.contractor_rate
+                    currency_data[pl.currency]["revenue"] += rev
+                    currency_data[pl.currency]["cost"] += cost
+                    currency_data[pl.currency]["margin"] += rev - cost
+            invs = Invoice.objects.filter(placement=pl, year=year, month=month, status=Invoice.Status.ISSUED)
+            unpaid += invs.count()
+            has_issue = (not ts) or (pl.require_timesheet_attachment and ts and not ts.attachments.exists())
+            if has_issue:
+                issues += 1
+
+        total_rev = sum(d["revenue"] for d in currency_data.values())
+        total_cost = sum(d["cost"] for d in currency_data.values())
+        return Response({
+            "timesheets_awaiting_approval": awaiting, "approved_without_invoices": no_inv,
+            "invoices_awaiting_payment": unpaid, "placements_with_issues": issues,
+            "total_active_placements": placements.count(), "total_hours": str(total_hours),
+            "total_client_revenue": str(total_rev), "total_contractor_cost": str(total_cost),
+            "total_margin": str(total_rev - total_cost),
+            "currency_breakdown": [{"currency": c, "revenue": str(d["revenue"]), "cost": str(d["cost"]), "margin": str(d["margin"])} for c, d in currency_data.items()],
+        })
+
+
+class ControlExportView(APIView):
+    permission_classes = [IsAdminOrBroker]
+
+    @extend_schema(tags=["Control"])
+    def get(self, request):
+        overview = ControlOverviewView()
+        overview.request = request
+        resp = overview.get(request)
+        buf = StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(["Client", "Contractor", "Client Rate", "Contractor Rate", "Currency", "Hours", "Timesheet Status", "Invoice Status", "Margin", "Flags"])
+        for row in resp.data.get("data", []):
+            writer.writerow([
+                row["client"]["company_name"], row["contractor"]["full_name"],
+                row["placement"]["client_rate"], row["placement"]["contractor_rate"],
+                row["placement"]["currency"],
+                row["timesheet"]["total_hours"] if row["timesheet"] else "0",
+                row["timesheet"]["status"] if row["timesheet"] else "N/A",
+                row["client_invoice"]["status"] if row["client_invoice"] else "N/A",
+                row["margin"], ", ".join(row["flags"]),
+            ])
+        response = HttpResponse(buf.getvalue(), content_type="text/csv")
+        response["Content-Disposition"] = f'attachment; filename="control-{request.query_params.get("year", "")}-{request.query_params.get("month", "")}.csv"'
+        return response
