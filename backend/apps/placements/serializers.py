@@ -22,7 +22,8 @@ class PlacementListSerializer(serializers.ModelSerializer):
             "id", "client", "contractor", "title", "client_rate", "contractor_rate",
             "currency", "start_date", "end_date", "status", "approval_flow",
             "require_timesheet_attachment", "client_can_view_invoices",
-            "client_can_view_documents", "notes", "created_at",
+            "client_can_view_documents", "payment_terms_client_days",
+            "payment_terms_contractor_days", "notes", "created_at",
         ]
 
     def get_client(self, obj):
@@ -48,8 +49,13 @@ class PlacementCreateSerializer(serializers.ModelSerializer):
             "client_id", "contractor_id", "title", "client_rate", "contractor_rate",
             "currency", "start_date", "end_date", "approval_flow",
             "require_timesheet_attachment", "client_can_view_invoices",
-            "client_can_view_documents", "notes",
+            "client_can_view_documents", "payment_terms_client_days",
+            "payment_terms_contractor_days", "notes",
         ]
+        extra_kwargs = {
+            "payment_terms_client_days": {"required": False, "allow_null": True},
+            "payment_terms_contractor_days": {"required": False, "allow_null": True},
+        }
 
     def validate(self, data):
         if data.get("end_date") and data["end_date"] <= data["start_date"]:
@@ -66,7 +72,8 @@ class PlacementUpdateSerializer(serializers.ModelSerializer):
         fields = [
             "title", "client_rate", "contractor_rate", "currency", "client_id", "contractor_id",
             "start_date", "end_date", "approval_flow", "require_timesheet_attachment",
-            "client_can_view_invoices", "client_can_view_documents", "notes",
+            "client_can_view_invoices", "client_can_view_documents",
+            "payment_terms_client_days", "payment_terms_contractor_days", "notes",
         ]
         extra_kwargs = {f: {"required": False} for f in fields}
 

@@ -119,6 +119,8 @@ export interface Placement {
   require_timesheet_attachment: boolean;
   client_can_view_invoices: boolean;
   client_can_view_documents: boolean;
+  payment_terms_client_days: number | null;
+  payment_terms_contractor_days: number | null;
   notes: string;
   created_at: string;
 }

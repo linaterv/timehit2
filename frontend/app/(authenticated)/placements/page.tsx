@@ -44,6 +44,8 @@ interface CreatePlacementBody {
   require_timesheet_attachment: boolean;
   client_can_view_invoices: boolean;
   client_can_view_documents: boolean;
+  payment_terms_client_days: string;
+  payment_terms_contractor_days: string;
 }
 
 const PLACEMENT_STATUSES: PlacementStatus[] = ["DRAFT", "ACTIVE", "COMPLETED", "CANCELLED"];
@@ -61,6 +63,8 @@ function emptyCreateForm(): CreatePlacementBody {
     require_timesheet_attachment: false,
     client_can_view_invoices: false,
     client_can_view_documents: false,
+    payment_terms_client_days: "",
+    payment_terms_contractor_days: "",
   };
 }
 
@@ -289,7 +293,12 @@ export default function PlacementsPage() {
 
   const handleCreate = async () => {
     try {
-      await createMutation.mutateAsync(createForm);
+      const body = {
+        ...createForm,
+        payment_terms_client_days: createForm.payment_terms_client_days ? parseInt(createForm.payment_terms_client_days, 10) : null,
+        payment_terms_contractor_days: createForm.payment_terms_contractor_days ? parseInt(createForm.payment_terms_contractor_days, 10) : null,
+      };
+      await createMutation.mutateAsync(body as any);
       setSlideOpen(false);
       setCreateForm(emptyCreateForm());
     } catch {
@@ -533,6 +542,31 @@ export default function PlacementsPage() {
               />
               <span className="text-gray-700">Client can view documents</span>
             </label>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Client Payment Terms (days)</label>
+              <input
+                data-testid="create-payment_terms_client_days"
+                type="number"
+                value={createForm.payment_terms_client_days}
+                onChange={(e) => updateCreate("payment_terms_client_days", e.target.value)}
+                placeholder="e.g. 30"
+                className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Contractor Payment Terms (days)</label>
+              <input
+                data-testid="create-payment_terms_contractor_days"
+                type="number"
+                value={createForm.payment_terms_contractor_days}
+                onChange={(e) => updateCreate("payment_terms_contractor_days", e.target.value)}
+                placeholder="e.g. 14"
+                className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600"
+              />
+            </div>
           </div>
         </div>
       </SlideOver>

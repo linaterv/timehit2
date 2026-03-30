@@ -30,6 +30,8 @@ class Placement(models.Model):
     require_timesheet_attachment = models.BooleanField(default=False)
     client_can_view_invoices = models.BooleanField(default=False)
     client_can_view_documents = models.BooleanField(default=False)
+    payment_terms_client_days = models.IntegerField(null=True, blank=True)
+    payment_terms_contractor_days = models.IntegerField(null=True, blank=True)
     notes = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -26,6 +26,8 @@ interface SettingsForm {
   require_timesheet_attachment: boolean;
   client_can_view_invoices: boolean;
   client_can_view_documents: boolean;
+  payment_terms_client_days: number | null;
+  payment_terms_contractor_days: number | null;
   notes: string;
 }
 
@@ -102,6 +104,8 @@ export default function PlacementDetailPage() {
         require_timesheet_attachment: placement.require_timesheet_attachment,
         client_can_view_invoices: placement.client_can_view_invoices,
         client_can_view_documents: placement.client_can_view_documents,
+        payment_terms_client_days: placement.payment_terms_client_days,
+        payment_terms_contractor_days: placement.payment_terms_contractor_days,
         notes: placement.notes,
       });
     }
@@ -323,7 +327,34 @@ export default function PlacementDetailPage() {
               {formatDate(placement.end_date)}
             </span>
           </div>
+          {isAdminOrBroker && (placement.payment_terms_client_days != null || placement.payment_terms_contractor_days != null) && (
+            <>
+              {placement.payment_terms_client_days != null && (
+                <div>
+                  <span className="text-gray-500 block">Client Payment Terms</span>
+                  <span className="font-medium">{placement.payment_terms_client_days} days</span>
+                </div>
+              )}
+              {placement.payment_terms_contractor_days != null && (
+                <div>
+                  <span className="text-gray-500 block">Contractor Payment Terms</span>
+                  <span className="font-medium">{placement.payment_terms_contractor_days} days</span>
+                </div>
+              )}
+            </>
+          )}
         </div>
+        {canManagePlacement && (isDraft || isActive) && (
+          <div className="mt-4 pt-4 border-t">
+            <button
+              data-testid="placement-edit-btn"
+              onClick={() => { setTab("settings"); initSettings(); }}
+              className="text-sm text-brand-600 hover:underline"
+            >
+              Edit placement settings...
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Tabs */}
@@ -582,6 +613,37 @@ export default function PlacementDetailPage() {
               />
               <span className="text-sm">Client can view documents</span>
             </label>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Client Payment Terms (days)
+              </label>
+              <input
+                data-testid="setting-payment-terms-client"
+                type="number"
+                value={settings.payment_terms_client_days ?? ""}
+                onChange={(e) =>
+                  setSettings({ ...settings, payment_terms_client_days: e.target.value ? parseInt(e.target.value, 10) : null })
+                }
+                className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Contractor Payment Terms (days)
+              </label>
+              <input
+                data-testid="setting-payment-terms-contractor"
+                type="number"
+                value={settings.payment_terms_contractor_days ?? ""}
+                onChange={(e) =>
+                  setSettings({ ...settings, payment_terms_contractor_days: e.target.value ? parseInt(e.target.value, 10) : null })
+                }
+                className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600"
+              />
+            </div>
           </div>
 
           <div>
