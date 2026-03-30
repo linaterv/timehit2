@@ -327,20 +327,13 @@ export default function SettingsPage() {
             {isContractorType && (
               <div className="border-t pt-6 mb-6">
                 <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Payment Details</div>
-                <div className="space-y-1 text-sm">
-                  <div className="flex gap-2 items-center">
-                    <span className="text-gray-500 w-12 text-xs">Bank:</span>
-                    <Field value={form.bank_name} onChange={(v) => u("bank_name", v)} placeholder="Bank name" className="text-sm flex-1" />
-                  </div>
-                  <div className="flex gap-2 items-center">
-                    <span className="text-gray-500 w-12 text-xs">IBAN:</span>
-                    <Field value={form.bank_account_iban} onChange={(v) => u("bank_account_iban", v)} placeholder="IBAN" className="text-sm flex-1 font-mono" mono />
-                  </div>
-                  <div className="flex gap-2 items-center">
-                    <span className="text-gray-500 w-12 text-xs">SWIFT:</span>
-                    <Field value={form.bank_swift_bic} onChange={(v) => u("bank_swift_bic", v)} placeholder="SWIFT/BIC" className="text-sm w-40 font-mono" mono />
-                  </div>
-                </div>
+                <textarea
+                  value={form.bank_name}
+                  onChange={(e) => u("bank_name", e.target.value)}
+                  placeholder={"Bank: SEB\nIBAN: LT11 2233 4455 6677 8899\nSWIFT: CBVILT2X"}
+                  rows={4}
+                  className="w-full bg-blue-50/60 border-2 border-brand-200 focus:border-brand-600 focus:bg-blue-50 focus:outline-none rounded px-2 py-1.5 text-sm text-gray-900 placeholder:text-brand-300 resize-none leading-relaxed font-mono"
+                />
               </div>
             )}
 

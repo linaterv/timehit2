@@ -22,7 +22,10 @@
       "Bash(npm run:*)",
       "WebSearch",
       "Bash(curl:*)",
-      "Bash(chmod +x /Users/adomasurbanavicius/timehit3/checkbugs.sh)"
+      "Bash(chmod +x /Users/adomasurbanavicius/timehit3/checkbugs.sh)",
+      "Bash(for f:*)",
+      "Bash(do mv:*)",
+      "Bash(done)"
     ]
   }
 }
