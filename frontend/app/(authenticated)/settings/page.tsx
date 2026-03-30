@@ -105,6 +105,7 @@ export default function SettingsPage() {
   const { user } = useAuth();
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [scopeFilter, setScopeFilter] = useState<"" | "global" | "assigned">("");
   const [editing, setEditing] = useState<InvoiceTemplate | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [form, setForm] = useState<TplForm>(emptyForm());
@@ -116,7 +117,12 @@ export default function SettingsPage() {
     ["invoice-templates", "all", typeFilter, statusFilter],
     `/invoice-templates${qParams ? `?${qParams}` : ""}`, !!user
   );
-  const templates = templatesQ.data?.data ?? [];
+  const allTemplates = templatesQ.data?.data ?? [];
+  const templates = allTemplates.filter((t) => {
+    if (scopeFilter === "global") return !t.contractor && !t.client;
+    if (scopeFilter === "assigned") return !!t.contractor || !!t.client;
+    return true;
+  });
 
   const openNew = () => { setEditing(null); setIsNew(true); setForm(emptyForm()); setError(""); };
   const openEdit = (t: InvoiceTemplate) => { setEditing(t); setIsNew(false); setForm(tplToForm(t)); setError(""); };
@@ -175,6 +181,11 @@ export default function SettingsPage() {
               <option value="">All Types</option>
               <option value="CONTRACTOR">Contractor → Agency</option>
               <option value="CLIENT">Agency → Client</option>
+            </select>
+            <select value={scopeFilter} onChange={(e) => setScopeFilter(e.target.value as typeof scopeFilter)} className="px-3 py-2 border rounded text-sm">
+              <option value="">All Scope</option>
+              <option value="global">Global</option>
+              <option value="assigned">Assigned</option>
             </select>
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 border rounded text-sm">
               <option value="">All Statuses</option>
