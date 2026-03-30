@@ -26,7 +26,8 @@
       "Bash(for f:*)",
       "Bash(do mv:*)",
       "Bash(done)",
-      "Bash(bash /Users/adomasurbanavicius/timehit3/checkbugs.sh)"
+      "Bash(bash /Users/adomasurbanavicius/timehit3/checkbugs.sh)",
+      "Bash(grep:*)"
     ]
   }
 }
