@@ -420,7 +420,7 @@ class InvoiceTemplateViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get", "post"], url_path="sample-pdf", permission_classes=[])
     def sample_pdf(self, request, pk=None):
         from .pdf import generate_sample_pdf
-        obj = self.get_object()
+        obj = InvoiceTemplate.objects.get(pk=pk)
         # POST: override template fields with request data for live preview
         if request.method == "POST" and request.data:
             for field in ["billing_address", "bank_name", "company_name", "vat_rate_percent",
@@ -434,4 +434,6 @@ class InvoiceTemplateViewSet(viewsets.ModelViewSet):
                         val = int(val)
                     setattr(obj, field, val)
         pdf_bytes = generate_sample_pdf(obj)
-        return HttpResponse(pdf_bytes, content_type="application/pdf")
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="sample-{obj.code or obj.id}.pdf"'
+        return response
