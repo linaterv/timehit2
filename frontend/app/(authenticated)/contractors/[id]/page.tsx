@@ -540,7 +540,7 @@ export default function ContractorDetailPage() {
                   const d = new Date(); const ts = `${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}${String(d.getSeconds()).padStart(2,"0")}`;
                   a.href = url; a.download = `prev_svd_${name}_${ts}.pdf`; a.click(); URL.revokeObjectURL(url);
                 } catch { alert("Failed"); }
-              }} className="px-2 py-1 text-xs rounded border border-gray-300 text-gray-500 hover:bg-gray-50 shrink-0">PDF</button>
+              }} className="px-2 py-1 text-xs rounded border border-gray-300 text-gray-500 hover:bg-gray-50 shrink-0">PDF Preview</button>
               <span className="text-gray-400 text-sm">&rsaquo;</span>
             </div>
           ))}

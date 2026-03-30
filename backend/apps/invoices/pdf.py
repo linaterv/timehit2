@@ -26,6 +26,13 @@ FONT_BOLD = "DejaVu-Bold"
 MONTH_NAMES = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 
+def _fmt(val):
+    """Format a number to 2 decimal places."""
+    if val is None:
+        return ""
+    return f"{Decimal(str(val)):.2f}"
+
+
 def _draw_multiline(c, x, y, text, font=FONT, size=10, line_height=5):
     """Draw multiline text, return y after last line."""
     c.setFont(font, size)
@@ -89,24 +96,24 @@ def generate_pdf(data: dict) -> bytes:
     currency = data.get("currency", "EUR")
     c.drawString(25 * mm, y, str(data.get("description", "")))
     c.drawString(110 * mm, y, str(data.get("total_hours", "")))
-    c.drawString(130 * mm, y, f"{data.get('hourly_rate', '')} {currency}")
-    c.drawRightString(w - 25 * mm, y, f"{data.get('subtotal', '')} {currency}")
+    c.drawString(130 * mm, y, f"{_fmt(data.get('hourly_rate'))} {currency}")
+    c.drawRightString(w - 25 * mm, y, f"{_fmt(data.get('subtotal'))} {currency}")
 
     # Totals
     y -= 12 * mm
     c.line(110 * mm, y + 3 * mm, w - 25 * mm, y + 3 * mm)
     c.setFont(FONT, 8)
     c.drawString(110 * mm, y, "Subtotal")
-    c.drawRightString(w - 25 * mm, y, f"{data.get('subtotal', '')} {currency}")
+    c.drawRightString(w - 25 * mm, y, f"{_fmt(data.get('subtotal'))} {currency}")
     vat_pct = data.get("vat_rate_percent")
     if vat_pct:
         y -= 5 * mm
         c.drawString(110 * mm, y, f"VAT ({vat_pct}%)")
-        c.drawRightString(w - 25 * mm, y, f"{data.get('vat_amount', '')} {currency}")
+        c.drawRightString(w - 25 * mm, y, f"{_fmt(data.get('vat_amount'))} {currency}")
     y -= 6 * mm
     c.setFont(FONT_BOLD, 10)
     c.drawString(110 * mm, y, "Total")
-    c.drawRightString(w - 25 * mm, y, f"{data.get('total_amount', '')} {currency}")
+    c.drawRightString(w - 25 * mm, y, f"{_fmt(data.get('total_amount'))} {currency}")
 
     # Payment details
     payment = data.get("payment_block")
