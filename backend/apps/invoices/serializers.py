@@ -144,11 +144,6 @@ class InvoiceTemplateCreateSerializer(serializers.ModelSerializer):
         ]
 
     def validate(self, data):
-        ttype = data.get("template_type")
-        if ttype == InvoiceTemplate.Type.CONTRACTOR and not data.get("contractor_id"):
-            raise serializers.ValidationError({"contractor_id": "Required for CONTRACTOR template type"})
-        if ttype == InvoiceTemplate.Type.CLIENT and not data.get("client_id"):
-            raise serializers.ValidationError({"client_id": "Required for CLIENT template type"})
         if data.get("placement_id"):
             from apps.placements.models import Placement
             try:

@@ -67,6 +67,10 @@ def resolve_template(template_type, contractor=None, client=None, placement=None
         t = base.filter(client=client, placement__isnull=True, is_default=True).first()
         if t:
             return t
+    # Global (shared) template — no contractor/client assigned
+    t = base.filter(contractor__isnull=True, client__isnull=True, placement__isnull=True, is_default=True).first()
+    if t:
+        return t
     return None
 
 
