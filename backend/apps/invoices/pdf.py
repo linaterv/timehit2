@@ -52,71 +52,73 @@ def generate_pdf(data: dict) -> bytes:
     w, h = A4
 
     # Header
-    c.setFont(FONT_BOLD, 22)
-    c.drawString(30 * mm, h - 30 * mm, "INVOICE")
-    c.setFont(FONT, 10)
-    c.drawString(30 * mm, h - 38 * mm, f"No: {data.get('invoice_number', '')}")
-    c.drawString(30 * mm, h - 44 * mm, f"Date: {data.get('issue_date', '')}")
-    c.drawString(30 * mm, h - 50 * mm, f"Due: {data.get('due_date', '')}")
-    c.setFont(FONT_BOLD, 10)
-    c.drawRightString(w - 30 * mm, h - 30 * mm, str(data.get("status", "")))
-    c.setFont(FONT, 9)
-    c.drawRightString(w - 30 * mm, h - 38 * mm, str(data.get("invoice_type", "")))
+    c.setFont(FONT_BOLD, 18)
+    c.drawString(25 * mm, h - 25 * mm, "INVOICE")
+    c.setFont(FONT, 8)
+    c.drawString(25 * mm, h - 32 * mm, f"No: {data.get('invoice_number', '')}")
+    c.drawString(25 * mm, h - 37 * mm, f"Date: {data.get('issue_date', '')}")
+    c.drawString(25 * mm, h - 42 * mm, f"Due: {data.get('due_date', '')}")
+    c.setFont(FONT_BOLD, 8)
+    c.drawRightString(w - 25 * mm, h - 25 * mm, str(data.get("status", "")))
+    c.setFont(FONT, 7)
+    c.drawRightString(w - 25 * mm, h - 32 * mm, str(data.get("invoice_type", "")))
 
     # From / To
-    y = h - 70 * mm
-    c.setFont(FONT_BOLD, 11)
-    c.drawString(30 * mm, y, "From")
-    y_from = _draw_multiline(c, 30 * mm, y - 6 * mm, data.get("from_block", ""))
+    y = h - 55 * mm
+    c.setFont(FONT_BOLD, 9)
+    c.drawString(25 * mm, y, "From")
+    _draw_multiline(c, 25 * mm, y - 5 * mm, data.get("from_block", ""), size=8, line_height=4)
 
-    c.setFont(FONT_BOLD, 11)
-    c.drawString(110 * mm, h - 70 * mm, "Bill To")
-    _draw_multiline(c, 110 * mm, h - 76 * mm, data.get("to_block", ""))
+    c.setFont(FONT_BOLD, 9)
+    c.drawString(110 * mm, y, "Bill To")
+    _draw_multiline(c, 110 * mm, y - 5 * mm, data.get("to_block", ""), size=8, line_height=4)
 
-    # Table
-    y = h - 110 * mm
-    c.setFont(FONT_BOLD, 10)
-    c.drawString(30 * mm, y, "Description")
+    # Spacer before table
+    y = h - 100 * mm
+
+    # Table header
+    c.setFont(FONT_BOLD, 8)
+    c.drawString(25 * mm, y, "Description")
     c.drawString(110 * mm, y, "Hours")
     c.drawString(130 * mm, y, "Rate")
-    c.drawRightString(w - 30 * mm, y, "Amount")
-    c.line(30 * mm, y - 2 * mm, w - 30 * mm, y - 2 * mm)
+    c.drawRightString(w - 25 * mm, y, "Amount")
+    c.line(25 * mm, y - 2 * mm, w - 25 * mm, y - 2 * mm)
 
-    y -= 8 * mm
-    c.setFont(FONT, 10)
+    y -= 7 * mm
+    c.setFont(FONT, 8)
     currency = data.get("currency", "EUR")
-    c.drawString(30 * mm, y, str(data.get("description", "")))
+    c.drawString(25 * mm, y, str(data.get("description", "")))
     c.drawString(110 * mm, y, str(data.get("total_hours", "")))
     c.drawString(130 * mm, y, f"{data.get('hourly_rate', '')} {currency}")
-    c.drawRightString(w - 30 * mm, y, f"{data.get('subtotal', '')} {currency}")
+    c.drawRightString(w - 25 * mm, y, f"{data.get('subtotal', '')} {currency}")
 
     # Totals
-    y -= 15 * mm
-    c.line(110 * mm, y + 4 * mm, w - 30 * mm, y + 4 * mm)
-    c.setFont(FONT, 10)
+    y -= 12 * mm
+    c.line(110 * mm, y + 3 * mm, w - 25 * mm, y + 3 * mm)
+    c.setFont(FONT, 8)
     c.drawString(110 * mm, y, "Subtotal")
-    c.drawRightString(w - 30 * mm, y, f"{data.get('subtotal', '')} {currency}")
+    c.drawRightString(w - 25 * mm, y, f"{data.get('subtotal', '')} {currency}")
     vat_pct = data.get("vat_rate_percent")
     if vat_pct:
-        y -= 6 * mm
+        y -= 5 * mm
         c.drawString(110 * mm, y, f"VAT ({vat_pct}%)")
-        c.drawRightString(w - 30 * mm, y, f"{data.get('vat_amount', '')} {currency}")
-    y -= 8 * mm
-    c.setFont(FONT_BOLD, 12)
+        c.drawRightString(w - 25 * mm, y, f"{data.get('vat_amount', '')} {currency}")
+    y -= 6 * mm
+    c.setFont(FONT_BOLD, 10)
     c.drawString(110 * mm, y, "Total")
-    c.drawRightString(w - 30 * mm, y, f"{data.get('total_amount', '')} {currency}")
+    c.drawRightString(w - 25 * mm, y, f"{data.get('total_amount', '')} {currency}")
 
     # Payment details
     payment = data.get("payment_block")
     if payment:
-        y -= 20 * mm
-        c.setFont(FONT_BOLD, 10)
-        c.drawString(30 * mm, y, "Payment Details")
-        _draw_multiline(c, 30 * mm, y - 6 * mm, payment, font=FONT, size=9)
+        y -= 15 * mm
+        c.setFont(FONT_BOLD, 8)
+        c.drawString(25 * mm, y, "Payment Details")
+        _draw_multiline(c, 25 * mm, y - 5 * mm, payment, font=FONT, size=7, line_height=3.5)
 
     # Footer
-    c.setFont(FONT, 8)
-    c.drawString(30 * mm, 20 * mm, str(data.get("footer_text", "")))
+    c.setFont(FONT, 6)
+    c.drawString(25 * mm, 15 * mm, str(data.get("footer_text", "")))
     c.save()
 
     buf.seek(0)
