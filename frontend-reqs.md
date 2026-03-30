@@ -166,7 +166,7 @@ The primary operational view. Maps to `GET /control/overview` + `GET /control/su
 - data-testid: `contractors-table`
 
 **Contractor Detail** (`/contractors/[id]`):
-- Tabs: **Placements** (default tab, all roles), **Profile**, **Templates** (admin only, CONTRACTOR-type invoice templates, card list + slide-over CRUD)
+- Tabs: **Placements** (default tab, all roles), **Profile**, **Templates** (admin only, CONTRACTOR-type invoice templates, card list + A4 invoice editor)
 - Placements tab: table of all contractor's placements (client, position, status badge, start, end) — clickable rows navigate to placement detail
 - Profile tab: all fields. Editable by contractor (own) and admin
 - Sections: Company Info, VAT Settings, Bank Details, Invoice Settings
@@ -181,13 +181,19 @@ Two subtabs: **Account** and **Invoice Settings**.
 - Company Info section: company name, registration number, country, default currency (editable)
 
 **Invoice Settings tab:**
-- Card list of CONTRACTOR-type invoice templates for the logged-in contractor.
-- Each card: name, status badge (DRAFT/ACTIVE/ARCHIVED), "Default" badge, company + prefix summary.
-- Click card → slide-over with full form: name, is_default toggle, company info, VAT, bank, invoice series, payment terms.
-- "New Template" button creates a DRAFT template.
-- Slide-over actions: Activate (DRAFT→ACTIVE), Archive (ACTIVE→ARCHIVED), Delete (DRAFT/ARCHIVED only).
-- Account tab Save button saves company info (PATCH to contractor profile). Template saves are per-template (PATCH to `/invoice-templates/:id`).
-- data-testid: `profile-page`, `tab-account`, `tab-invoice`, `btn-change-password`, `pwd-dialog`, `btn-new-template`, `tpl-slideover`
+- Card list of CONTRACTOR-type invoice templates (own + global shared).
+- Each card: title, code (mono), status badge, "Default" badge, company + prefix summary.
+- Click card → A4 invoice editor (same shared component as Settings and contractor detail).
+- "New Template" button → opens A4 editor for new DRAFT template.
+- A4 editor includes "Based on" dropdown to select a global parent template.
+- Container drops max-width when A4 editor is open to fit the 680px page.
+- Account tab Save button saves company info (PATCH to contractor profile). Template saves are per-template.
+- data-testid: `profile-page`, `tab-account`, `tab-invoice`, `btn-change-password`, `pwd-dialog`, `btn-new-template`
+
+**Shared A4 Invoice Editor** (`components/shared/invoice-template-editor.tsx`):
+Reusable component used by Settings, contractor detail Templates tab, and profile Invoice Settings tab. See Settings section (11) for full A4 editor spec.
+
+**API visibility:** Contractors see their own templates + global templates (contractor=None, client=None) from the `/invoice-templates` endpoint.
 
 ### 7. Placements (`/placements`)
 - Table: client, contractor, **title** (position), rates (admin/broker only — **hidden for contractor and client contact**), currency, dates, status (badge), approval flow
