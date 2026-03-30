@@ -417,9 +417,21 @@ class InvoiceTemplateViewSet(viewsets.ModelViewSet):
         return Response(InvoiceTemplateDetailSerializer(obj).data)
 
     @extend_schema(tags=["Invoice Templates"])
-    @action(detail=True, methods=["get"], url_path="sample-pdf", permission_classes=[])
+    @action(detail=True, methods=["get", "post"], url_path="sample-pdf", permission_classes=[])
     def sample_pdf(self, request, pk=None):
         from .pdf import generate_sample_pdf
         obj = self.get_object()
+        # POST: override template fields with request data for live preview
+        if request.method == "POST" and request.data:
+            for field in ["billing_address", "bank_name", "company_name", "vat_rate_percent",
+                          "vat_registered", "vat_number", "invoice_series_prefix",
+                          "next_invoice_number", "payment_terms_days", "default_currency", "country"]:
+                if field in request.data:
+                    val = request.data[field]
+                    if field == "next_invoice_number" and val is not None:
+                        val = int(val)
+                    if field == "payment_terms_days" and val is not None:
+                        val = int(val)
+                    setattr(obj, field, val)
         pdf_bytes = generate_sample_pdf(obj)
         return HttpResponse(pdf_bytes, content_type="application/pdf")
