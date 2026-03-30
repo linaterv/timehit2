@@ -7,12 +7,8 @@ Usage:
 import calendar
 from datetime import date, timedelta
 from decimal import Decimal
-from io import BytesIO
 from django.core.management.base import BaseCommand
 from django.core.files.base import ContentFile
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import mm
-from reportlab.pdfgen import canvas
 from apps.users.models import User
 from apps.clients.models import Client, ClientContact, BrokerClientAssignment
 from apps.contractors.models import ContractorProfile
@@ -20,6 +16,7 @@ from apps.placements.models import Placement, PlacementDocument
 from apps.invoices.models import InvoiceNotification
 from apps.timesheets.models import Timesheet, TimesheetEntry, TimesheetAttachment
 from apps.invoices.models import Invoice, InvoiceCorrectionLink, InvoiceTemplate
+from apps.invoices.pdf import generate_invoice_pdf
 
 D = Decimal
 PWD = "a"
@@ -37,109 +34,6 @@ def workdays_in_month(year, month, max_days=None):
         days = days[:max_days]
     return days
 
-
-MONTH_NAMES = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-
-
-def generate_invoice_pdf(inv):
-    """Generate a PDF for an invoice and attach it to the model."""
-    buf = BytesIO()
-    c = canvas.Canvas(buf, pagesize=A4)
-    w, h = A4
-    snap = inv.billing_snapshot
-    is_client = inv.invoice_type == "CLIENT_INVOICE"
-
-    # Header
-    c.setFont("Helvetica-Bold", 22)
-    c.drawString(30 * mm, h - 30 * mm, "INVOICE")
-    c.setFont("Helvetica", 10)
-    c.drawString(30 * mm, h - 38 * mm, f"No: {inv.invoice_number}")
-    c.drawString(30 * mm, h - 44 * mm, f"Date: {inv.issue_date}")
-    c.drawString(30 * mm, h - 50 * mm, f"Due: {inv.due_date}")
-    c.setFont("Helvetica-Bold", 10)
-    c.drawRightString(w - 30 * mm, h - 30 * mm, inv.status)
-    c.setFont("Helvetica", 9)
-    label = "CLIENT INVOICE" if is_client else "CONTRACTOR INVOICE"
-    c.drawRightString(w - 30 * mm, h - 38 * mm, label)
-
-    # From / To
-    y = h - 70 * mm
-    c.setFont("Helvetica-Bold", 11)
-    if is_client:
-        c.drawString(30 * mm, y, "From")
-        c.setFont("Helvetica", 10)
-        c.drawString(30 * mm, y - 6 * mm, "TimeHit Agency")
-        c.setFont("Helvetica-Bold", 11)
-        c.drawString(110 * mm, y, "Bill To")
-        c.setFont("Helvetica", 10)
-        c.drawString(110 * mm, y - 6 * mm, snap.get("client_company_name", ""))
-        c.drawString(110 * mm, y - 12 * mm, str(snap.get("client_billing_address", ""))[:60])
-        vat = snap.get("client_vat_number", "")
-        if vat:
-            c.drawString(110 * mm, y - 18 * mm, f"VAT: {vat}")
-    else:
-        c.drawString(30 * mm, y, "From")
-        c.setFont("Helvetica", 10)
-        c.drawString(30 * mm, y - 6 * mm, snap.get("contractor_company_name", inv.contractor.full_name))
-        c.drawString(30 * mm, y - 12 * mm, str(snap.get("contractor_billing_address", ""))[:60])
-        vat = snap.get("contractor_vat_number", "")
-        if vat:
-            c.drawString(30 * mm, y - 18 * mm, f"VAT: {vat}")
-        c.setFont("Helvetica-Bold", 11)
-        c.drawString(110 * mm, y, "Bill To")
-        c.setFont("Helvetica", 10)
-        c.drawString(110 * mm, y - 6 * mm, "TimeHit Agency")
-
-    # Table
-    y = h - 110 * mm
-    c.setFont("Helvetica-Bold", 10)
-    c.drawString(30 * mm, y, "Description")
-    c.drawString(110 * mm, y, "Hours")
-    c.drawString(130 * mm, y, "Rate")
-    c.drawRightString(w - 30 * mm, y, "Amount")
-    c.line(30 * mm, y - 2 * mm, w - 30 * mm, y - 2 * mm)
-
-    y -= 8 * mm
-    c.setFont("Helvetica", 10)
-    desc = f"Consulting — {inv.contractor.full_name} — {MONTH_NAMES[inv.month]} {inv.year}"
-    c.drawString(30 * mm, y, desc)
-    c.drawString(110 * mm, y, str(inv.total_hours))
-    c.drawString(130 * mm, y, f"{inv.hourly_rate} {inv.currency}")
-    c.drawRightString(w - 30 * mm, y, f"{inv.subtotal} {inv.currency}")
-
-    # Totals
-    y -= 15 * mm
-    c.line(110 * mm, y + 4 * mm, w - 30 * mm, y + 4 * mm)
-    c.setFont("Helvetica", 10)
-    c.drawString(110 * mm, y, "Subtotal")
-    c.drawRightString(w - 30 * mm, y, f"{inv.subtotal} {inv.currency}")
-    if inv.vat_rate_percent:
-        y -= 6 * mm
-        c.drawString(110 * mm, y, f"VAT ({inv.vat_rate_percent}%)")
-        c.drawRightString(w - 30 * mm, y, f"{inv.vat_amount} {inv.currency}")
-    y -= 8 * mm
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(110 * mm, y, "Total")
-    c.drawRightString(w - 30 * mm, y, f"{inv.total_amount} {inv.currency}")
-
-    # Bank details for contractor invoices
-    if not is_client:
-        y -= 20 * mm
-        c.setFont("Helvetica-Bold", 10)
-        c.drawString(30 * mm, y, "Payment Details")
-        c.setFont("Helvetica", 9)
-        c.drawString(30 * mm, y - 6 * mm, f"Bank: {snap.get('contractor_bank_name', '')}")
-        c.drawString(30 * mm, y - 12 * mm, f"IBAN: {snap.get('contractor_bank_iban', '')}")
-        c.drawString(30 * mm, y - 18 * mm, f"SWIFT: {snap.get('contractor_bank_swift', '')}")
-
-    # Footer
-    c.setFont("Helvetica", 8)
-    c.drawString(30 * mm, 20 * mm, f"Invoice {inv.invoice_number} | Generated by TimeHit Platform")
-    c.save()
-
-    buf.seek(0)
-    filename = f"{inv.invoice_number}.pdf"
-    inv.pdf_file.save(filename, ContentFile(buf.read()), save=True)
 
 
 def workdays_from(year, month, start_date):

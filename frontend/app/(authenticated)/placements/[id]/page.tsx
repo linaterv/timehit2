@@ -21,6 +21,17 @@ import type {
 
 type Tab = "timesheets" | "documents" | "settings";
 
+interface EditForm {
+  title: string;
+  client_rate: string;
+  contractor_rate: string;
+  currency: string;
+  start_date: string;
+  end_date: string;
+  payment_terms_client_days: string;
+  payment_terms_contractor_days: string;
+}
+
 interface SettingsForm {
   approval_flow: ApprovalFlow;
   require_timesheet_attachment: boolean;
@@ -93,6 +104,42 @@ export default function PlacementDetailPage() {
     `/placements/${id}`,
     [["placement", id]]
   );
+
+  // ---- Edit form (base fields for DRAFT) ----
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState<EditForm | null>(null);
+  const [editError, setEditError] = useState("");
+
+  const startEdit = () => {
+    if (!placement) return;
+    setEditForm({
+      title: placement.title ?? "",
+      client_rate: placement.client_rate ?? "",
+      contractor_rate: placement.contractor_rate ?? "",
+      currency: placement.currency ?? "EUR",
+      start_date: placement.start_date ?? "",
+      end_date: placement.end_date ?? "",
+      payment_terms_client_days: placement.payment_terms_client_days != null ? String(placement.payment_terms_client_days) : "",
+      payment_terms_contractor_days: placement.payment_terms_contractor_days != null ? String(placement.payment_terms_contractor_days) : "",
+    });
+    setEditError("");
+    setEditing(true);
+  };
+
+  const handleEditSave = async () => {
+    if (!editForm) return;
+    setEditError("");
+    try {
+      await settingsMut.mutateAsync({
+        ...editForm,
+        payment_terms_client_days: editForm.payment_terms_client_days ? parseInt(editForm.payment_terms_client_days, 10) : null,
+        payment_terms_contractor_days: editForm.payment_terms_contractor_days ? parseInt(editForm.payment_terms_contractor_days, 10) : null,
+      } as any);
+      setEditing(false);
+    } catch (err: any) {
+      setEditError(err?.message ?? "Failed to save");
+    }
+  };
 
   // ---- Settings form ----
   const [settings, setSettings] = useState<SettingsForm | null>(null);
@@ -226,7 +273,33 @@ export default function PlacementDetailPage() {
             )}
           </div>
           <div className="flex gap-2">
-            {canManagePlacement && isDraft && (
+            {canManagePlacement && (isDraft || isActive) && !editing && (
+              <button
+                data-testid="placement-edit-btn"
+                onClick={startEdit}
+                className="px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50"
+              >
+                Edit
+              </button>
+            )}
+            {editing && (
+              <>
+                <button
+                  onClick={() => setEditing(false)}
+                  className="px-4 py-2 border rounded text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleEditSave}
+                  disabled={settingsMut.isPending}
+                  className="px-4 py-2 bg-brand-600 text-white rounded text-sm hover:bg-brand-700 disabled:opacity-50"
+                >
+                  {settingsMut.isPending ? "Saving..." : "Save"}
+                </button>
+              </>
+            )}
+            {canManagePlacement && isDraft && !editing && (
               <>
                 <button
                   data-testid="placement-activate-btn"
@@ -276,83 +349,123 @@ export default function PlacementDetailPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div>
-            <span className="text-gray-500 block">{isContractor ? "End Client" : "Client"}</span>
-            <span className="font-medium">
-              {placement.client.company_name}
-            </span>
-          </div>
-          {!isContractor && (
-            <div>
-              <span className="text-gray-500 block">Contractor</span>
-              <span className="font-medium">
-                {placement.contractor.full_name}
-              </span>
-            </div>
-          )}
-          {placement.title && (
-            <div>
-              <span className="text-gray-500 block">Position</span>
-              <span className="font-medium">{placement.title}</span>
-            </div>
-          )}
-          {isAdminOrBroker && placement.client_rate && (
-            <div>
-              <span className="text-gray-500 block">Rates</span>
-              <span className={isActive ? "font-medium text-gray-400" : "font-medium"}>
-                {formatCurrency(placement.client_rate, placement.currency)} /{" "}
-                {formatCurrency(placement.contractor_rate, placement.currency)}{" "}
-                {placement.currency}
-              </span>
-            </div>
-          )}
-          {!isContractor && (
-            <div>
-              <span className="text-gray-500 block">Approval Flow</span>
-              <span className="font-medium">
-                {placement.approval_flow.replace(/_/g, " ")}
-              </span>
-            </div>
-          )}
-          <div>
-            <span className="text-gray-500 block">Start Date</span>
-            <span className="font-medium">
-              {formatDate(placement.start_date)}
-            </span>
-          </div>
-          <div>
-            <span className="text-gray-500 block">End Date</span>
-            <span className="font-medium">
-              {formatDate(placement.end_date)}
-            </span>
-          </div>
-          {isAdminOrBroker && (placement.payment_terms_client_days != null || placement.payment_terms_contractor_days != null) && (
-            <>
-              {placement.payment_terms_client_days != null && (
-                <div>
-                  <span className="text-gray-500 block">Client Payment Terms</span>
-                  <span className="font-medium">{placement.payment_terms_client_days} days</span>
-                </div>
+        {editing && editForm ? (
+          <div className="space-y-3">
+            {editError && <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{editError}</div>}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div>
+                <label className="text-gray-500 block mb-1">Position / Title</label>
+                <input type="text" value={editForm.title}
+                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                  className="w-full border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
+              </div>
+              {isDraft && isAdminOrBroker && (
+                <>
+                  <div>
+                    <label className="text-gray-500 block mb-1">Client Rate</label>
+                    <input type="text" value={editForm.client_rate}
+                      onChange={(e) => setEditForm({ ...editForm, client_rate: e.target.value })}
+                      className="w-full border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
+                  </div>
+                  <div>
+                    <label className="text-gray-500 block mb-1">Contractor Rate</label>
+                    <input type="text" value={editForm.contractor_rate}
+                      onChange={(e) => setEditForm({ ...editForm, contractor_rate: e.target.value })}
+                      className="w-full border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
+                  </div>
+                  <div>
+                    <label className="text-gray-500 block mb-1">Currency</label>
+                    <input type="text" value={editForm.currency}
+                      onChange={(e) => setEditForm({ ...editForm, currency: e.target.value })}
+                      className="w-full border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
+                  </div>
+                </>
               )}
-              {placement.payment_terms_contractor_days != null && (
-                <div>
-                  <span className="text-gray-500 block">Contractor Payment Terms</span>
-                  <span className="font-medium">{placement.payment_terms_contractor_days} days</span>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-        {canManagePlacement && (isDraft || isActive) && (
-          <div className="mt-4 pt-4 border-t">
-            <button
-              data-testid="placement-edit-btn"
-              onClick={() => { setTab("settings"); initSettings(); }}
-              className="text-sm text-brand-600 hover:underline"
-            >
-              Edit placement settings...
-            </button>
+              <div>
+                <label className="text-gray-500 block mb-1">Start Date</label>
+                <input type="date" value={editForm.start_date}
+                  disabled={isActive}
+                  onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
+                  className="w-full border rounded px-2 py-1.5 text-sm disabled:bg-gray-50 disabled:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-600" />
+              </div>
+              <div>
+                <label className="text-gray-500 block mb-1">End Date</label>
+                <input type="date" value={editForm.end_date}
+                  onChange={(e) => setEditForm({ ...editForm, end_date: e.target.value })}
+                  className="w-full border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
+              </div>
+              <div>
+                <label className="text-gray-500 block mb-1">Client Payment Terms (days)</label>
+                <input type="number" value={editForm.payment_terms_client_days}
+                  onChange={(e) => setEditForm({ ...editForm, payment_terms_client_days: e.target.value })}
+                  className="w-full border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
+              </div>
+              <div>
+                <label className="text-gray-500 block mb-1">Contractor Payment Terms (days)</label>
+                <input type="number" value={editForm.payment_terms_contractor_days}
+                  onChange={(e) => setEditForm({ ...editForm, payment_terms_contractor_days: e.target.value })}
+                  className="w-full border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div>
+              <span className="text-gray-500 block">{isContractor ? "End Client" : "Client"}</span>
+              <span className="font-medium">{placement.client.company_name}</span>
+            </div>
+            {!isContractor && (
+              <div>
+                <span className="text-gray-500 block">Contractor</span>
+                <span className="font-medium">{placement.contractor.full_name}</span>
+              </div>
+            )}
+            {placement.title && (
+              <div>
+                <span className="text-gray-500 block">Position</span>
+                <span className="font-medium">{placement.title}</span>
+              </div>
+            )}
+            {isAdminOrBroker && placement.client_rate && (
+              <div>
+                <span className="text-gray-500 block">Rates</span>
+                <span className={isActive ? "font-medium text-gray-400" : "font-medium"}>
+                  {formatCurrency(placement.client_rate, placement.currency)} /{" "}
+                  {formatCurrency(placement.contractor_rate, placement.currency)}{" "}
+                  {placement.currency}
+                </span>
+              </div>
+            )}
+            {!isContractor && (
+              <div>
+                <span className="text-gray-500 block">Approval Flow</span>
+                <span className="font-medium">{placement.approval_flow.replace(/_/g, " ")}</span>
+              </div>
+            )}
+            <div>
+              <span className="text-gray-500 block">Start Date</span>
+              <span className="font-medium">{formatDate(placement.start_date)}</span>
+            </div>
+            <div>
+              <span className="text-gray-500 block">End Date</span>
+              <span className="font-medium">{formatDate(placement.end_date)}</span>
+            </div>
+            {isAdminOrBroker && (
+              <>
+                {placement.payment_terms_client_days != null && (
+                  <div>
+                    <span className="text-gray-500 block">Client Payment Terms</span>
+                    <span className="font-medium">{placement.payment_terms_client_days} days</span>
+                  </div>
+                )}
+                {placement.payment_terms_contractor_days != null && (
+                  <div>
+                    <span className="text-gray-500 block">Contractor Payment Terms</span>
+                    <span className="font-medium">{placement.payment_terms_contractor_days} days</span>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
       </div>

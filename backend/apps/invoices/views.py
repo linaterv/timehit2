@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 from django.db import models, transaction
 from django.db.models import F
-from django.http import FileResponse
+from django.http import FileResponse, HttpResponse
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.views import APIView
@@ -415,3 +415,11 @@ class InvoiceTemplateViewSet(viewsets.ModelViewSet):
         obj.status = InvoiceTemplate.Status.ARCHIVED
         obj.save()
         return Response(InvoiceTemplateDetailSerializer(obj).data)
+
+    @extend_schema(tags=["Invoice Templates"])
+    @action(detail=True, methods=["get"], url_path="sample-pdf")
+    def sample_pdf(self, request, pk=None):
+        from .pdf import generate_sample_pdf
+        obj = self.get_object()
+        pdf_bytes = generate_sample_pdf(obj)
+        return HttpResponse(pdf_bytes, content_type="application/pdf")

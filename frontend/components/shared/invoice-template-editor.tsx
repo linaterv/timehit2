@@ -180,6 +180,7 @@ export function InvoiceTemplateA4({
         {editing?.status === "DRAFT" && <button onClick={() => onAction("activate")} className="px-3 py-1 text-xs rounded bg-green-50 text-green-700 hover:bg-green-100">Activate</button>}
         {editing?.status === "ACTIVE" && <button onClick={() => onAction("archive")} className="px-3 py-1 text-xs rounded bg-gray-100 text-gray-600 hover:bg-gray-200">Archive</button>}
         {editing && editing.status !== "ACTIVE" && <button onClick={onDelete} className="px-3 py-1 text-xs rounded bg-red-50 text-red-600 hover:bg-red-100">Delete</button>}
+        {editing && <a href={`/api/v1/invoice-templates/${editing.id}/sample-pdf`} target="_blank" rel="noopener" className="px-3 py-1 text-xs rounded border border-gray-300 text-gray-600 hover:bg-gray-50">Preview PDF</a>}
         <button onClick={onSave} disabled={saving}
           className="px-4 py-1.5 bg-brand-600 text-white rounded text-sm hover:bg-brand-700 disabled:opacity-50">
           {saving ? "Saving..." : "Save"}
