@@ -202,7 +202,7 @@ export default function ContractorDetailPage() {
   const disabled = !editing;
 
   return (
-    <div data-testid="contractor-detail" className="space-y-6 max-w-3xl">
+    <div data-testid="contractor-detail" className={`space-y-6 ${tplShowEditor ? "" : "max-w-3xl"}`}>
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-gray-900">{contractor.full_name}</h2>
         <div className="flex gap-2">
