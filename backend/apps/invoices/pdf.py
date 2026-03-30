@@ -5,17 +5,28 @@ generate_pdf(data) — renders a PDF from a plain dict, returns bytes.
 generate_sample_pdf(template) — builds sample data from an InvoiceTemplate, returns PDF bytes.
 generate_invoice_pdf(invoice) — builds data from an Invoice model, saves PDF to invoice.pdf_file.
 """
+import os
 from datetime import date, timedelta
 from decimal import Decimal
 from io import BytesIO
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+
+# Register DejaVu Sans (supports Lithuanian, Polish, etc.)
+_FONT_DIR = os.path.join(os.path.dirname(__file__), "fonts")
+pdfmetrics.registerFont(TTFont("DejaVu", os.path.join(_FONT_DIR, "DejaVuSans.ttf")))
+pdfmetrics.registerFont(TTFont("DejaVu-Bold", os.path.join(_FONT_DIR, "DejaVuSans-Bold.ttf")))
+
+FONT = "DejaVu"
+FONT_BOLD = "DejaVu-Bold"
 
 MONTH_NAMES = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 
-def _draw_multiline(c, x, y, text, font="Helvetica", size=10, line_height=5):
+def _draw_multiline(c, x, y, text, font=FONT, size=10, line_height=5):
     """Draw multiline text, return y after last line."""
     c.setFont(font, size)
     for line in str(text).split("\n"):
@@ -41,30 +52,30 @@ def generate_pdf(data: dict) -> bytes:
     w, h = A4
 
     # Header
-    c.setFont("Helvetica-Bold", 22)
+    c.setFont(FONT_BOLD, 22)
     c.drawString(30 * mm, h - 30 * mm, "INVOICE")
-    c.setFont("Helvetica", 10)
+    c.setFont(FONT, 10)
     c.drawString(30 * mm, h - 38 * mm, f"No: {data.get('invoice_number', '')}")
     c.drawString(30 * mm, h - 44 * mm, f"Date: {data.get('issue_date', '')}")
     c.drawString(30 * mm, h - 50 * mm, f"Due: {data.get('due_date', '')}")
-    c.setFont("Helvetica-Bold", 10)
+    c.setFont(FONT_BOLD, 10)
     c.drawRightString(w - 30 * mm, h - 30 * mm, str(data.get("status", "")))
-    c.setFont("Helvetica", 9)
+    c.setFont(FONT, 9)
     c.drawRightString(w - 30 * mm, h - 38 * mm, str(data.get("invoice_type", "")))
 
     # From / To
     y = h - 70 * mm
-    c.setFont("Helvetica-Bold", 11)
+    c.setFont(FONT_BOLD, 11)
     c.drawString(30 * mm, y, "From")
     y_from = _draw_multiline(c, 30 * mm, y - 6 * mm, data.get("from_block", ""))
 
-    c.setFont("Helvetica-Bold", 11)
+    c.setFont(FONT_BOLD, 11)
     c.drawString(110 * mm, h - 70 * mm, "Bill To")
     _draw_multiline(c, 110 * mm, h - 76 * mm, data.get("to_block", ""))
 
     # Table
     y = h - 110 * mm
-    c.setFont("Helvetica-Bold", 10)
+    c.setFont(FONT_BOLD, 10)
     c.drawString(30 * mm, y, "Description")
     c.drawString(110 * mm, y, "Hours")
     c.drawString(130 * mm, y, "Rate")
@@ -72,7 +83,7 @@ def generate_pdf(data: dict) -> bytes:
     c.line(30 * mm, y - 2 * mm, w - 30 * mm, y - 2 * mm)
 
     y -= 8 * mm
-    c.setFont("Helvetica", 10)
+    c.setFont(FONT, 10)
     currency = data.get("currency", "EUR")
     c.drawString(30 * mm, y, str(data.get("description", "")))
     c.drawString(110 * mm, y, str(data.get("total_hours", "")))
@@ -82,7 +93,7 @@ def generate_pdf(data: dict) -> bytes:
     # Totals
     y -= 15 * mm
     c.line(110 * mm, y + 4 * mm, w - 30 * mm, y + 4 * mm)
-    c.setFont("Helvetica", 10)
+    c.setFont(FONT, 10)
     c.drawString(110 * mm, y, "Subtotal")
     c.drawRightString(w - 30 * mm, y, f"{data.get('subtotal', '')} {currency}")
     vat_pct = data.get("vat_rate_percent")
@@ -91,7 +102,7 @@ def generate_pdf(data: dict) -> bytes:
         c.drawString(110 * mm, y, f"VAT ({vat_pct}%)")
         c.drawRightString(w - 30 * mm, y, f"{data.get('vat_amount', '')} {currency}")
     y -= 8 * mm
-    c.setFont("Helvetica-Bold", 12)
+    c.setFont(FONT_BOLD, 12)
     c.drawString(110 * mm, y, "Total")
     c.drawRightString(w - 30 * mm, y, f"{data.get('total_amount', '')} {currency}")
 
@@ -99,12 +110,12 @@ def generate_pdf(data: dict) -> bytes:
     payment = data.get("payment_block")
     if payment:
         y -= 20 * mm
-        c.setFont("Helvetica-Bold", 10)
+        c.setFont(FONT_BOLD, 10)
         c.drawString(30 * mm, y, "Payment Details")
-        _draw_multiline(c, 30 * mm, y - 6 * mm, payment, font="Helvetica", size=9)
+        _draw_multiline(c, 30 * mm, y - 6 * mm, payment, font=FONT, size=9)
 
     # Footer
-    c.setFont("Helvetica", 8)
+    c.setFont(FONT, 8)
     c.drawString(30 * mm, 20 * mm, str(data.get("footer_text", "")))
     c.save()
 
