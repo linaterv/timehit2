@@ -99,7 +99,7 @@ export default function ContractorDetailPage() {
     `/invoice-templates?template_type=CONTRACTOR&contractor_id=${contractor?.user_id}`,
     !!contractor?.user_id && user?.role === "ADMIN"
   );
-  const templates = templatesQ.data?.data ?? [];
+  const templates = (templatesQ.data?.data ?? []).filter((t) => !!t.contractor || !!t.client);
 
   const globalTplQ = useApiQuery<{ data: InvoiceTemplate[] }>(
     ["invoice-templates", "global", "CONTRACTOR"],

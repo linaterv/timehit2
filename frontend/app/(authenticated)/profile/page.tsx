@@ -50,7 +50,7 @@ export default function ProfilePage() {
   const templatesQ = useApiQuery<{ data: InvoiceTemplate[] }>(
     ["invoice-templates", "my"], `/invoice-templates?template_type=CONTRACTOR`, !!user
   );
-  const templates = templatesQ.data?.data ?? [];
+  const templates = (templatesQ.data?.data ?? []).filter((t) => !!t.contractor || !!t.client);
 
   const globalTplQ = useApiQuery<{ data: InvoiceTemplate[] }>(
     ["invoice-templates", "global", "CONTRACTOR"],
