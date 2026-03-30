@@ -14,7 +14,10 @@ const STATUS_COLORS: Record<string, string> = {
 const TYPE_COLORS: Record<string, string> = {
   CONTRACTOR: "bg-blue-50 text-blue-700",
   CLIENT: "bg-purple-50 text-purple-700",
-  AGENCY: "bg-amber-50 text-amber-700",
+};
+const TYPE_LABELS: Record<string, string> = {
+  CONTRACTOR: "Contractor → Agency",
+  CLIENT: "Agency → Client",
 };
 
 interface TplForm {
@@ -170,9 +173,8 @@ export default function SettingsPage() {
           <div className="flex items-center gap-3">
             <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="px-3 py-2 border rounded text-sm">
               <option value="">All Types</option>
-              <option value="CONTRACTOR">Contractor</option>
-              <option value="CLIENT">Client</option>
-              <option value="AGENCY">Agency</option>
+              <option value="CONTRACTOR">Contractor → Agency</option>
+              <option value="CLIENT">Agency → Client</option>
             </select>
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 border rounded text-sm">
               <option value="">All Statuses</option>
@@ -195,9 +197,10 @@ export default function SettingsPage() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium text-gray-900">{t.title}</span>
                     {t.code && <span className="text-xs text-gray-400 font-mono">{t.code}</span>}
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${TYPE_COLORS[t.template_type]}`}>{t.template_type}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${TYPE_COLORS[t.template_type]}`}>{TYPE_LABELS[t.template_type] ?? t.template_type}</span>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[t.status]}`}>{t.status}</span>
                     {t.is_default && <span className="text-xs px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 font-medium">Default</span>}
+                    {!t.contractor && !t.client && <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-medium">Global</span>}
                   </div>
                   <p className="text-xs text-gray-500 mt-1 truncate">
                     {t.contractor?.full_name || t.client?.company_name || "No owner"}{" · "}{t.company_name || "No company"}
@@ -219,19 +222,23 @@ export default function SettingsPage() {
               <Field value={form.code} onChange={(v) => u("code", v)} placeholder="CODE" className="text-xs w-20 uppercase" mono />
             </div>
             {!isNew && (
-              <select value={form.template_type} disabled className="px-2 py-1 border rounded text-xs bg-gray-50">{["CONTRACTOR","CLIENT","AGENCY"].map((t)=><option key={t}>{t}</option>)}</select>
+              <span className="px-2 py-1 border rounded text-xs bg-gray-50">{form.template_type === "CONTRACTOR" ? "Contractor → Agency" : "Agency → Client"}</span>
             )}
             {isNew && (
               <select value={form.template_type} onChange={(e) => u("template_type", e.target.value)} className="px-2 py-1 border rounded text-xs">
                 <option value="CONTRACTOR">Contractor → Agency</option>
                 <option value="CLIENT">Agency → Client</option>
-                <option value="AGENCY">Agency (internal)</option>
               </select>
             )}
             <label className="flex items-center gap-1.5 text-xs text-gray-600">
               <input type="checkbox" checked={form.is_default} onChange={(e) => u("is_default", e.target.checked)} className="rounded" />
               Default
             </label>
+            {(!editing?.contractor && !editing?.client || isNew) && (
+              <span className="flex items-center gap-1.5 text-xs px-2 py-1 rounded border border-emerald-200 bg-emerald-50 text-emerald-700 font-medium">
+                Global — shared with all {form.template_type === "CONTRACTOR" ? "contractors" : "clients"}
+              </span>
+            )}
             <div className="flex-1" />
             {editing?.status === "DRAFT" && <button onClick={() => handleAction("activate")} className="px-3 py-1 text-xs rounded bg-green-50 text-green-700 hover:bg-green-100">Activate</button>}
             {editing?.status === "ACTIVE" && <button onClick={() => handleAction("archive")} className="px-3 py-1 text-xs rounded bg-gray-100 text-gray-600 hover:bg-gray-200">Archive</button>}
