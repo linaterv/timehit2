@@ -4,57 +4,10 @@ import { useState, useEffect } from "react";
 import { useApiQuery, useApiMutation } from "@/hooks/use-api";
 import { useAuth } from "@/hooks/use-auth";
 import { api } from "@/lib/api";
-import { SlideOver } from "@/components/forms/slide-over";
+import {
+  InvoiceTemplateA4, TplForm, emptyTplForm, tplToForm, STATUS_COLORS,
+} from "@/components/shared/invoice-template-editor";
 import type { ContractorProfile, InvoiceTemplate } from "@/types/api";
-
-const STATUS_COLORS: Record<string, string> = {
-  DRAFT: "bg-gray-100 text-gray-600",
-  ACTIVE: "bg-green-50 text-green-700",
-  ARCHIVED: "bg-gray-100 text-gray-400",
-};
-
-interface TemplateFormData {
-  title: string;
-  code: string;
-  company_name: string;
-  registration_number: string;
-  billing_address: string;
-  country: string;
-  default_currency: string;
-  vat_registered: boolean | null;
-  vat_number: string;
-  vat_rate_percent: string;
-  bank_name: string;
-  bank_account_iban: string;
-  bank_swift_bic: string;
-  invoice_series_prefix: string;
-  next_invoice_number: number | null;
-  payment_terms_days: number | null;
-  is_default: boolean;
-}
-
-function emptyTemplateForm(): TemplateFormData {
-  return {
-    title: "", code: "", company_name: "", registration_number: "", billing_address: "",
-    country: "", default_currency: "EUR", vat_registered: false, vat_number: "",
-    vat_rate_percent: "", bank_name: "", bank_account_iban: "", bank_swift_bic: "",
-    invoice_series_prefix: "", next_invoice_number: 1, payment_terms_days: null,
-    is_default: false,
-  };
-}
-
-function templateToForm(t: InvoiceTemplate): TemplateFormData {
-  return {
-    title: t.title, code: t.code, company_name: t.company_name, registration_number: t.registration_number,
-    billing_address: t.billing_address, country: t.country, default_currency: t.default_currency,
-    vat_registered: t.vat_registered, vat_number: t.vat_number,
-    vat_rate_percent: t.vat_rate_percent ?? "", bank_name: t.bank_name,
-    bank_account_iban: t.bank_account_iban, bank_swift_bic: t.bank_swift_bic,
-    invoice_series_prefix: t.invoice_series_prefix,
-    next_invoice_number: t.next_invoice_number, payment_terms_days: t.payment_terms_days,
-    is_default: t.is_default,
-  };
-}
 
 const inputCls = "w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600";
 
@@ -78,10 +31,11 @@ export default function ProfilePage() {
   const [pwdSuccess, setPwdSuccess] = useState(false);
   const [pwdLoading, setPwdLoading] = useState(false);
 
-  // Template slide-over state
-  const [tplOpen, setTplOpen] = useState(false);
+  // Template A4 editor state
+  const [tplShowEditor, setTplShowEditor] = useState(false);
+  const [tplIsNew, setTplIsNew] = useState(false);
   const [tplEditing, setTplEditing] = useState<InvoiceTemplate | null>(null);
-  const [tplForm, setTplForm] = useState<TemplateFormData>(emptyTemplateForm());
+  const [tplForm, setTplForm] = useState<TplForm>(emptyTplForm("CONTRACTOR"));
   const [tplError, setTplError] = useState("");
   const [tplSaving, setTplSaving] = useState(false);
 
@@ -97,6 +51,13 @@ export default function ProfilePage() {
     ["invoice-templates", "my"], `/invoice-templates?template_type=CONTRACTOR`, !!user
   );
   const templates = templatesQ.data?.data ?? [];
+
+  const globalTplQ = useApiQuery<{ data: InvoiceTemplate[] }>(
+    ["invoice-templates", "global", "CONTRACTOR"],
+    `/invoice-templates?template_type=CONTRACTOR&status=ACTIVE`,
+    !!user
+  );
+  const globalTemplates = (globalTplQ.data?.data ?? []).filter((t) => !t.contractor && !t.client);
 
   useEffect(() => {
     if (contractor) {
@@ -127,45 +88,48 @@ export default function ProfilePage() {
     finally { setPwdLoading(false); }
   };
 
-  const openNewTemplate = () => {
-    setTplEditing(null); setTplForm(emptyTemplateForm()); setTplError(""); setTplOpen(true);
+  // Template handlers
+  const openNewTpl = () => { setTplEditing(null); setTplIsNew(true); setTplForm(emptyTplForm("CONTRACTOR")); setTplError(""); setTplShowEditor(true); };
+  const openEditTpl = async (t: InvoiceTemplate) => {
+    setTplError("");
+    try {
+      const detail = await api<InvoiceTemplate>(`/invoice-templates/${t.id}`);
+      setTplEditing(detail); setTplIsNew(false); setTplForm(tplToForm(detail));
+    } catch { setTplEditing(t); setTplIsNew(false); setTplForm(tplToForm(t)); }
+    setTplShowEditor(true);
   };
-  const openEditTemplate = (t: InvoiceTemplate) => {
-    setTplEditing(t); setTplForm(templateToForm(t)); setTplError(""); setTplOpen(true);
-  };
-
+  const closeTpl = () => { setTplShowEditor(false); setTplEditing(null); setTplIsNew(false); };
   const handleTplSave = async () => {
     setTplError(""); setTplSaving(true);
     try {
       if (tplEditing) {
-        await api(`/invoice-templates/${tplEditing.id}`, { method: "PATCH", body: JSON.stringify(tplForm) });
+        const { template_type: _tt, ...rest } = tplForm;
+        await api(`/invoice-templates/${tplEditing.id}`, { method: "PATCH", body: JSON.stringify(rest) });
       } else {
         await api("/invoice-templates", { method: "POST", body: JSON.stringify({ ...tplForm, template_type: "CONTRACTOR" }) });
       }
-      setTplOpen(false); templatesQ.refetch();
+      closeTpl(); templatesQ.refetch();
     } catch (err: unknown) { setTplError((err as { message?: string })?.message ?? "Failed to save"); }
     finally { setTplSaving(false); }
   };
-
-  const handleTplDelete = async (t: InvoiceTemplate) => {
-    if (!confirm(`Delete template "${t.title}"?`)) return;
-    try { await api(`/invoice-templates/${t.id}`, { method: "DELETE" }); templatesQ.refetch(); setTplOpen(false); }
-    catch (err: unknown) { alert((err as { message?: string })?.message ?? "Failed to delete"); }
+  const handleTplDelete = async () => {
+    if (!tplEditing || !confirm(`Delete "${tplEditing.title}"?`)) return;
+    try { await api(`/invoice-templates/${tplEditing.id}`, { method: "DELETE" }); closeTpl(); templatesQ.refetch(); }
+    catch (err: unknown) { alert((err as { message?: string })?.message ?? "Failed"); }
   };
-
-  const handleTplAction = async (t: InvoiceTemplate, action: "activate" | "archive") => {
-    try { await api(`/invoice-templates/${t.id}/${action}`, { method: "POST" }); templatesQ.refetch(); setTplOpen(false); }
-    catch (err: unknown) { alert((err as { message?: string })?.message ?? `Failed to ${action}`); }
+  const handleTplAction = async (action: string) => {
+    if (!tplEditing) return;
+    try { await api(`/invoice-templates/${tplEditing.id}/${action}`, { method: "POST" }); closeTpl(); templatesQ.refetch(); }
+    catch (err: unknown) { alert((err as { message?: string })?.message ?? "Failed"); }
   };
-
-  const updateTpl = <K extends keyof TemplateFormData>(k: K, v: TemplateFormData[K]) => setTplForm((p) => ({ ...p, [k]: v }));
+  const updateTplForm = <K extends keyof TplForm>(k: K, v: TplForm[K]) => setTplForm((p) => ({ ...p, [k]: v }));
 
   if (!profileId) return <div data-testid="profile-no-contractor" className="text-center py-8 text-gray-400">No contractor profile linked to your account.</div>;
   if (isLoading) return <div data-testid="profile-loading" className="text-center py-8 text-gray-400">Loading...</div>;
   if (!contractor) return <div data-testid="profile-not-found" className="text-center py-8 text-gray-400">Profile not found</div>;
 
   return (
-    <div data-testid="profile-page" className="space-y-6 max-w-3xl">
+    <div data-testid="profile-page" className={`space-y-6 ${tplShowEditor ? "" : "max-w-3xl"}`}>
       <h2 className="text-xl font-semibold text-gray-900">{contractor.full_name}</h2>
 
       {/* Subtabs */}
@@ -238,12 +202,12 @@ export default function ProfilePage() {
         </>
       )}
 
-      {/* ── INVOICE SETTINGS TAB (Template List) ── */}
-      {tab === "invoice" && (
+      {/* ── INVOICE SETTINGS TAB — Template List ── */}
+      {tab === "invoice" && !tplShowEditor && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Invoice Templates</h3>
-            <button data-testid="btn-new-template" onClick={openNewTemplate}
+            <button data-testid="btn-new-template" onClick={openNewTpl}
               className="px-3 py-1.5 bg-brand-600 text-white rounded text-sm hover:bg-brand-700">
               New Template
             </button>
@@ -255,7 +219,7 @@ export default function ProfilePage() {
 
           {templates.map((t) => (
             <div key={t.id} data-testid={`tpl-card-${t.id}`}
-              onClick={() => openEditTemplate(t)}
+              onClick={() => openEditTpl(t)}
               className="bg-surface border rounded-lg p-4 flex items-center justify-between cursor-pointer hover:border-brand-300 transition-colors">
               <div>
                 <div className="flex items-center gap-2">
@@ -265,7 +229,7 @@ export default function ProfilePage() {
                   {t.is_default && <span className="text-xs px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 font-medium">Default</span>}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  {t.company_name || "No company"} &middot; {t.invoice_series_prefix || "No prefix"} &middot; {t.country || "—"}
+                  {t.company_name || "No company"} &middot; {t.invoice_series_prefix || "No prefix"}
                 </p>
               </div>
               <span className="text-gray-400 text-sm">&rsaquo;</span>
@@ -274,130 +238,16 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* ── TEMPLATE SLIDE-OVER ── */}
-      <SlideOver open={tplOpen} onClose={() => setTplOpen(false)}
-        title={tplEditing ? `Edit: ${tplEditing.title}` : "New Template"}
-        onSave={handleTplSave} saving={tplSaving} testId="tpl-slideover">
-        <div className="space-y-4">
-          {tplError && <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{tplError}</div>}
-
-          {/* Status actions */}
-          {tplEditing && (
-            <div className="flex gap-2">
-              {tplEditing.status === "DRAFT" && (
-                <button onClick={() => handleTplAction(tplEditing, "activate")}
-                  className="px-3 py-1 text-xs font-medium rounded bg-green-50 text-green-700 hover:bg-green-100">Activate</button>
-              )}
-              {tplEditing.status === "ACTIVE" && (
-                <button onClick={() => handleTplAction(tplEditing, "archive")}
-                  className="px-3 py-1 text-xs font-medium rounded bg-gray-100 text-gray-600 hover:bg-gray-200">Archive</button>
-              )}
-              {tplEditing.status !== "ACTIVE" && (
-                <button onClick={() => handleTplDelete(tplEditing)}
-                  className="px-3 py-1 text-xs font-medium rounded bg-red-50 text-red-600 hover:bg-red-100">Delete</button>
-              )}
-            </div>
-          )}
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-            <input type="text" value={tplForm.title} onChange={(e) => updateTpl("title", e.target.value)} className={inputCls} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Code</label>
-            <input type="text" value={tplForm.code} onChange={(e) => updateTpl("code", e.target.value)} className={inputCls} placeholder="e.g. DEFAULT, LT, EN" />
-          </div>
-
-          <div className="flex items-center gap-3">
-            <label className="text-sm font-medium text-gray-700">Default Template</label>
-            <button type="button" role="switch" aria-checked={tplForm.is_default}
-              onClick={() => updateTpl("is_default", !tplForm.is_default)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${tplForm.is_default ? "bg-brand-600" : "bg-gray-300"}`}>
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${tplForm.is_default ? "translate-x-6" : "translate-x-1"}`} />
-            </button>
-          </div>
-
-          <hr />
-          <h4 className="text-xs font-semibold text-gray-500 uppercase">Company</h4>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Company Name</label>
-              <input type="text" value={tplForm.company_name} onChange={(e) => updateTpl("company_name", e.target.value)} className={inputCls} />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Reg. Number</label>
-              <input type="text" value={tplForm.registration_number} onChange={(e) => updateTpl("registration_number", e.target.value)} className={inputCls} />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Country</label>
-              <input type="text" value={tplForm.country} onChange={(e) => updateTpl("country", e.target.value)} className={inputCls} />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Currency</label>
-              <input type="text" value={tplForm.default_currency} onChange={(e) => updateTpl("default_currency", e.target.value)} className={inputCls} />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-xs text-gray-600 mb-1">Billing Address</label>
-              <textarea value={tplForm.billing_address} onChange={(e) => updateTpl("billing_address", e.target.value)} rows={2} className={inputCls} />
-            </div>
-          </div>
-
-          <hr />
-          <h4 className="text-xs font-semibold text-gray-500 uppercase">VAT</h4>
-          <div className="flex items-center gap-3">
-            <label className="text-xs text-gray-600">VAT Registered</label>
-            <button type="button" role="switch" aria-checked={!!tplForm.vat_registered}
-              onClick={() => updateTpl("vat_registered", !tplForm.vat_registered)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${tplForm.vat_registered ? "bg-brand-600" : "bg-gray-300"}`}>
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${tplForm.vat_registered ? "translate-x-6" : "translate-x-1"}`} />
-            </button>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">VAT Number</label>
-              <input type="text" value={tplForm.vat_number} onChange={(e) => updateTpl("vat_number", e.target.value)} className={inputCls} />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">VAT Rate (%)</label>
-              <input type="text" value={tplForm.vat_rate_percent} onChange={(e) => updateTpl("vat_rate_percent", e.target.value)} className={inputCls} />
-            </div>
-          </div>
-
-          <hr />
-          <h4 className="text-xs font-semibold text-gray-500 uppercase">Bank</h4>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Bank Name</label>
-              <input type="text" value={tplForm.bank_name} onChange={(e) => updateTpl("bank_name", e.target.value)} className={inputCls} />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">IBAN</label>
-              <input type="text" value={tplForm.bank_account_iban} onChange={(e) => updateTpl("bank_account_iban", e.target.value)} className={inputCls} />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">SWIFT / BIC</label>
-              <input type="text" value={tplForm.bank_swift_bic} onChange={(e) => updateTpl("bank_swift_bic", e.target.value)} className={inputCls} />
-            </div>
-          </div>
-
-          <hr />
-          <h4 className="text-xs font-semibold text-gray-500 uppercase">Invoice Series</h4>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Series Prefix</label>
-              <input type="text" value={tplForm.invoice_series_prefix} onChange={(e) => updateTpl("invoice_series_prefix", e.target.value)} className={inputCls} />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Next Number</label>
-              <input type="number" value={tplForm.next_invoice_number ?? ""} onChange={(e) => updateTpl("next_invoice_number", e.target.value ? parseInt(e.target.value, 10) : null)} className={inputCls} />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Payment Terms (days)</label>
-              <input type="number" value={tplForm.payment_terms_days ?? ""} onChange={(e) => updateTpl("payment_terms_days", e.target.value ? parseInt(e.target.value, 10) : null)} className={inputCls} />
-            </div>
-          </div>
-        </div>
-      </SlideOver>
+      {/* ── INVOICE SETTINGS TAB — A4 Editor ── */}
+      {tab === "invoice" && tplShowEditor && (
+        <InvoiceTemplateA4
+          form={tplForm} onChange={updateTplForm} isNew={tplIsNew} editing={tplEditing}
+          onSave={handleTplSave} onDelete={handleTplDelete} onAction={handleTplAction} onClose={closeTpl}
+          saving={tplSaving} error={tplError}
+          showTypeSelector={false}
+          globalTemplates={globalTemplates}
+        />
+      )}
 
       {/* ── CHANGE PASSWORD DIALOG ── */}
       {pwdOpen && (
