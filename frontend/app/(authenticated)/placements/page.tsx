@@ -339,7 +339,7 @@ export default function PlacementsPage() {
             >
               <option value="">All Contractors</option>
               {contractors.map((c) => (
-                <option key={c.id} value={c.id}>
+                <option key={c.id} value={c.user_id}>
                   {c.full_name}
                 </option>
               ))}
@@ -423,7 +423,7 @@ export default function PlacementsPage() {
             >
               <option value="">Select contractor...</option>
               {contractors.map((c) => (
-                <option key={c.id} value={c.id}>
+                <option key={c.id} value={c.user_id}>
                   {c.full_name}
                 </option>
               ))}

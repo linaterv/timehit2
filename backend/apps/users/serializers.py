@@ -3,9 +3,46 @@ from .models import User
 
 
 class UserListSerializer(serializers.ModelSerializer):
+    current_placement = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ["id", "email", "full_name", "role", "is_active", "created_at"]
+        fields = ["id", "email", "full_name", "role", "is_active", "created_at", "current_placement"]
+
+    def get_current_placement(self, obj):
+        if obj.role not in (User.Role.CONTRACTOR, User.Role.CLIENT_CONTACT):
+            return None
+        if obj.role == User.Role.CONTRACTOR:
+            qs = obj.placements.select_related("client")
+        else:
+            # CLIENT_CONTACT: find placements via their client
+            try:
+                client = obj.client_contact.client
+            except Exception:
+                return None
+            from apps.placements.models import Placement
+            qs = Placement.objects.filter(client=client).select_related("client")
+        from django.db.models import Case, When, Value, IntegerField
+        placement = qs.annotate(
+            status_rank=Case(
+                When(status="ACTIVE", then=Value(0)),
+                When(status="COMPLETED", then=Value(1)),
+                default=Value(2),
+                output_field=IntegerField(),
+            ),
+            has_title=Case(
+                When(title="", then=Value(1)),
+                default=Value(0),
+                output_field=IntegerField(),
+            ),
+        ).order_by("has_title", "status_rank", "-start_date").first()
+        if not placement:
+            return None
+        return {
+            "id": str(placement.id),
+            "label": f"{placement.client.company_name} → {placement.title}" if placement.title else placement.client.company_name,
+            "status": placement.status,
+        }
 
 
 class UserDetailSerializer(serializers.ModelSerializer):

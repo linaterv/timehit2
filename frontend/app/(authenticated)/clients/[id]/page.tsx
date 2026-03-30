@@ -296,10 +296,10 @@ export default function ClientDetailPage() {
 
   const STATUS_COLORS: Record<string, string> = { DRAFT: "bg-gray-100 text-gray-600", ACTIVE: "bg-green-50 text-green-700", ARCHIVED: "bg-gray-100 text-gray-400" };
   const tplInputCls = "w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600";
-  const openNewTpl = () => { setTplEditing(null); setTplForm({ name: "", template_type: "CLIENT", client_id: id }); setTplError(""); setTplOpen(true); };
-  const openEditTpl = (t: InvoiceTemplate) => { setTplEditing(t); setTplForm({ name: t.name, company_name: t.company_name, registration_number: t.registration_number, billing_address: t.billing_address, country: t.country, default_currency: t.default_currency, vat_number: t.vat_number, payment_terms_days: t.payment_terms_days, is_default: t.is_default }); setTplError(""); setTplOpen(true); };
+  const openNewTpl = () => { setTplEditing(null); setTplForm({ title: "", code: "", template_type: "CLIENT", client_id: id }); setTplError(""); setTplOpen(true); };
+  const openEditTpl = (t: InvoiceTemplate) => { setTplEditing(t); setTplForm({ title: t.title, code: t.code, company_name: t.company_name, registration_number: t.registration_number, billing_address: t.billing_address, country: t.country, default_currency: t.default_currency, vat_number: t.vat_number, payment_terms_days: t.payment_terms_days, is_default: t.is_default }); setTplError(""); setTplOpen(true); };
   const handleTplSave = async () => { setTplError(""); setTplSaving(true); try { if (tplEditing) { await api(`/invoice-templates/${tplEditing.id}`, { method: "PATCH", body: JSON.stringify(tplForm) }); } else { await api("/invoice-templates", { method: "POST", body: JSON.stringify(tplForm) }); } setTplOpen(false); templatesQ.refetch(); } catch (err: unknown) { setTplError((err as { message?: string })?.message ?? "Failed"); } finally { setTplSaving(false); } };
-  const handleTplDelete = async (t: InvoiceTemplate) => { if (!confirm(`Delete "${t.name}"?`)) return; try { await api(`/invoice-templates/${t.id}`, { method: "DELETE" }); templatesQ.refetch(); setTplOpen(false); } catch (err: unknown) { alert((err as { message?: string })?.message ?? "Failed"); } };
+  const handleTplDelete = async (t: InvoiceTemplate) => { if (!confirm(`Delete "${t.title}"?`)) return; try { await api(`/invoice-templates/${t.id}`, { method: "DELETE" }); templatesQ.refetch(); setTplOpen(false); } catch (err: unknown) { alert((err as { message?: string })?.message ?? "Failed"); } };
   const handleTplAction = async (t: InvoiceTemplate, act: string) => { try { await api(`/invoice-templates/${t.id}/${act}`, { method: "POST" }); templatesQ.refetch(); setTplOpen(false); } catch (err: unknown) { alert((err as { message?: string })?.message ?? "Failed"); } };
 
   const tabs: { key: Tab; label: string }[] = [
@@ -490,7 +490,8 @@ export default function ClientDetailPage() {
                 className="bg-surface border rounded-lg p-4 flex items-center justify-between cursor-pointer hover:border-brand-300 transition-colors">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-900">{t.name}</span>
+                    <span className="font-medium text-gray-900">{t.title}</span>
+                    {t.code && <span className="text-xs text-gray-400 font-mono">{t.code}</span>}
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[t.status]}`}>{t.status}</span>
                     {t.is_default && <span className="text-xs px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 font-medium">Default</span>}
                   </div>
@@ -505,7 +506,7 @@ export default function ClientDetailPage() {
 
       {/* Template SlideOver */}
       <SlideOver open={tplOpen} onClose={() => setTplOpen(false)}
-        title={tplEditing ? `Edit: ${tplEditing.name}` : "New Billing Template"}
+        title={tplEditing ? `Edit: ${tplEditing.title}` : "New Billing Template"}
         onSave={handleTplSave} saving={tplSaving} testId="tpl-slideover">
         <div className="space-y-4">
           {tplError && <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{tplError}</div>}
@@ -516,7 +517,7 @@ export default function ClientDetailPage() {
               {tplEditing.status !== "ACTIVE" && <button onClick={() => handleTplDelete(tplEditing)} className="px-3 py-1 text-xs font-medium rounded bg-red-50 text-red-600 hover:bg-red-100">Delete</button>}
             </div>
           )}
-          {["name", "company_name", "registration_number", "country", "default_currency", "vat_number", "billing_address"].map((f) => (
+          {["title", "code", "company_name", "registration_number", "country", "default_currency", "vat_number", "billing_address"].map((f) => (
             <div key={f}>
               <label className="block text-xs text-gray-600 mb-1">{f.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</label>
               {f === "billing_address" ? (

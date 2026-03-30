@@ -97,7 +97,7 @@ class InvoiceTemplateListSerializer(serializers.ModelSerializer):
     class Meta:
         model = InvoiceTemplate
         fields = [
-            "id", "name", "template_type", "status", "is_default",
+            "id", "title", "code", "template_type", "status", "is_default",
             "contractor", "client", "placement_id", "parent_id",
             "company_name", "country", "default_currency",
             "invoice_series_prefix", "created_at", "updated_at",
@@ -133,7 +133,7 @@ class InvoiceTemplateCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = InvoiceTemplate
         fields = [
-            "name", "template_type", "contractor_id", "client_id",
+            "title", "code", "template_type", "contractor_id", "client_id",
             "placement_id", "parent_id", "is_default",
             "company_name", "registration_number", "billing_address",
             "country", "default_currency",
@@ -166,7 +166,7 @@ class InvoiceTemplateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = InvoiceTemplate
         fields = [
-            "name", "is_default",
+            "title", "code", "is_default",
             "company_name", "registration_number", "billing_address",
             "country", "default_currency",
             "vat_registered", "vat_number", "vat_rate_percent",

@@ -7,7 +7,7 @@ import { DataTable, type Column } from "@/components/data-table/data-table";
 import { SlideOver } from "@/components/forms/slide-over";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { formatDate } from "@/lib/utils";
-import type { User, PaginatedResponse, Role, Client } from "@/types/api";
+import type { User, PaginatedResponse, Role, Client, PlacementRef } from "@/types/api";
 
 const ROLES: Role[] = ["ADMIN", "BROKER", "CONTRACTOR", "CLIENT_CONTACT"];
 
@@ -74,6 +74,22 @@ export default function UsersPage() {
       label: "Role",
       sortable: true,
       render: (row) => <StatusBadge value={row.role} />,
+    },
+    {
+      key: "current_placement" as keyof User,
+      label: "Placement",
+      render: (row) => {
+        const p = row.current_placement;
+        if (!p) return <span className="text-gray-400">—</span>;
+        return (
+          <span className="text-sm">
+            {p.label}
+            {p.status !== "ACTIVE" && (
+              <span className="ml-1.5 text-xs text-gray-400">({p.status.toLowerCase()})</span>
+            )}
+          </span>
+        );
+      },
     },
     {
       key: "is_active",

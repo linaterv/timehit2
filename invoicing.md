@@ -20,7 +20,8 @@ Billing data (company info, bank, VAT, series prefix, numbering) lives directly 
 ```
 InvoiceTemplate
 ├── id (UUID)
-├── name (string)                     — "Default", "German Entity", "TechVibe EUR"
+├── title (string)                    — "Default", "German Entity", "TechVibe EUR"
+├── code (string)                     — short stable reference: "LT", "EN", "DEFAULT". Unique per template_type.
 ├── template_type (enum)              — CONTRACTOR | CLIENT | AGENCY
 ├── status (enum)                     — DRAFT | ACTIVE | ARCHIVED
 │
@@ -162,6 +163,12 @@ POST   /api/v1/invoice-templates/:id/archive  — ACTIVE → ARCHIVED
 **Client detail** (`clients/[id]/page.tsx`) — admin/broker view:
 - Add "Billing Templates" tab for CLIENT-type templates
 
+**Settings page** (`settings/page.tsx`) — ADMIN only:
+- New sidebar nav item "Settings" (Settings icon) → `/settings`
+- Default subtab: "Invoice Templates"
+- Full CRUD table/card list of all templates (all types). Filters: template_type, status.
+- Slide-over for create/edit with all fields including `title` and `code`.
+
 ---
 
 ## Files to Modify
@@ -176,6 +183,8 @@ POST   /api/v1/invoice-templates/:id/archive  — ACTIVE → ARCHIVED
 | `frontend/app/(authenticated)/profile/page.tsx` | Template manager on Invoice Settings tab |
 | `frontend/app/(authenticated)/contractors/[id]/page.tsx` | Templates tab |
 | `frontend/app/(authenticated)/clients/[id]/page.tsx` | Billing Templates tab |
+| `frontend/app/(authenticated)/settings/page.tsx` | New: Settings page with Invoice Templates subtab |
+| `frontend/components/layout/sidebar.tsx` | Add Settings nav item for ADMIN |
 
 ---
 

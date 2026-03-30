@@ -201,7 +201,7 @@ function ControlScreen() {
   );
 
   const { data: contractorsData } = useApiQuery<
-    PaginatedResponse<{ id: string; full_name: string }>
+    PaginatedResponse<{ id: string; user_id: string; full_name: string }>
   >(["contractors-for-select"], "/contractors?per_page=200");
 
   const overviewRows = overviewData?.data ?? [];
@@ -397,7 +397,7 @@ function ControlScreen() {
         >
           <option value="">All Contractors</option>
           {(contractorsData?.data ?? []).map((c) => (
-            <option key={c.id} value={c.id}>
+            <option key={c.id} value={c.user_id}>
               {c.full_name}
             </option>
           ))}

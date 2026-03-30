@@ -38,6 +38,22 @@ export default function ContractorsPage() {
     { key: "country", label: "Country", sortable: true },
     { key: "default_currency", label: "Currency", sortable: true },
     {
+      key: "current_placement" as keyof ContractorProfile,
+      label: "Placement",
+      render: (row) => {
+        const p = row.current_placement;
+        if (!p) return <span className="text-gray-400">—</span>;
+        return (
+          <span className="text-sm">
+            {p.label}
+            {p.status !== "ACTIVE" && (
+              <span className="ml-1.5 text-xs text-gray-400">({p.status.toLowerCase()})</span>
+            )}
+          </span>
+        );
+      },
+    },
+    {
       key: "vat_registered",
       label: "VAT Registered",
       render: (row) => (

@@ -241,7 +241,8 @@ Visibility: Admin/Broker see all notifications. Contractor/Client Contact only s
 | Field | Type | Notes |
 |---|---|---|
 | id | UUID | |
-| name | string | e.g. "Default", "German Entity" |
+| title | string | human-readable name, e.g. "Default", "German Entity" |
+| code | string | short stable reference code, e.g. "LT", "EN", "DEFAULT". Unique per template_type. |
 | template_type | enum | CONTRACTOR, CLIENT, AGENCY |
 | status | enum | DRAFT, ACTIVE, ARCHIVED |
 | contractor | FK -> User | nullable, owner for CONTRACTOR type |

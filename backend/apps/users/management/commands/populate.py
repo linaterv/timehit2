@@ -274,7 +274,8 @@ class Command(BaseCommand):
         self.stdout.write("Creating invoice templates...")
         for prof in [prof_alex, prof_mia, prof_oscar, prof_nina, prof_sam]:
             InvoiceTemplate.objects.create(
-                name=f"{prof.company_name or prof.user.full_name} - Default",
+                title=f"{prof.company_name or prof.user.full_name} - Default",
+                code="DEFAULT",
                 template_type=InvoiceTemplate.Type.CONTRACTOR, status=InvoiceTemplate.Status.ACTIVE,
                 is_default=True, contractor=prof.user,
                 company_name=prof.company_name, registration_number=prof.registration_number,
@@ -289,7 +290,8 @@ class Command(BaseCommand):
             )
         for cl in [techvibe, cloudbase, nordsoft, medicorp]:
             InvoiceTemplate.objects.create(
-                name=f"{cl.company_name} - Default",
+                title=f"{cl.company_name} - Default",
+                code="DEFAULT",
                 template_type=InvoiceTemplate.Type.CLIENT, status=InvoiceTemplate.Status.ACTIVE,
                 is_default=True, client=cl,
                 company_name=cl.company_name, registration_number=cl.registration_number,

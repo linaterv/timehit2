@@ -18,6 +18,12 @@ export interface ClientRef {
   company_name: string;
 }
 
+export interface PlacementRef {
+  id: string;
+  label: string;
+  status: PlacementStatus;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -29,6 +35,7 @@ export interface User {
   contractor_profile?: ContractorProfile | null;
   client_contact?: ClientContact | null;
   theme?: string;
+  current_placement?: PlacementRef | null;
 }
 
 export interface BrokerAssignment {
@@ -85,6 +92,7 @@ export interface ContractorProfile {
   country: string;
   default_currency: string;
   is_active?: boolean;
+  current_placement?: PlacementRef | null;
 }
 
 export interface Placement {
@@ -193,7 +201,8 @@ export interface Invoice {
 
 export interface InvoiceTemplate {
   id: string;
-  name: string;
+  title: string;
+  code: string;
   template_type: InvoiceTemplateType;
   status: InvoiceTemplateStatus;
   is_default: boolean;

@@ -1223,7 +1223,8 @@ Query params: `template_type` (CONTRACTOR, CLIENT, AGENCY), `contractor_id`, `cl
 ```json
 // Request
 {
-  "name": "string",
+  "title": "string",
+  "code": "string",               // short stable reference, e.g. "LT", "EN", "DEFAULT"
   "template_type": "CONTRACTOR",
   "contractor_id": "uuid",        // required for CONTRACTOR type
   "client_id": "uuid",            // required for CLIENT type

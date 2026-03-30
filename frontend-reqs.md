@@ -81,6 +81,7 @@ Consistent colored badges throughout:
 | 6 | Timesheets | Clock | `/timesheets` |
 | 7 | Invoices | FileText | `/invoices` |
 | 8 | Documents | FolderOpen | `/documents` |
+| 9 | Settings | Settings | `/settings` |
 
 ### BROKER
 | # | Label | Icon | Route |
@@ -295,6 +296,19 @@ Aggregated view of all placement documents the user has access to.
 - Filters: client, contractor, placement, label
 - Actions: download per file. Admin/Broker can also delete.
 - data-testid: `documents-table`, `document-download-{id}`, `document-delete-{id}`
+
+### 11. Settings (`/settings`) — ADMIN only
+
+Subtabs within the settings page:
+
+**Invoice Templates** (`/settings/invoice-templates` or default subtab):
+- Table/card list of all invoice templates (all types: CONTRACTOR, CLIENT, AGENCY).
+- Each row/card: title, code, template_type badge, status badge, is_default badge, owner (contractor/client name).
+- Filters: template_type, status.
+- "New Template" button → slide-over with full form.
+- Click row → slide-over for edit. All fields editable: title, code, template_type, owner (contractor/client/placement), is_default, company info, VAT, bank, invoice series, payment terms.
+- Actions: Activate (DRAFT→ACTIVE), Archive (ACTIVE→ARCHIVED), Delete (DRAFT/ARCHIVED).
+- data-testid: `settings-page`, `tab-invoice-templates`, `btn-new-template`, `tpl-slideover`
 
 ---
 

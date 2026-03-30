@@ -7,13 +7,39 @@ class ContractorProfileListSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source="user.email")
     full_name = serializers.CharField(source="user.full_name")
     is_active = serializers.BooleanField(source="user.is_active")
+    current_placement = serializers.SerializerMethodField()
 
     class Meta:
         model = ContractorProfile
         fields = [
             "id", "user_id", "email", "full_name", "company_name",
             "country", "default_currency", "vat_registered", "is_active",
+            "current_placement",
         ]
+
+    def get_current_placement(self, obj):
+        from django.db.models import Case, When, Value, IntegerField
+        qs = obj.user.placements.select_related("client").annotate(
+            status_rank=Case(
+                When(status="ACTIVE", then=Value(0)),
+                When(status="COMPLETED", then=Value(1)),
+                default=Value(2),
+                output_field=IntegerField(),
+            ),
+            has_title=Case(
+                When(title="", then=Value(1)),
+                default=Value(0),
+                output_field=IntegerField(),
+            ),
+        ).order_by("has_title", "status_rank", "-start_date")
+        placement = qs.first()
+        if not placement:
+            return None
+        return {
+            "id": str(placement.id),
+            "label": f"{placement.client.company_name} → {placement.title}" if placement.title else placement.client.company_name,
+            "status": placement.status,
+        }
 
 
 class ContractorProfileDetailSerializer(serializers.ModelSerializer):

@@ -103,7 +103,8 @@ class InvoiceTemplate(models.Model):
         ARCHIVED = "ARCHIVED"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=255)
+    title = models.CharField(max_length=255)
+    code = models.CharField(max_length=50, blank=True, default="")
     template_type = models.CharField(max_length=20, choices=Type.choices)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
 
@@ -146,7 +147,7 @@ class InvoiceTemplate(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.name} ({self.template_type})"
+        return f"{self.title} ({self.template_type})"
 
 
 class InvoiceCorrectionLink(models.Model):

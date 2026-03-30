@@ -14,7 +14,8 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 interface TemplateFormData {
-  name: string;
+  title: string;
+  code: string;
   company_name: string;
   registration_number: string;
   billing_address: string;
@@ -34,7 +35,7 @@ interface TemplateFormData {
 
 function emptyTemplateForm(): TemplateFormData {
   return {
-    name: "", company_name: "", registration_number: "", billing_address: "",
+    title: "", code: "", company_name: "", registration_number: "", billing_address: "",
     country: "", default_currency: "EUR", vat_registered: false, vat_number: "",
     vat_rate_percent: "", bank_name: "", bank_account_iban: "", bank_swift_bic: "",
     invoice_series_prefix: "", next_invoice_number: 1, payment_terms_days: null,
@@ -44,7 +45,7 @@ function emptyTemplateForm(): TemplateFormData {
 
 function templateToForm(t: InvoiceTemplate): TemplateFormData {
   return {
-    name: t.name, company_name: t.company_name, registration_number: t.registration_number,
+    title: t.title, code: t.code, company_name: t.company_name, registration_number: t.registration_number,
     billing_address: t.billing_address, country: t.country, default_currency: t.default_currency,
     vat_registered: t.vat_registered, vat_number: t.vat_number,
     vat_rate_percent: t.vat_rate_percent ?? "", bank_name: t.bank_name,
@@ -147,7 +148,7 @@ export default function ProfilePage() {
   };
 
   const handleTplDelete = async (t: InvoiceTemplate) => {
-    if (!confirm(`Delete template "${t.name}"?`)) return;
+    if (!confirm(`Delete template "${t.title}"?`)) return;
     try { await api(`/invoice-templates/${t.id}`, { method: "DELETE" }); templatesQ.refetch(); setTplOpen(false); }
     catch (err: unknown) { alert((err as { message?: string })?.message ?? "Failed to delete"); }
   };
@@ -258,7 +259,8 @@ export default function ProfilePage() {
               className="bg-surface border rounded-lg p-4 flex items-center justify-between cursor-pointer hover:border-brand-300 transition-colors">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-900">{t.name}</span>
+                  <span className="font-medium text-gray-900">{t.title}</span>
+                  {t.code && <span className="text-xs text-gray-400 font-mono">{t.code}</span>}
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[t.status]}`}>{t.status}</span>
                   {t.is_default && <span className="text-xs px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 font-medium">Default</span>}
                 </div>
@@ -274,7 +276,7 @@ export default function ProfilePage() {
 
       {/* ── TEMPLATE SLIDE-OVER ── */}
       <SlideOver open={tplOpen} onClose={() => setTplOpen(false)}
-        title={tplEditing ? `Edit: ${tplEditing.name}` : "New Template"}
+        title={tplEditing ? `Edit: ${tplEditing.title}` : "New Template"}
         onSave={handleTplSave} saving={tplSaving} testId="tpl-slideover">
         <div className="space-y-4">
           {tplError && <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{tplError}</div>}
@@ -298,8 +300,12 @@ export default function ProfilePage() {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Template Name</label>
-            <input type="text" value={tplForm.name} onChange={(e) => updateTpl("name", e.target.value)} className={inputCls} />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+            <input type="text" value={tplForm.title} onChange={(e) => updateTpl("title", e.target.value)} className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Code</label>
+            <input type="text" value={tplForm.code} onChange={(e) => updateTpl("code", e.target.value)} className={inputCls} placeholder="e.g. DEFAULT, LT, EN" />
           </div>
 
           <div className="flex items-center gap-3">
