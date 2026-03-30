@@ -61,7 +61,7 @@ function tplToForm(t: InvoiceTemplate): TplForm {
   };
 }
 
-/* Editable field styled to look like part of the invoice page */
+/* Editable field — blue tinted background so user knows it's writable */
 function Field({ value, onChange, placeholder, className = "", mono = false }: {
   value: string; onChange: (v: string) => void; placeholder: string; className?: string; mono?: boolean;
 }) {
@@ -71,14 +71,34 @@ function Field({ value, onChange, placeholder, className = "", mono = false }: {
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className={`bg-transparent border-b border-dashed border-gray-300 focus:border-brand-600 focus:outline-none px-0 py-0.5 text-gray-900 placeholder:text-gray-300 ${mono ? "font-mono" : ""} ${className}`}
+      className={`bg-blue-50/60 border-b-2 border-brand-200 focus:border-brand-600 focus:bg-blue-50 focus:outline-none rounded-sm px-1 py-0.5 text-gray-900 placeholder:text-brand-300 ${mono ? "font-mono" : ""} ${className}`}
     />
   );
 }
 
-/* Gray placeholder for data that comes at generation time */
+/* Read-only placeholder — striped background so it's clearly not editable */
 function Placeholder({ children, className = "" }: { children: string; className?: string }) {
-  return <span className={`text-gray-300 italic ${className}`}>{children}</span>;
+  return (
+    <span className={`text-gray-400 text-sm bg-gray-50 px-1 py-0.5 rounded-sm ${className}`}>
+      {children}
+    </span>
+  );
+}
+
+/* Legend shown above the A4 page */
+function Legend() {
+  return (
+    <div className="flex items-center gap-6 text-xs text-gray-500 px-1">
+      <div className="flex items-center gap-1.5">
+        <span className="inline-block w-4 h-3 bg-blue-50/60 border-b-2 border-brand-200 rounded-sm" />
+        Editable — saved to template
+      </div>
+      <div className="flex items-center gap-1.5">
+        <span className="inline-block w-4 h-3 bg-gray-50 rounded-sm" />
+        Auto-filled — populated at invoice generation
+      </div>
+    </div>
+  );
 }
 
 export default function SettingsPage() {
@@ -227,6 +247,8 @@ export default function SettingsPage() {
 
           {error && <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{error}</div>}
 
+          <Legend />
+
           {/* A4 Page */}
           <div className="mx-auto bg-white border shadow-sm rounded" style={{ width: 680, minHeight: 960, padding: "48px 48px 32px" }}>
 
@@ -336,9 +358,9 @@ export default function SettingsPage() {
               <span>&middot;</span>
               <span>Series: <Field value={form.invoice_series_prefix} onChange={(v) => u("invoice_series_prefix", v)} placeholder="PREFIX-" className="text-xs w-24 font-mono" mono /></span>
               <span>&middot;</span>
-              <span>Next #: <input type="number" value={form.next_invoice_number ?? ""} onChange={(e) => u("next_invoice_number", e.target.value ? parseInt(e.target.value, 10) : null)} className="w-16 bg-transparent border-b border-dashed border-gray-300 focus:border-brand-600 focus:outline-none text-xs font-mono text-center" /></span>
+              <span>Next #: <input type="number" value={form.next_invoice_number ?? ""} onChange={(e) => u("next_invoice_number", e.target.value ? parseInt(e.target.value, 10) : null)} className="w-16 bg-blue-50/60 border-b-2 border-brand-200 focus:border-brand-600 focus:bg-blue-50 focus:outline-none rounded-sm text-xs font-mono text-center px-1" /></span>
               <span>&middot;</span>
-              <span>Terms: <input type="number" value={form.payment_terms_days ?? ""} onChange={(e) => u("payment_terms_days", e.target.value ? parseInt(e.target.value, 10) : null)} className="w-12 bg-transparent border-b border-dashed border-gray-300 focus:border-brand-600 focus:outline-none text-xs text-center" /> days</span>
+              <span>Terms: <input type="number" value={form.payment_terms_days ?? ""} onChange={(e) => u("payment_terms_days", e.target.value ? parseInt(e.target.value, 10) : null)} className="w-12 bg-blue-50/60 border-b-2 border-brand-200 focus:border-brand-600 focus:bg-blue-50 focus:outline-none rounded-sm text-xs text-center px-1" /> days</span>
             </div>
 
             {/* Footer */}

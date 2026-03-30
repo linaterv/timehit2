@@ -1,5 +1,10 @@
+import re
+from datetime import datetime
+from pathlib import Path
+
+from django.conf import settings
 from django.db.models import Q
-from rest_framework import viewsets
+from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -26,6 +31,46 @@ class TestUsersView(APIView):
             {"email": u.email, "full_name": u.full_name, "role": u.role}
             for u in users
         ])
+
+
+class BugReportView(APIView):
+    """Public endpoint to save bug reports as markdown files."""
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    @extend_schema(tags=["Bug Reports"])
+    def post(self, request):
+        message = (request.data.get("message") or "").strip()
+        if not message:
+            return Response({"error": "message is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        url = request.data.get("url", "")
+        user_email = request.data.get("user_email", "unknown")
+        user_role = request.data.get("user_role", "unknown")
+        user_agent = request.data.get("user_agent", "")
+        timestamp = request.data.get("timestamp", datetime.utcnow().isoformat() + "Z")
+
+        # Build filename: YYMMDD-HHMMSS-slug.md
+        now = datetime.utcnow()
+        slug = re.sub(r"[^a-z0-9]+", "-", message[:50].lower()).strip("-")
+        filename = f"{now.strftime('%y%m%d-%H%M%S')}-{slug}.md"
+
+        bug_dir = Path(settings.BASE_DIR).parent / "bug-reports"
+        bug_dir.mkdir(exist_ok=True)
+
+        content = (
+            f"# Bug: {message}\n\n"
+            f"- **Page:** {url}\n"
+            f"- **User:** {user_email} ({user_role})\n"
+            f"- **Browser:** {user_agent}\n"
+            f"- **Time:** {timestamp}\n\n"
+            f"## Description\n{message}\n"
+        )
+
+        filepath = bug_dir / filename
+        filepath.write_text(content, encoding="utf-8")
+
+        return Response({"status": "ok", "file": filename}, status=status.HTTP_201_CREATED)
 
 
 class UserViewSet(viewsets.ModelViewSet):

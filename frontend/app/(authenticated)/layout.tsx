@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/topbar";
+import { BugReporter } from "@/components/shared/bug-reporter";
 
 const TITLES: Record<string, string> = {
   "/": "Dashboard",
@@ -45,6 +46,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <div className="max-w-7xl mx-auto">{children}</div>
         </main>
       </div>
+      <BugReporter />
     </div>
   );
 }
