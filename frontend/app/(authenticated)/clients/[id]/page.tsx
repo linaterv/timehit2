@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { useApiQuery, useApiMutation } from "@/hooks/use-api";
 import { DataTable, type Column } from "@/components/data-table/data-table";
 import { SlideOver } from "@/components/forms/slide-over";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { formatDate } from "@/lib/utils";
 import { api } from "@/lib/api";
 import type {
@@ -54,6 +55,11 @@ export default function ClientDetailPage() {
 
   // Assign broker state
   const [selectedBrokerId, setSelectedBrokerId] = useState("");
+
+  // Delete state
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteMsg, setDeleteMsg] = useState("");
+  const [deleteError, setDeleteError] = useState("");
 
   const allowed = user?.role === "ADMIN" || user?.role === "BROKER";
 
@@ -180,6 +186,23 @@ export default function ClientDetailPage() {
     updateClientMutation.mutate(body, {
       onSuccess: () => setEditSlideOpen(false),
     });
+  };
+
+  // ----- Delete handler -----
+
+  const handleDelete = async () => {
+    setDeleteOpen(false);
+    setDeleteError("");
+    try {
+      const res = await api<{ deleted: string; message: string }>(`/clients/${id}`, { method: "DELETE" });
+      if (res.deleted === "soft") {
+        setDeleteMsg(res.message);
+      } else {
+        router.push("/clients");
+      }
+    } catch (err: unknown) {
+      setDeleteError((err as { message?: string })?.message ?? "Failed to delete");
+    }
   };
 
   // ----- Contact handlers -----
@@ -349,13 +372,24 @@ export default function ClientDetailPage() {
               </p>
             </div>
           </div>
-          <button
-            data-testid="edit-client-btn"
-            onClick={openEditSlide}
-            className="px-4 py-2 border rounded text-sm hover:bg-gray-50"
-          >
-            Edit
-          </button>
+          <div className="flex gap-2">
+            {user?.role === "ADMIN" && (
+              <button
+                data-testid="client-delete-btn"
+                onClick={() => setDeleteOpen(true)}
+                className="px-4 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+              >
+                Delete
+              </button>
+            )}
+            <button
+              data-testid="edit-client-btn"
+              onClick={openEditSlide}
+              className="px-4 py-2 border rounded text-sm hover:bg-gray-50"
+            >
+              Edit
+            </button>
+          </div>
         </div>
       </div>
 
@@ -760,6 +794,27 @@ export default function ClientDetailPage() {
           )}
         </div>
       </SlideOver>
+
+      {deleteMsg && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded text-sm">
+          {deleteMsg}
+        </div>
+      )}
+      {deleteError && (
+        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded text-sm">
+          {deleteError}
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={deleteOpen}
+        title="Delete Client"
+        message={`Are you sure you want to delete ${client?.company_name}? If it has placements or invoices, it will be deactivated instead.`}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteOpen(false)}
+      />
     </div>
   );
 }

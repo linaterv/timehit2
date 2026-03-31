@@ -81,6 +81,26 @@ class ClientViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Only admin can change is_active")
         return super().partial_update(request, *args, **kwargs)
 
+    @extend_schema(tags=["Clients"])
+    def destroy(self, request, *args, **kwargs):
+        if not request.user.is_admin:
+            raise PermissionDenied("Only admins can delete clients")
+        client = self.get_object()
+        active_placements = client.placements.filter(status="ACTIVE").count()
+        if active_placements:
+            return Response(
+                {"error": {"code": "CONFLICT", "message": f"Cannot delete client with {active_placements} active placement(s). Complete or cancel them first."}},
+                status=status.HTTP_409_CONFLICT,
+            )
+        has_placements = client.placements.exists()
+        has_invoices = client.invoices.exists()
+        if has_placements or has_invoices:
+            client.is_active = False
+            client.save(update_fields=["is_active"])
+            return Response({"deleted": "soft", "message": "Client deactivated (has existing placements or invoices)"})
+        client.delete()
+        return Response({"deleted": "hard", "message": "Client permanently deleted"})
+
     @extend_schema(request=BrokerAssignSerializer, tags=["Clients"])
     @action(detail=True, methods=["post"], url_path="brokers")
     def assign_brokers(self, request, pk=None):

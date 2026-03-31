@@ -153,12 +153,13 @@ The primary operational view. Maps to `GET /control/overview` + `GET /control/su
 
 **Client Detail** (`/clients/[id]`):
 - Header card: company info, edit button
+- **Delete button** (admin only): red "Delete" button in header. Opens confirmation dialog. Blocked if active placements (409). Soft-deletes if non-active relations exist, hard-deletes otherwise. On soft delete shows info banner, on hard delete redirects to `/clients`.
 - Tabs:
   - **Contacts** — table + add contact button
   - **Brokers** — list with assign/remove buttons
   - **Placements** — filtered placement table
   - **Billing Templates** — card list of CLIENT-type invoice templates. Create/edit via slide-over. Activate/archive/delete actions. Admin/broker can CRUD.
-- data-testid: `client-detail`, `client-tab-contacts`, `client-tab-brokers`, `client-tab-placements`, `tab-templates`
+- data-testid: `client-detail`, `client-tab-contacts`, `client-tab-brokers`, `client-tab-placements`, `tab-templates`, `client-delete-btn`
 
 ### 5. Contractors (`/contractors`)
 - Table: name, placement (current/last active as "Client → Title"), ends (active placement end date), status ("In Effect" green if active placement, "No Placement" gray otherwise)

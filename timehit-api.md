@@ -334,6 +334,22 @@ Admin or assigned Broker.
 // 200
 ```
 
+### `DELETE /clients/:id`
+
+Admin only. Smart delete: blocked if client has ACTIVE placements. Soft-deletes (`is_active=false`) if client has non-active placements or invoices. Hard-deletes if no relations.
+
+```json
+// 200 — soft deleted
+{ "deleted": "soft", "message": "Client deactivated (has existing placements or invoices)" }
+
+// 200 — hard deleted
+{ "deleted": "hard", "message": "Client permanently deleted" }
+
+// 403 — not admin
+// 409 — has active placements
+{ "error": { "code": "CONFLICT", "message": "Cannot delete client with N active placement(s). Complete or cancel them first." } }
+```
+
 ### `POST /clients/:id/brokers`
 
 Assign broker(s). Admin or assigned Broker.

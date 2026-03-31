@@ -416,7 +416,7 @@ By client, contractor, broker (admin only), month/year, timesheet status, invoic
 3. **Duplicate invoice prevention**: blocked if non-VOIDED invoices exist for timesheet. Re-enabled if all VOIDED.
 4. **Invoice number sequence**: never recycled. Contractor can adjust next_number upward only.
 5. **Currency**: single currency per placement, no conversion. Different placements can use different currencies.
-6. **Deletion rules**: Contractors can be deleted by Admin. **Cannot delete** if contractor has any ACTIVE placements (must complete/cancel first). If contractor has non-active placements or invoices, they are **soft-deleted** (user deactivated, `is_active=false`). If no relations exist, they are **hard-deleted** (user + profile removed). DRAFT placements with no timesheets can be deleted. Invoices never deleted (VOIDED instead).
+6. **Deletion rules**: Contractors and Clients can be deleted by Admin. **Cannot delete** if they have any ACTIVE placements (must complete/cancel first). If they have non-active placements or invoices, they are **soft-deleted** (deactivated, `is_active=false`). If no relations exist, they are **hard-deleted** (removed from database). DRAFT placements with no timesheets can be deleted. Invoices never deleted (VOIDED instead).
 7. **Deactivated contractor**: can't log in, existing data stays, brokers can still process pending timesheets/invoices.
 8. **Deactivated client contact**: if they were the approver, another contact must approve or broker switches to BROKER_ONLY flow.
 9. **Overlapping placements**: same contractor + client allowed (different projects).

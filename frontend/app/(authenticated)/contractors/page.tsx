@@ -173,7 +173,13 @@ export default function ContractorsPage() {
               <h3 className="text-lg font-semibold text-gray-900">New Contractor</h3>
               <button onClick={() => setCreateOpen(false)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
             </div>
-            {createMutation.error ? <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{String((createMutation.error as { message?: string })?.message || "Failed to create contractor")}</div> : null}
+            {createMutation.error ? <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">
+              {(() => {
+                const e = createMutation.error as { message?: string; details?: { field: string; message: string }[] };
+                if (e.details?.length) return e.details.map((d, i) => <div key={i}><strong>{d.field}:</strong> {d.message}</div>);
+                return e.message || "Failed to create contractor";
+              })()}
+            </div> : null}
             {formPwdError && <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{formPwdError}</div>}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
