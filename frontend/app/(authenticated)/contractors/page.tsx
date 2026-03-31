@@ -15,7 +15,7 @@ export default function ContractorsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [isActive, setIsActive] = useState<string>("all");
-  const isAdmin = user?.role === "ADMIN";
+  const isAdminOrBroker = user?.role === "ADMIN" || user?.role === "BROKER";
   const [sort, setSort] = useState("full_name");
   const [order, setOrder] = useState<"asc" | "desc">("asc");
   const [createOpen, setCreateOpen] = useState(false);
@@ -105,7 +105,7 @@ export default function ContractorsPage() {
   return (
     <div data-testid="contractors-page" className="space-y-4">
       <div className="flex items-center gap-3">
-        {isAdmin && (
+        {isAdminOrBroker && (
           <button data-testid="create-contractor-btn" onClick={() => { setFormEmail(""); setFormName(""); setFormPassword(""); setCreateOpen(true); }}
             className="px-4 py-2 bg-brand-600 text-white rounded text-sm hover:bg-brand-700">Create Contractor</button>
         )}
