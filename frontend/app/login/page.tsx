@@ -118,6 +118,7 @@ export default function LoginPage() {
             data-testid="login-submit"
             type="submit"
             disabled={loading}
+            autoFocus
             className="w-full bg-brand-600 text-white rounded-md py-2 text-sm font-medium hover:bg-brand-700 disabled:opacity-50"
           >
             {loading ? "Signing in..." : "Sign in"}
