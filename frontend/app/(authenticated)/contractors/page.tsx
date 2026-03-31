@@ -229,10 +229,19 @@ export default function ContractorsPage() {
               <button
                 data-testid="create-contractor-submit"
                 disabled={createMutation.isPending}
-                onClick={() => {
+                onClick={async () => {
                   if (!formAutoGen && formPassword !== formConfirm) { setFormPwdError("Passwords do not match"); return; }
                   if (!formAutoGen && !formPassword) { setFormPwdError("Password is required"); return; }
-                  createMutation.mutate({ email: formEmail, full_name: formName, password: formPassword, role: "CONTRACTOR" }, { onSuccess: () => setCreateOpen(false) });
+                  let pwd = formPassword;
+                  if (formAutoGen && !pwd) {
+                    try {
+                      const r = await fetch("/api/v1/users/generate-password", { method: "POST", headers: { "Content-Type": "application/json" } });
+                      const d = await r.json();
+                      pwd = d.password;
+                      setFormPassword(pwd); setFormConfirm(pwd); setFormShowPwd(true);
+                    } catch { setFormPwdError("Failed to generate password"); return; }
+                  }
+                  createMutation.mutate({ email: formEmail, full_name: formName, password: pwd, role: "CONTRACTOR" }, { onSuccess: () => setCreateOpen(false) });
                 }}
                 className="px-4 py-2 bg-brand-600 text-white rounded-md text-sm font-medium hover:bg-brand-700 disabled:opacity-50">
                 {createMutation.isPending ? "Creating..." : "Create"}

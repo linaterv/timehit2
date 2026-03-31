@@ -234,6 +234,22 @@ Admin: any user. Others: own `full_name` and `theme`.
 // 200 — updated user
 ```
 
+### `DELETE /users/:id`
+
+Admin only. Cannot delete yourself. Smart delete: blocked if user has ACTIVE placements (as contractor) or is assigned to clients with active placements (as broker). Soft-deletes (`is_active=false`) if user has non-active relations. Hard-deletes if no relations.
+
+```json
+// 200 — soft deleted
+{ "deleted": "soft", "message": "User deactivated (has existing relations)" }
+
+// 200 — hard deleted
+{ "deleted": "hard", "message": "User permanently deleted" }
+
+// 403 — not admin or deleting self
+// 409 — has active placements or active broker assignments
+{ "error": { "code": "CONFLICT", "message": "Cannot delete user with active placements/assignments" } }
+```
+
 ### `GET /users/me`
 
 Returns current authenticated user with role-specific profile included.

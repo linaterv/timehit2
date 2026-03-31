@@ -83,7 +83,7 @@ class BugReportView(APIView):
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all().order_by("-created_at")
-    http_method_names = ["get", "post", "patch"]
+    http_method_names = ["get", "post", "patch", "delete"]
 
     def get_permissions(self):
         if self.action in ("list", "create"):
@@ -129,6 +129,46 @@ class UserViewSet(viewsets.ModelViewSet):
     @extend_schema(tags=["Users"])
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(tags=["Users"])
+    def destroy(self, request, *args, **kwargs):
+        if not request.user.is_admin:
+            raise PermissionDenied("Only admins can delete users")
+        target = self.get_object()
+        if target.id == request.user.id:
+            raise PermissionDenied("Cannot delete yourself")
+        # Check active placements (contractor)
+        if target.is_contractor and target.placements.filter(status="ACTIVE").exists():
+            return Response(
+                {"error": {"code": "CONFLICT", "message": "Cannot delete user with active placements. Complete or cancel them first."}},
+                status=status.HTTP_409_CONFLICT,
+            )
+        # Check broker assignments to clients with active placements
+        if target.is_broker:
+            from apps.clients.models import BrokerClientAssignment
+            active_clients = BrokerClientAssignment.objects.filter(
+                broker=target, client__placements__status="ACTIVE"
+            ).distinct().count()
+            if active_clients:
+                return Response(
+                    {"error": {"code": "CONFLICT", "message": f"Cannot delete broker assigned to {active_clients} client(s) with active placements. Reassign them first."}},
+                    status=status.HTTP_409_CONFLICT,
+                )
+        # Check for any relations
+        has_relations = False
+        if target.is_contractor:
+            has_relations = target.placements.exists() or target.contractor_invoices.exists()
+        elif target.is_broker:
+            from apps.clients.models import BrokerClientAssignment
+            has_relations = BrokerClientAssignment.objects.filter(broker=target).exists()
+        elif target.is_client_contact:
+            has_relations = hasattr(target, "client_contact")
+        if has_relations:
+            target.is_active = False
+            target.save(update_fields=["is_active"])
+            return Response({"deleted": "soft", "message": "User deactivated (has existing relations)"})
+        target.delete()
+        return Response({"deleted": "hard", "message": "User permanently deleted"})
 
     @extend_schema(tags=["Users"])
     def partial_update(self, request, *args, **kwargs):

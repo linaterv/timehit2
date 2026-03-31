@@ -143,7 +143,8 @@ The primary operational view. Maps to `GET /control/overview` + `GET /control/su
 ### 3. Users (`/users`) — ADMIN only
 - Table: name, email, role (badge), placement (current/last for contractors/client contacts as "Client → Title"), active (dot), created
 - Create/edit via slide-over: email, full_name, password, role dropdown, client_id (if CLIENT_CONTACT)
-- data-testid: `users-table`, `user-create-btn`, `user-form`, `user-save`
+- **Delete button** (in edit slide-over): red "Delete" button. Opens confirmation dialog. Blocked if user has active placements/assignments (409). Soft-deletes if non-active relations exist, hard-deletes otherwise.
+- data-testid: `users-table`, `user-create-btn`, `user-form`, `user-save`, `user-delete-btn`
 
 ### 4. Clients (`/clients`)
 - Table: company name, country, brokers (comma-separated names), placements (2 most recent active as "Contractor → Title" + counts "N active / M inactive"), active (dot)
