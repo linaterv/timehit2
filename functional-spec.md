@@ -107,6 +107,7 @@ Invoice settings that apply across ALL placements. Stored on profile, NOT per pl
 | require_timesheet_attachment | boolean | default false |
 | client_can_view_invoices | boolean | default false |
 | client_can_view_documents | boolean | default false |
+| client_invoice_template | FK -> InvoiceTemplate | nullable, global CLIENT template to use for client invoices |
 | notes | text | optional |
 
 **Immutability rule:** Once ACTIVE, `client_rate`, `contractor_rate`, and `currency` are locked. To change rates, create a new placement (system offers "Copy Placement" action).
@@ -126,8 +127,10 @@ Same contractor CAN have multiple active placements with same client (different 
 | label | string | optional, e.g. "NDA", "Contract" |
 | uploaded_by_user_id | FK -> User | |
 | uploaded_at | timestamp | |
+| visible_to_client | boolean | default false, controls client visibility |
+| visible_to_contractor | boolean | default false, controls contractor visibility |
 
-Simple upload/download/delete. No mandatory docs. No versioning or e-signatures.
+Simple upload/download/delete. No mandatory docs. No versioning or e-signatures. Per-document visibility: admin/broker toggles which roles can see each document. Contractors only see docs marked `visible_to_contractor`. Clients only see docs marked `visible_to_client` (and only if placement `client_can_view_documents` is enabled).
 
 ### 2.8 Timesheet
 

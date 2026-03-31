@@ -50,6 +50,17 @@ Current date for reference: **March 2026**
 
 ---
 
+## Global Invoice Templates (4)
+
+| template_type | code | title | notes |
+|---|---|---|---|
+| CONTRACTOR | LT | LT Template | Lithuanian format, Wise Integration billing details |
+| CONTRACTOR | EN | EN Template | English format, same company |
+| CLIENT | LT | Client LT Template | Global base — LT, EUR, VAT 21%, 30 days |
+| CLIENT | EN | Client EN Template | Global base — English variant |
+
+All placements default to `client_invoice_template = Client LT Template`.
+
 ## Placements (8)
 
 ### Active placements (5) — contractors currently working

@@ -585,6 +585,7 @@ Query params: `client_id`, `contractor_id`, `status` (comma-separated), `broker_
       "require_timesheet_attachment": false,
       "client_can_view_invoices": true,
       "client_can_view_documents": true,
+      "client_invoice_template_id": "uuid | null",
       "notes": "string | null",
       "created_at": "2026-03-15T10:30:00Z"
     }
@@ -611,6 +612,7 @@ Admin or Broker (for assigned clients).
   "require_timesheet_attachment": false,
   "client_can_view_invoices": false,
   "client_can_view_documents": false,
+  "client_invoice_template_id": "uuid | null",  // global CLIENT template, defaults to LT
   "notes": "string | null"
 }
 
@@ -626,7 +628,7 @@ Admin or Broker (for assigned clients).
 ### `PATCH /placements/:id`
 
 Only when status = DRAFT: all fields editable.
-When status = ACTIVE: only `end_date`, `approval_flow`, `require_timesheet_attachment`, `client_can_view_invoices`, `client_can_view_documents`, `notes` editable.
+When status = ACTIVE: only `end_date`, `approval_flow`, `require_timesheet_attachment`, `client_can_view_invoices`, `client_can_view_documents`, `client_invoice_template_id`, `notes` editable.
 
 ```json
 // Request (fields as in POST, all optional)
@@ -695,9 +697,11 @@ Only DRAFT placements with no timesheets.
 
 ## 8. Placement Documents
 
-**Access:** Admin/Broker (assigned) — full. Contractor — own placement (download only). Client Contact — download if `client_can_view_documents`.
+**Access:** Admin/Broker (assigned) — full CRUD. Contractor — own placement, only docs marked `visible_to_contractor`. Client Contact — only docs marked `visible_to_client` (and `client_can_view_documents` on placement).
 
 ### `GET /placements/:placement_id/documents`
+
+Filtered by role: contractor sees only `visible_to_contractor=true`, client sees only `visible_to_client=true`.
 
 ```json
 // 200
@@ -710,7 +714,9 @@ Only DRAFT placements with no timesheets.
       "mime_type": "application/pdf",
       "label": "NDA",
       "uploaded_by": { "id": "uuid", "full_name": "string" },
-      "uploaded_at": "2026-03-15T10:30:00Z"
+      "uploaded_at": "2026-03-15T10:30:00Z",
+      "visible_to_client": true,
+      "visible_to_contractor": true
     }
   ]
 }
@@ -718,15 +724,27 @@ Only DRAFT placements with no timesheets.
 
 ### `POST /placements/:placement_id/documents`
 
-`Content-Type: multipart/form-data`
+`Content-Type: multipart/form-data`. Admin/Broker only.
 
 | Field | Type | Required |
 |---|---|---|
 | file | binary | yes |
 | label | string | no |
+| visible_to_client | boolean | no (default false) |
+| visible_to_contractor | boolean | no (default false) |
 
 ```json
 // 201 — document object
+```
+
+### `PATCH /placements/:placement_id/documents/:id`
+
+Admin/Broker only. Update label and visibility flags.
+
+```json
+// Request (all optional)
+{ "label": "NDA", "visible_to_client": true, "visible_to_contractor": true }
+// 200 — updated document object
 ```
 
 ### `GET /placements/:placement_id/documents/:id/download`

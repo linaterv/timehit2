@@ -31,6 +31,7 @@ interface ContractorOption {
   id: string;
   full_name: string;
   user_id: string;
+  placement_summary?: { active_count: number };
 }
 
 interface CreatePlacementBody {
@@ -45,6 +46,7 @@ interface CreatePlacementBody {
   require_timesheet_attachment: boolean;
   client_can_view_invoices: boolean;
   client_can_view_documents: boolean;
+  client_invoice_template_id: string;
   payment_terms_client_days: string;
   payment_terms_contractor_days: string;
 }
@@ -88,6 +90,7 @@ function emptyCreateForm(): CreatePlacementBody {
     require_timesheet_attachment: false,
     client_can_view_invoices: false,
     client_can_view_documents: false,
+    client_invoice_template_id: "",
     payment_terms_client_days: "",
     payment_terms_contractor_days: "",
   };
@@ -183,6 +186,12 @@ export default function PlacementsPage() {
     "/placements",
     [["placements"]]
   );
+
+  const { data: clientTplData } = useApiQuery<PaginatedResponse<{ id: string; title: string; code: string }>>(
+    ["client-templates-global"],
+    "/invoice-templates?template_type=CLIENT&status=ACTIVE&per_page=50"
+  );
+  const clientTemplates = (clientTplData?.data ?? []).filter((t) => !(t as any).client && !(t as any).contractor);
 
   const clients = clientsData?.data ?? [];
   const contractors = contractorsData?.data ?? [];
@@ -387,7 +396,12 @@ export default function PlacementsPage() {
             onClick={() => {
               const form = emptyCreateForm();
               if (clients.length) form.client_id = clients[0].id;
-              if (contractors.length) form.contractor_id = contractors[0].user_id;
+              const freeContractor = contractors.find((c) => (c.placement_summary?.active_count ?? 0) === 0);
+              if (freeContractor) form.contractor_id = freeContractor.user_id;
+              else if (contractors.length) form.contractor_id = contractors[0].user_id;
+              const ltTpl = clientTemplates.find((t) => t.code === "LT");
+              if (ltTpl) form.client_invoice_template_id = ltTpl.id;
+              else if (clientTemplates.length) form.client_invoice_template_id = clientTemplates[0].id;
               setCreateForm(form);
               setSlideOpen(true);
             }}
@@ -537,6 +551,21 @@ export default function PlacementsPage() {
             >
               <option value="BROKER_ONLY">Broker Only</option>
               <option value="CLIENT_THEN_BROKER">Client then Broker</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Client Invoice Template</label>
+            <select
+              data-testid="create-client_invoice_template_id"
+              value={createForm.client_invoice_template_id}
+              onChange={(e) => updateCreate("client_invoice_template_id", e.target.value)}
+              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600"
+            >
+              <option value="">None</option>
+              {clientTemplates.map((t) => (
+                <option key={t.id} value={t.id}>{t.title} ({t.code})</option>
+              ))}
             </select>
           </div>
 

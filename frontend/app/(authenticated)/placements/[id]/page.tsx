@@ -41,6 +41,7 @@ interface SettingsForm {
   require_timesheet_attachment: boolean;
   client_can_view_invoices: boolean;
   client_can_view_documents: boolean;
+  client_invoice_template_id: string | null;
   payment_terms_client_days: number | null;
   payment_terms_contractor_days: number | null;
   notes: string;
@@ -88,6 +89,12 @@ export default function PlacementDetailPage() {
     `/placements/${id}/timesheets`,
     tab === "timesheets"
   );
+  const clientTplQ = useApiQuery<PaginatedResponse<{ id: string; title: string; code: string }>>(
+    ["client-templates-global"],
+    "/invoice-templates?template_type=CLIENT&status=ACTIVE&per_page=50"
+  );
+  const clientTemplates = (clientTplQ.data?.data ?? []).filter((t) => !(t as any).client && !(t as any).contractor);
+
   const documentsQ = useApiQuery<PaginatedResponse<PlacementDocument>>(
     ["placement-documents", id],
     `/placements/${id}/documents`,
@@ -187,6 +194,7 @@ export default function PlacementDetailPage() {
         require_timesheet_attachment: placement.require_timesheet_attachment,
         client_can_view_invoices: placement.client_can_view_invoices,
         client_can_view_documents: placement.client_can_view_documents,
+        client_invoice_template_id: placement.client_invoice_template_id,
         payment_terms_client_days: placement.payment_terms_client_days,
         payment_terms_contractor_days: placement.payment_terms_contractor_days,
         notes: placement.notes,
@@ -806,6 +814,25 @@ export default function PlacementDetailPage() {
             >
               <option value="BROKER_ONLY">Broker Only</option>
               <option value="CLIENT_THEN_BROKER">Client Then Broker</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Client Invoice Template
+            </label>
+            <select
+              data-testid="setting-client-invoice-template"
+              value={settings.client_invoice_template_id ?? ""}
+              onChange={(e) =>
+                setSettings({ ...settings, client_invoice_template_id: e.target.value || null })
+              }
+              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600"
+            >
+              <option value="">None</option>
+              {clientTemplates.map((t) => (
+                <option key={t.id} value={t.id}>{t.title} ({t.code})</option>
+              ))}
             </select>
           </div>
 
