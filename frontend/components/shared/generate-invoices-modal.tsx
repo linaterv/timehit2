@@ -80,6 +80,13 @@ export function GenerateInvoicesModal({ open, onClose }: Props) {
     onClose();
   };
 
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") handleClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [open]);
+
   if (!open) return null;
 
   return (

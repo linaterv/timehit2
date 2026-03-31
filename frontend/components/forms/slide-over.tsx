@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -11,6 +13,13 @@ interface Props {
 }
 
 export function SlideOver({ open, onClose, title, children, onSave, saving, testId }: Props) {
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [open, onClose]);
+
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex justify-end">

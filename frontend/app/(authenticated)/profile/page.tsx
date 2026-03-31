@@ -24,6 +24,12 @@ export default function ProfilePage() {
 
   // Password dialog
   const [pwdOpen, setPwdOpen] = useState(false);
+  useEffect(() => {
+    if (!pwdOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setPwdOpen(false); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [pwdOpen]);
   const [pwdCurrent, setPwdCurrent] = useState("");
   const [pwdNew, setPwdNew] = useState("");
   const [pwdConfirm, setPwdConfirm] = useState("");

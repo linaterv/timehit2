@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useApiQuery, useApiMutation } from "@/hooks/use-api";
@@ -52,6 +52,12 @@ export default function PlacementDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [docLabel, setDocLabel] = useState("");
   const [tsCreateOpen, setTsCreateOpen] = useState(false);
+  useEffect(() => {
+    if (!tsCreateOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setTsCreateOpen(false); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [tsCreateOpen]);
   const [tsCreateYear, setTsCreateYear] = useState(new Date().getFullYear());
   const [tsCreateMonth, setTsCreateMonth] = useState(new Date().getMonth() + 1);
   const [tsCreateError, setTsCreateError] = useState("");

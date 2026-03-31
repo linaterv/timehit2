@@ -50,6 +50,12 @@ export default function TimesheetDetailPage() {
   const [dirty, setDirty] = useState(false);
   const [confirmSubmitEmpty, setConfirmSubmitEmpty] = useState(false);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  useEffect(() => {
+    if (!rejectModalOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") { setRejectModalOpen(false); setRejectReason(""); } };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [rejectModalOpen]);
   const [rejectReason, setRejectReason] = useState("");
   const [confirmFutureSubmit, setConfirmFutureSubmit] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);

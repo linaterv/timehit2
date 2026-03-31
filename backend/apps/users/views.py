@@ -142,3 +142,12 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"])
     def me(self, request):
         return Response(UserMeSerializer(request.user).data)
+
+
+class GeneratePasswordView(APIView):
+    """Generate a memorable password from word dictionary."""
+
+    @extend_schema(tags=["Users"])
+    def post(self, request):
+        from .wordlist import generate_password
+        return Response({"password": generate_password()})

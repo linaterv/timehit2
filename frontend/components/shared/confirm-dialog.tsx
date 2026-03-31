@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 interface Props {
   open: boolean;
   title: string;
@@ -11,6 +13,13 @@ interface Props {
 }
 
 export function ConfirmDialog({ open, title, message, onConfirm, onCancel, confirmLabel = "Confirm", destructive }: Props) {
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [open, onCancel]);
+
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
