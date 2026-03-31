@@ -5,6 +5,10 @@ class AgencySettings(models.Model):
     """Singleton model for agency-wide settings."""
     default_payment_terms_client_days = models.IntegerField(default=30)
     default_payment_terms_contractor_days = models.IntegerField(default=35)
+    default_client_invoice_template = models.ForeignKey(
+        "invoices.InvoiceTemplate", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="+",
+    )
 
     class Meta:
         db_table = "agency_settings"

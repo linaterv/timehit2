@@ -175,6 +175,7 @@ class AgencySettingsView(APIView):
         return Response({
             "default_payment_terms_client_days": s.default_payment_terms_client_days,
             "default_payment_terms_contractor_days": s.default_payment_terms_contractor_days,
+            "default_client_invoice_template_id": str(s.default_client_invoice_template_id) if s.default_client_invoice_template_id else None,
         })
 
     @extend_schema(tags=["Control"])
@@ -187,8 +188,12 @@ class AgencySettingsView(APIView):
             s.default_payment_terms_client_days = request.data["default_payment_terms_client_days"]
         if "default_payment_terms_contractor_days" in request.data:
             s.default_payment_terms_contractor_days = request.data["default_payment_terms_contractor_days"]
+        if "default_client_invoice_template_id" in request.data:
+            val = request.data["default_client_invoice_template_id"]
+            s.default_client_invoice_template_id = val if val else None
         s.save()
         return Response({
             "default_payment_terms_client_days": s.default_payment_terms_client_days,
             "default_payment_terms_contractor_days": s.default_payment_terms_contractor_days,
+            "default_client_invoice_template_id": str(s.default_client_invoice_template_id) if s.default_client_invoice_template_id else None,
         })

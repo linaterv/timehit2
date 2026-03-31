@@ -166,13 +166,6 @@ class Command(BaseCommand):
         BrokerClientAssignment.objects.create(broker=laura, client=nordsoft)
         BrokerClientAssignment.objects.create(broker=peter, client=cloudbase)
 
-        # ── AGENCY SETTINGS ──────────────────────────────────────────────────
-        AgencySettings.objects.create(
-            pk=1,
-            default_payment_terms_client_days=30,
-            default_payment_terms_contractor_days=35,
-        )
-
         # ── INVOICE TEMPLATES ────────────────────────────────────────────────
         self.stdout.write("Creating invoice templates...")
         for prof in [prof_alex, prof_mia, prof_oscar, prof_nina, prof_sam]:
@@ -233,6 +226,14 @@ class Command(BaseCommand):
             country="LT", default_currency="EUR",
             vat_registered=True, vat_rate_percent=21,
             payment_terms_days=30,
+        )
+
+        # ── AGENCY SETTINGS ──────────────────────────────────────────────────
+        AgencySettings.objects.create(
+            pk=1,
+            default_payment_terms_client_days=30,
+            default_payment_terms_contractor_days=35,
+            default_client_invoice_template=client_tpl_lt,
         )
 
         # ── PLACEMENTS ───────────────────────────────────────────────────────

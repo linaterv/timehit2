@@ -17,16 +17,24 @@ export default function SettingsPage() {
   // Placement settings
   const [plClientDays, setPlClientDays] = useState(30);
   const [plContrDays, setPlContrDays] = useState(35);
+  const [plDefaultTplId, setPlDefaultTplId] = useState("");
   const [plSaving, setPlSaving] = useState(false);
   const [plSaved, setPlSaved] = useState(false);
 
-  const agencyQ = useApiQuery<{ default_payment_terms_client_days: number; default_payment_terms_contractor_days: number }>(
+  const agencyQ = useApiQuery<{ default_payment_terms_client_days: number; default_payment_terms_contractor_days: number; default_client_invoice_template_id: string | null }>(
     ["agency-settings"], "/agency-settings"
   );
+  const clientTplQ = useApiQuery<{ data: { id: string; title: string; code: string; contractor?: unknown; client?: unknown }[] }>(
+    ["client-templates-global-settings"],
+    "/invoice-templates?template_type=CLIENT&status=ACTIVE&per_page=50"
+  );
+  const clientTemplates = (clientTplQ.data?.data ?? []).filter((t) => !t.contractor && !t.client);
+
   useEffect(() => {
     if (agencyQ.data) {
       setPlClientDays(agencyQ.data.default_payment_terms_client_days);
       setPlContrDays(agencyQ.data.default_payment_terms_contractor_days);
+      setPlDefaultTplId(agencyQ.data.default_client_invoice_template_id ?? "");
     }
   }, [agencyQ.data]);
 
@@ -38,6 +46,7 @@ export default function SettingsPage() {
         body: JSON.stringify({
           default_payment_terms_client_days: plClientDays,
           default_payment_terms_contractor_days: plContrDays,
+          default_client_invoice_template_id: plDefaultTplId || null,
         }),
       });
       setPlSaved(true);
@@ -135,6 +144,17 @@ export default function SettingsPage() {
             <input type="number" value={plContrDays}
               onChange={(e) => { setPlContrDays(parseInt(e.target.value, 10) || 0); setPlSaved(false); }}
               className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Default Client Invoice Template</label>
+            <select value={plDefaultTplId}
+              onChange={(e) => { setPlDefaultTplId(e.target.value); setPlSaved(false); }}
+              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600">
+              <option value="">None</option>
+              {clientTemplates.map((t) => (
+                <option key={t.id} value={t.id}>{t.title} ({t.code})</option>
+              ))}
+            </select>
           </div>
           <div className="flex items-center gap-3">
             <button onClick={handlePlSave} disabled={plSaving}
