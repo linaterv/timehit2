@@ -401,7 +401,11 @@ export default function PlacementsPage() {
         <div className="space-y-4">
           {createMutation.isError && (
             <div data-testid="placement-create-error" className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">
-              Failed to create placement
+              {(() => {
+                const e = createMutation.error as { message?: string; details?: { field: string; message: string }[] };
+                if (e?.details?.length) return e.details.map((d, i) => <div key={i}><strong>{d.field}:</strong> {d.message}</div>);
+                return e?.message || "Failed to create placement";
+              })()}
             </div>
           )}
 

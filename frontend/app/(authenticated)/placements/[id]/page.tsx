@@ -143,7 +143,8 @@ export default function PlacementDetailPage() {
       } as any);
       setEditing(false);
     } catch (err: any) {
-      setEditError(err?.message ?? "Failed to save");
+      const details = err?.details as { field: string; message: string }[] | undefined;
+      setEditError(details?.length ? details.map((d) => `${d.field}: ${d.message}`).join(", ") : (err?.message ?? "Failed to save"));
     }
   };
 
