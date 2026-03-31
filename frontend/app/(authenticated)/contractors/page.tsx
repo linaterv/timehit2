@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { DataTable, type Column } from "@/components/data-table/data-table";
 import { useApiQuery, useApiMutation } from "@/hooks/use-api";
 import { useAuth } from "@/hooks/use-auth";
-import { SlideOver } from "@/components/forms/slide-over";
 import { formatDate } from "@/lib/utils";
 import type { ContractorProfile, PaginatedResponse, User } from "@/types/api";
 
@@ -147,31 +146,46 @@ export default function ContractorsPage() {
         />
       )}
 
-      <SlideOver open={createOpen} onClose={() => setCreateOpen(false)} title="Create Contractor"
-        onSave={() => {
-          createMutation.mutate({ email: formEmail, full_name: formName, password: formPassword, role: "CONTRACTOR" }, {
-            onSuccess: () => setCreateOpen(false),
-          });
-        }} saving={createMutation.isPending} testId="create-contractor-slide">
-        <div className="space-y-4">
-          {createMutation.error ? <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">Failed to create contractor</div> : null}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-            <input type="text" value={formName} onChange={(e) => setFormName(e.target.value)}
-              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input type="email" value={formEmail} onChange={(e) => setFormEmail(e.target.value)}
-              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input type="password" value={formPassword} onChange={(e) => setFormPassword(e.target.value)}
-              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
+      {createOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/30" onClick={() => setCreateOpen(false)} />
+          <div data-testid="create-contractor-dialog" className="relative bg-surface rounded-xl shadow-lg w-full max-w-md p-6 space-y-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">New Contractor</h3>
+              <button onClick={() => setCreateOpen(false)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+            </div>
+            {createMutation.error ? <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">Failed to create contractor</div> : null}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+              <input type="text" value={formName} onChange={(e) => setFormName(e.target.value)} autoFocus
+                className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input type="email" value={formEmail} onChange={(e) => setFormEmail(e.target.value)}
+                className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <input type="password" value={formPassword} onChange={(e) => setFormPassword(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { createMutation.mutate({ email: formEmail, full_name: formName, password: formPassword, role: "CONTRACTOR" }, { onSuccess: () => setCreateOpen(false) }); } }}
+                className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button onClick={() => setCreateOpen(false)} className="px-4 py-2 border rounded-md text-sm text-gray-700 hover:bg-gray-50">Cancel</button>
+              <button
+                data-testid="create-contractor-submit"
+                disabled={createMutation.isPending}
+                onClick={() => {
+                  createMutation.mutate({ email: formEmail, full_name: formName, password: formPassword, role: "CONTRACTOR" }, { onSuccess: () => setCreateOpen(false) });
+                }}
+                className="px-4 py-2 bg-brand-600 text-white rounded-md text-sm font-medium hover:bg-brand-700 disabled:opacity-50">
+                {createMutation.isPending ? "Creating..." : "Create"}
+              </button>
+            </div>
           </div>
         </div>
-      </SlideOver>
+      )}
     </div>
   );
 }
