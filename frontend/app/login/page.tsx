@@ -80,6 +80,7 @@ export default function LoginPage() {
                 data-testid="login-user-select"
                 value={email}
                 onChange={(e) => handleUserSelect(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSubmit(e as unknown as React.FormEvent); } }}
                 className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600 bg-surface"
               >
                 {testUsers.map((u) => (
