@@ -182,7 +182,7 @@ export default function TimesheetDetailPage() {
   const saveMut = useMutation({
     mutationFn: (body: { entries: Omit<LocalEntry, "_key">[] }) =>
       api(`/timesheets/${id}/entries/bulk_upsert`, { method: "PUT", body: JSON.stringify(body) }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["timesheet", id] }); setDirty(false); },
+    onSuccess: () => { setEntries(null); qc.invalidateQueries({ queryKey: ["timesheet", id] }); setDirty(false); },
   });
 
   const submitMut = useMutation({
