@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useApiQuery } from "@/hooks/use-api";
 import { useAuth } from "@/hooks/use-auth";
 import { api } from "@/lib/api";
@@ -12,6 +12,40 @@ import type { InvoiceTemplate } from "@/types/api";
 
 export default function SettingsPage() {
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<"templates" | "placement">("templates");
+
+  // Placement settings
+  const [plClientDays, setPlClientDays] = useState(30);
+  const [plContrDays, setPlContrDays] = useState(35);
+  const [plSaving, setPlSaving] = useState(false);
+  const [plSaved, setPlSaved] = useState(false);
+
+  const agencyQ = useApiQuery<{ default_payment_terms_client_days: number; default_payment_terms_contractor_days: number }>(
+    ["agency-settings"], "/agency-settings"
+  );
+  useEffect(() => {
+    if (agencyQ.data) {
+      setPlClientDays(agencyQ.data.default_payment_terms_client_days);
+      setPlContrDays(agencyQ.data.default_payment_terms_contractor_days);
+    }
+  }, [agencyQ.data]);
+
+  const handlePlSave = async () => {
+    setPlSaving(true); setPlSaved(false);
+    try {
+      await api("/agency-settings", {
+        method: "PATCH",
+        body: JSON.stringify({
+          default_payment_terms_client_days: plClientDays,
+          default_payment_terms_contractor_days: plContrDays,
+        }),
+      });
+      setPlSaved(true);
+      agencyQ.refetch();
+    } catch { /* ignore */ }
+    finally { setPlSaving(false); }
+  };
+
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [editing, setEditing] = useState<InvoiceTemplate | null>(null);
@@ -76,12 +110,43 @@ export default function SettingsPage() {
 
       <div className="flex gap-1 border-b">
         <button data-testid="tab-invoice-templates"
-          className="px-4 py-2 text-sm font-medium border-b-2 -mb-px border-brand-600 text-brand-600">
+          onClick={() => setActiveTab("templates")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${activeTab === "templates" ? "border-brand-600 text-brand-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
           Invoice Templates
+        </button>
+        <button data-testid="tab-placement-settings"
+          onClick={() => setActiveTab("placement")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${activeTab === "placement" ? "border-brand-600 text-brand-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+          Placement Defaults
         </button>
       </div>
 
-      {!showEditor ? (
+      {activeTab === "placement" && (
+        <div className="max-w-md space-y-4">
+          <p className="text-sm text-gray-500">Default payment terms applied to new placements.</p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Client Payment Terms (days)</label>
+            <input type="number" value={plClientDays}
+              onChange={(e) => { setPlClientDays(parseInt(e.target.value, 10) || 0); setPlSaved(false); }}
+              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Contractor Payment Terms (days)</label>
+            <input type="number" value={plContrDays}
+              onChange={(e) => { setPlContrDays(parseInt(e.target.value, 10) || 0); setPlSaved(false); }}
+              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
+          </div>
+          <div className="flex items-center gap-3">
+            <button onClick={handlePlSave} disabled={plSaving}
+              className="px-4 py-2 bg-brand-600 text-white rounded-md text-sm hover:bg-brand-700 disabled:opacity-50">
+              {plSaving ? "Saving..." : "Save"}
+            </button>
+            {plSaved && <span className="text-sm text-green-600">Saved</span>}
+          </div>
+        </div>
+      )}
+
+      {activeTab === "templates" && !showEditor ? (
         <>
           <div className="flex items-center gap-3">
             <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="px-3 py-2 border rounded text-sm">
@@ -134,7 +199,9 @@ export default function SettingsPage() {
             ))}
           </div>
         </>
-      ) : (
+      ) : null}
+
+      {activeTab === "templates" && showEditor && (
         <InvoiceTemplateA4
           form={form} onChange={u} isNew={isNew} editing={editing}
           onSave={handleSave} onDelete={handleDelete} onAction={handleAction} onClose={close}

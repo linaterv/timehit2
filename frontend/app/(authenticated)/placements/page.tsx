@@ -54,7 +54,10 @@ interface CreatePlacementBody {
 const PLACEMENT_STATUSES: PlacementStatus[] = ["DRAFT", "ACTIVE", "COMPLETED", "CANCELLED"];
 
 function fmt(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 function defaultDates(): { start: string; end: string } {

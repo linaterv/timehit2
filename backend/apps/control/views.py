@@ -163,3 +163,32 @@ class ControlExportView(APIView):
         response = HttpResponse(buf.getvalue(), content_type="text/csv")
         response["Content-Disposition"] = f'attachment; filename="control-{request.query_params.get("year", "")}-{request.query_params.get("month", "")}.csv"'
         return response
+
+
+class AgencySettingsView(APIView):
+    """GET/PATCH agency-wide placement defaults. Admin only."""
+
+    @extend_schema(tags=["Control"])
+    def get(self, request):
+        from .models import AgencySettings
+        s = AgencySettings.load()
+        return Response({
+            "default_payment_terms_client_days": s.default_payment_terms_client_days,
+            "default_payment_terms_contractor_days": s.default_payment_terms_contractor_days,
+        })
+
+    @extend_schema(tags=["Control"])
+    def patch(self, request):
+        if not request.user.is_admin:
+            raise PermissionDenied("Admin only")
+        from .models import AgencySettings
+        s = AgencySettings.load()
+        if "default_payment_terms_client_days" in request.data:
+            s.default_payment_terms_client_days = request.data["default_payment_terms_client_days"]
+        if "default_payment_terms_contractor_days" in request.data:
+            s.default_payment_terms_contractor_days = request.data["default_payment_terms_contractor_days"]
+        s.save()
+        return Response({
+            "default_payment_terms_client_days": s.default_payment_terms_client_days,
+            "default_payment_terms_contractor_days": s.default_payment_terms_contractor_days,
+        })

@@ -760,9 +760,17 @@ export default function PlacementDetailPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Label</label>
-              <input data-testid="doc-label-input" type="text" value={docLabel}
-                onChange={(e) => setDocLabel(e.target.value)} placeholder="Document label"
+              <input data-testid="doc-label-input" type="text" list="doc-label-options" value={docLabel}
+                onChange={(e) => setDocLabel(e.target.value)} placeholder="Select or type label"
                 className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
+              <datalist id="doc-label-options">
+                <option value="NDA" />
+                <option value="Terms" />
+                <option value="Agreement with Client" />
+                <option value="Agreement with Contractor" />
+                <option value="Client Appendix" />
+                <option value="Contractor Appendix" />
+              </datalist>
             </div>
             <div className="flex items-center gap-4">
               <label className="flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer">

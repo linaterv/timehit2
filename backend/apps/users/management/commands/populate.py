@@ -17,6 +17,7 @@ from apps.invoices.models import InvoiceNotification
 from apps.timesheets.models import Timesheet, TimesheetEntry, TimesheetAttachment
 from apps.invoices.models import Invoice, InvoiceCorrectionLink, InvoiceTemplate
 from apps.invoices.pdf import generate_invoice_pdf
+from apps.control.models import AgencySettings
 
 D = Decimal
 PWD = "a"
@@ -65,6 +66,7 @@ class Command(BaseCommand):
             ContractorProfile.objects.all().delete()
             Client.objects.all().delete()
             User.objects.all().delete()
+            AgencySettings.objects.all().delete()
             self.stdout.write("Done cleaning.")
 
         if User.objects.exists():
@@ -163,6 +165,13 @@ class Command(BaseCommand):
         BrokerClientAssignment.objects.create(broker=laura, client=cloudbase)
         BrokerClientAssignment.objects.create(broker=laura, client=nordsoft)
         BrokerClientAssignment.objects.create(broker=peter, client=cloudbase)
+
+        # ── AGENCY SETTINGS ──────────────────────────────────────────────────
+        AgencySettings.objects.create(
+            pk=1,
+            default_payment_terms_client_days=30,
+            default_payment_terms_contractor_days=35,
+        )
 
         # ── INVOICE TEMPLATES ────────────────────────────────────────────────
         self.stdout.write("Creating invoice templates...")
