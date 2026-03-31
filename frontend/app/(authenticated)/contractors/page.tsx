@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { DataTable, type Column } from "@/components/data-table/data-table";
 import { useApiQuery, useApiMutation } from "@/hooks/use-api";
+import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { formatDate } from "@/lib/utils";
 import type { ContractorProfile, PaginatedResponse, User } from "@/types/api";
@@ -35,8 +36,7 @@ export default function ContractorsPage() {
 
   const generatePwd = useCallback(async () => {
     try {
-      const r = await fetch("/api/v1/users/generate-password", { method: "POST", headers: { "Content-Type": "application/json" } });
-      const data = await r.json();
+      const data = await api<{ password: string }>("/users/generate-password", { method: "POST" });
       if (data.password) { setFormPassword(data.password); setFormConfirm(data.password); setFormShowPwd(true); }
     } catch {}
   }, []);
@@ -235,8 +235,7 @@ export default function ContractorsPage() {
                   let pwd = formPassword;
                   if (formAutoGen && !pwd) {
                     try {
-                      const r = await fetch("/api/v1/users/generate-password", { method: "POST", headers: { "Content-Type": "application/json" } });
-                      const d = await r.json();
+                      const d = await api<{ password: string }>("/users/generate-password", { method: "POST" });
                       pwd = d.password;
                       setFormPassword(pwd); setFormConfirm(pwd); setFormShowPwd(true);
                     } catch { setFormPwdError("Failed to generate password"); return; }

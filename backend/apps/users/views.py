@@ -186,8 +186,6 @@ class UserViewSet(viewsets.ModelViewSet):
 
 class GeneratePasswordView(APIView):
     """Generate a memorable password from word dictionary."""
-    permission_classes = [AllowAny]
-    authentication_classes = []
 
     @extend_schema(tags=["Users"])
     def post(self, request):
