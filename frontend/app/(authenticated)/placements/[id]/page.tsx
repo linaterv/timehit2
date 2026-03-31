@@ -228,6 +228,7 @@ export default function PlacementDetailPage() {
   };
 
   const handleDocDelete = async (docId: string) => {
+    if (!confirm("Delete this document?")) return;
     await api(`/placements/${id}/documents/${docId}`, { method: "DELETE" });
     qc.invalidateQueries({ queryKey: ["placement-documents", id] });
   };
