@@ -6,6 +6,8 @@ export function useApiQuery<T>(key: QueryKey, path: string, enabled = true) {
     queryKey: key,
     queryFn: () => api<T>(path),
     enabled,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 }
 

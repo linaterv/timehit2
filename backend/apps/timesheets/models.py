@@ -72,6 +72,13 @@ class Timesheet(models.Model):
         self.approved_by = user
         self.save()
 
+    def withdraw(self):
+        if self.status != self.Status.SUBMITTED:
+            raise InvalidStateTransition("Can only withdraw from SUBMITTED status")
+        self.status = self.Status.DRAFT
+        self.submitted_at = None
+        self.save()
+
     def reject(self, user, reason):
         if self.status not in (self.Status.SUBMITTED, self.Status.CLIENT_APPROVED):
             raise InvalidStateTransition("Can only reject from SUBMITTED or CLIENT_APPROVED status")

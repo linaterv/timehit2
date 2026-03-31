@@ -145,6 +145,15 @@ class TimesheetViewSet(viewsets.ModelViewSet):
 
     @extend_schema(tags=["Timesheets"], request=None)
     @action(detail=True, methods=["post"])
+    def withdraw(self, request, pk=None, **kwargs):
+        ts = Timesheet.objects.select_related("placement").get(pk=pk)
+        if not request.user.is_contractor or ts.placement.contractor_id != request.user.id:
+            raise PermissionDenied()
+        ts.withdraw()
+        return Response(TimesheetDetailSerializer(ts, context={"request": request}).data)
+
+    @extend_schema(tags=["Timesheets"], request=None)
+    @action(detail=True, methods=["post"])
     def approve(self, request, pk=None, **kwargs):
         ts = Timesheet.objects.select_related("placement").get(pk=pk)
         user = request.user

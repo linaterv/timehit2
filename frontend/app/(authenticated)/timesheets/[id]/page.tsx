@@ -65,6 +65,8 @@ export default function TimesheetDetailPage() {
   const tsQuery = useQuery<Timesheet>({
     queryKey: ["timesheet", id],
     queryFn: () => api<Timesheet>(`/timesheets/${id}`),
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const ts = tsQuery.data;
@@ -74,6 +76,8 @@ export default function TimesheetDetailPage() {
     queryKey: ["placement-for-ts", placementId],
     queryFn: () => api(`/placements/${placementId}`),
     enabled: !!placementId,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   // Sibling timesheets for month navigation
@@ -81,6 +85,8 @@ export default function TimesheetDetailPage() {
     queryKey: ["placement-timesheets-nav", placementId],
     queryFn: () => api(`/placements/${placementId}/timesheets?per_page=100`),
     enabled: !!placementId,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const placementDates = placementQuery.data;
@@ -290,6 +296,7 @@ export default function TimesheetDetailPage() {
   const approvalFlow = placement?.approval_flow;
   const attachments: TimesheetAttachment[] = ts.attachments ?? [];
   const showSubmit = ownsTimesheet && isDraft;
+  const showWithdraw = ownsTimesheet && ts.status === "SUBMITTED";
   const showDelete = ownsTimesheet && isDraft;
   const showClientApprove = isClientContact && ts.status === "SUBMITTED" && approvalFlow === "CLIENT_THEN_BROKER";
   const showBrokerApprove = isBrokerOrAdmin && (ts.status === "SUBMITTED" || ts.status === "CLIENT_APPROVED");

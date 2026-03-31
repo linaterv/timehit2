@@ -80,6 +80,8 @@ export default function TimesheetsListPage() {
     queryKey: ["timesheets-pending"],
     queryFn: () => api<{ data: PendingRow[] }>("/timesheets/pending"),
     enabled: needsPending,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   // Auto-switch: if pending returns empty, switch to "all"
