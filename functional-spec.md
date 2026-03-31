@@ -301,6 +301,7 @@ DRAFT --[activate]--> ACTIVE --[complete]--> COMPLETED
 ```
 DRAFT --[submit]--> SUBMITTED --[approve]--> APPROVED
                               --[reject]---> REJECTED --[edit]--> DRAFT
+                              --[withdraw]-> DRAFT (contractor can withdraw before approval)
 ```
 
 ### 3.3 Timesheet (CLIENT_THEN_BROKER flow)
@@ -308,6 +309,7 @@ DRAFT --[submit]--> SUBMITTED --[approve]--> APPROVED
 ```
 DRAFT --[submit]--> SUBMITTED --[client_approve]--> CLIENT_APPROVED --[broker_approve]--> APPROVED
                               --[client_reject]---> REJECTED --[edit]--> DRAFT
+                              --[withdraw]--------> DRAFT (contractor can withdraw before any approval)
                                                     CLIENT_APPROVED --[broker_reject]--> REJECTED --[edit]--> DRAFT
 ```
 

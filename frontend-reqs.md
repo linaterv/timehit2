@@ -267,7 +267,7 @@ Reusable component used by Settings, contractor detail Templates tab, and profil
   - File list with download/delete
   - data-testid: `attachment-upload`, `attachment-list`
 - **Action buttons** (bottom bar, based on role + status):
-  - Contractor: Submit (DRAFT), shows confirmation if zero hours. **Future month warning on submit**: if the timesheet month is after the current month, show a warning dialog "You are submitting a timesheet for a future month. Are you sure?" — allows proceeding. Saving entries for future months is allowed without warning.
+  - Contractor: Submit (DRAFT), shows confirmation if zero hours. **Future month warning on submit**: if the timesheet month is after the current month, show a warning dialog "You are submitting a timesheet for a future month. Are you sure?" — allows proceeding. Saving entries for future months is allowed without warning. **Withdraw** (SUBMITTED only): amber button, confirmation dialog, moves back to DRAFT. Not available once approved/client-approved.
   - Client Contact: Approve / Reject (SUBMITTED, CLIENT_THEN_BROKER flow)
   - Broker/Admin: Approve / Reject (SUBMITTED or CLIENT_APPROVED)
   - data-testid: `ts-submit-btn`, `ts-approve-btn`, `ts-reject-btn`

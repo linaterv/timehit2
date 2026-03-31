@@ -224,6 +224,17 @@ export default function TimesheetDetailPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["timesheet", id] }); setRejectModalOpen(false); setRejectReason(""); },
   });
 
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const withdrawMut = useMutation({
+    mutationFn: () => api(`/timesheets/${id}/withdraw`, { method: "POST" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["timesheet", id] });
+      qc.invalidateQueries({ queryKey: ["timesheets"] });
+      qc.invalidateQueries({ queryKey: ["timesheets-pending"] });
+      qc.invalidateQueries({ queryKey: ["timesheets-pending-placements"] });
+    },
+  });
+
   const deleteMut = useMutation({
     mutationFn: () => api(`/timesheets/${id}`, { method: "DELETE" }),
     onSuccess: () => {
@@ -375,6 +386,12 @@ export default function TimesheetDetailPage() {
               <button data-testid="ts-submit-btn" onClick={handleSubmit} disabled={submitMut.isPending}
                 className="px-4 py-1.5 bg-brand-600 text-white rounded text-sm hover:bg-brand-700 disabled:opacity-50">
                 {submitMut.isPending ? "Submitting..." : "Submit"}
+              </button>
+            )}
+            {showWithdraw && (
+              <button data-testid="ts-withdraw-btn" onClick={() => setWithdrawOpen(true)} disabled={withdrawMut.isPending}
+                className="px-4 py-1.5 border border-amber-300 text-amber-700 bg-amber-50 rounded text-sm hover:bg-amber-100 disabled:opacity-50">
+                {withdrawMut.isPending ? "Withdrawing..." : "Withdraw"}
               </button>
             )}
             {showClientApprove && (
@@ -660,6 +677,12 @@ export default function TimesheetDetailPage() {
         confirmLabel="Delete" destructive
         onConfirm={() => { setConfirmDelete(false); deleteMut.mutate(); }}
         onCancel={() => setConfirmDelete(false)} />
+
+      <ConfirmDialog open={withdrawOpen} title="Withdraw Timesheet?"
+        message="This will move the timesheet back to DRAFT status. You can edit and resubmit it."
+        confirmLabel="Withdraw"
+        onConfirm={() => { setWithdrawOpen(false); withdrawMut.mutate(); }}
+        onCancel={() => setWithdrawOpen(false)} />
 
       {/* Reject Modal */}
       {rejectModalOpen && (

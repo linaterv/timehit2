@@ -35,6 +35,7 @@ interface ContractorOption {
 }
 
 interface CreatePlacementBody {
+  title: string;
   client_id: string;
   contractor_id: string;
   client_rate: string;
@@ -82,6 +83,7 @@ function defaultDates(): { start: string; end: string } {
 function emptyCreateForm(): CreatePlacementBody {
   const dates = defaultDates();
   return {
+    title: "",
     client_id: "",
     contractor_id: "",
     client_rate: "",
@@ -185,6 +187,11 @@ export default function PlacementsPage() {
     ["contractors-list"],
     "/contractors?per_page=200&sort=created_at&order=desc"
   );
+
+  const { data: titlesData } = useApiQuery<string[]>(
+    ["placement-titles"], "/placements/titles"
+  );
+  const positionTitles = titlesData ?? [];
 
   const createMutation = useApiMutation<Placement, CreatePlacementBody>(
     "POST",
@@ -487,6 +494,17 @@ export default function PlacementsPage() {
               placeholder="Search contractors..."
               options={contractors.map((c) => ({ value: c.user_id, label: c.full_name }))}
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Position / Title</label>
+            <input data-testid="create-title" type="text" list="placement-title-options"
+              value={createForm.title} onChange={(e) => updateCreate("title", e.target.value)}
+              placeholder="Select or type position"
+              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
+            <datalist id="placement-title-options">
+              {positionTitles.map((t) => <option key={t} value={t} />)}
+            </datalist>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

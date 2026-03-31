@@ -95,6 +95,9 @@ export default function PlacementDetailPage() {
   );
   const clientTemplates = (clientTplQ.data?.data ?? []).filter((t) => !(t as any).client && !(t as any).contractor);
 
+  const { data: titlesData } = useApiQuery<string[]>(["placement-titles"], "/placements/titles");
+  const positionTitles = titlesData ?? [];
+
   const documentsQ = useApiQuery<PaginatedResponse<PlacementDocument>>(
     ["placement-documents", id],
     `/placements/${id}/documents`,
@@ -448,9 +451,13 @@ export default function PlacementDetailPage() {
               </div>
               <div>
                 <label className="text-gray-500 block mb-1">Position / Title</label>
-                <input type="text" value={editForm.title}
+                <input type="text" list="placement-title-options-edit" value={editForm.title}
                   onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                  placeholder="Select or type position"
                   className="w-full border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
+                <datalist id="placement-title-options-edit">
+                  {positionTitles.map((t) => <option key={t} value={t} />)}
+                </datalist>
               </div>
               {!isActive && isAdminOrBroker && (
                 <>

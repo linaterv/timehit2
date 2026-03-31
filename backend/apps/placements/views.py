@@ -140,6 +140,13 @@ class PlacementViewSet(viewsets.ModelViewSet):
         )
         return Response(PlacementListSerializer(new, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
+    @extend_schema(tags=["Placements"])
+    @action(detail=False, methods=["get"])
+    def titles(self, request):
+        """Return distinct non-empty placement titles (positions) for autocomplete."""
+        titles = Placement.objects.exclude(title="").values_list("title", flat=True).distinct().order_by("title")
+        return Response(list(titles))
+
 
 class PlacementDocumentViewSet(viewsets.ModelViewSet):
     http_method_names = ["get", "post", "patch", "delete"]

@@ -1022,6 +1022,16 @@ Contractor only. DRAFT -> SUBMITTED.
 // 409 — invalid current status
 ```
 
+### `POST /timesheets/:id/withdraw`
+
+Contractor only. SUBMITTED -> DRAFT. Allows contractor to withdraw a submitted timesheet before it is approved. Not available once approved or client-approved.
+
+```json
+// 200 — timesheet with status: "DRAFT"
+// 403 — not the contractor who owns this timesheet
+// 409 — not in SUBMITTED status
+```
+
 ### `POST /timesheets/:id/approve`
 
 **BROKER_ONLY flow:** Broker/Admin. SUBMITTED -> APPROVED.
