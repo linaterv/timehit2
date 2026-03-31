@@ -765,14 +765,13 @@ export default function PlacementDetailPage() {
                 Visible to contractor
               </label>
             </div>
-            {docEditingId ? (
-              <div className="flex justify-end gap-2 pt-2">
-                <button onClick={() => setDocDialogOpen(false)} className="px-4 py-2 border rounded-md text-sm text-gray-700 hover:bg-gray-50">Cancel</button>
+            {!docEditingId && <FileUpload onUpload={handleDocUpload} />}
+            <div className="flex justify-end gap-2 pt-2">
+              <button onClick={() => setDocDialogOpen(false)} className="px-4 py-2 border rounded-md text-sm text-gray-700 hover:bg-gray-50">Cancel</button>
+              {docEditingId && (
                 <button onClick={handleDocSave} className="px-4 py-2 bg-brand-600 text-white rounded-md text-sm font-medium hover:bg-brand-700">Save</button>
-              </div>
-            ) : (
-              <FileUpload onUpload={handleDocUpload} />
-            )}
+              )}
+            </div>
           </div>
         </div>
       )}

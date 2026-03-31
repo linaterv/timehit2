@@ -210,6 +210,52 @@ class Command(BaseCommand):
             company_name="UAB \"WISE INTEGRATION\"", country="LT", default_currency="EUR",
         )
 
+        # Global Agency templates (LT and EN) — used for client invoices FROM the agency
+        InvoiceTemplate.objects.create(
+            title="Agency LT Template", code="LT",
+            template_type=InvoiceTemplate.Type.AGENCY, status=InvoiceTemplate.Status.ACTIVE,
+            company_name="UAB \u201eWISE INTEGRATION\u201c",
+            registration_number="302666833",
+            billing_address="Paneri\u0173 g. 11, LT-03209 Vilnius, Lietuva",
+            country="LT", default_currency="EUR",
+            vat_registered=True, vat_number="LT100006404014", vat_rate_percent=21,
+            bank_name="SEB Bank AB",
+            bank_account_iban="LT06 7044 0600 0817 7672",
+            bank_swift_bic="CBVILT2X",
+            invoice_series_prefix="AGY-", next_invoice_number=1,
+            payment_terms_days=30,
+        )
+        InvoiceTemplate.objects.create(
+            title="Agency EN Template", code="EN",
+            template_type=InvoiceTemplate.Type.AGENCY, status=InvoiceTemplate.Status.ACTIVE,
+            company_name="UAB \"WISE INTEGRATION\"",
+            registration_number="302666833",
+            billing_address="Paneriu g. 11, LT-03209 Vilnius, Lithuania",
+            country="LT", default_currency="EUR",
+            vat_registered=True, vat_number="LT100006404014", vat_rate_percent=21,
+            bank_name="SEB Bank AB",
+            bank_account_iban="LT06 7044 0600 0817 7672",
+            bank_swift_bic="CBVILT2X",
+            invoice_series_prefix="AGY-", next_invoice_number=1,
+            payment_terms_days=30,
+        )
+
+        # Global Client templates (LT and EN) — used as base for per-client billing templates
+        InvoiceTemplate.objects.create(
+            title="Client LT Template", code="LT",
+            template_type=InvoiceTemplate.Type.CLIENT, status=InvoiceTemplate.Status.ACTIVE,
+            country="LT", default_currency="EUR",
+            vat_registered=True, vat_rate_percent=21,
+            payment_terms_days=30,
+        )
+        InvoiceTemplate.objects.create(
+            title="Client EN Template", code="EN",
+            template_type=InvoiceTemplate.Type.CLIENT, status=InvoiceTemplate.Status.ACTIVE,
+            country="LT", default_currency="EUR",
+            vat_registered=True, vat_rate_percent=21,
+            payment_terms_days=30,
+        )
+
         # ── PLACEMENTS ───────────────────────────────────────────────────────
         self.stdout.write("Creating placements...")
         p1 = Placement.objects.create(
