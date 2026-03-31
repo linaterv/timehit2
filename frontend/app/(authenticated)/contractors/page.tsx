@@ -3,10 +3,11 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { DataTable, type Column } from "@/components/data-table/data-table";
-import { useApiQuery } from "@/hooks/use-api";
+import { useApiQuery, useApiMutation } from "@/hooks/use-api";
 import { useAuth } from "@/hooks/use-auth";
+import { SlideOver } from "@/components/forms/slide-over";
 import { formatDate } from "@/lib/utils";
-import type { ContractorProfile, PaginatedResponse } from "@/types/api";
+import type { ContractorProfile, PaginatedResponse, User } from "@/types/api";
 
 export default function ContractorsPage() {
   const router = useRouter();
@@ -14,8 +15,13 @@ export default function ContractorsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [isActive, setIsActive] = useState<string>("all");
+  const isAdmin = user?.role === "ADMIN";
   const [sort, setSort] = useState("full_name");
   const [order, setOrder] = useState<"asc" | "desc">("asc");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [formEmail, setFormEmail] = useState("");
+  const [formName, setFormName] = useState("");
+  const [formPassword, setFormPassword] = useState("");
 
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
@@ -27,6 +33,8 @@ export default function ContractorsPage() {
     if (isActive !== "all") params.set("is_active", isActive);
     return params.toString();
   }, [page, search, isActive, sort, order]);
+
+  const createMutation = useApiMutation<User, Record<string, unknown>>("POST", "/users", [["contractors"]]);
 
   const { data, isLoading } = useApiQuery<PaginatedResponse<ContractorProfile>>(
     ["contractors", queryParams],
@@ -97,6 +105,10 @@ export default function ContractorsPage() {
   return (
     <div data-testid="contractors-page" className="space-y-4">
       <div className="flex items-center gap-3">
+        {isAdmin && (
+          <button data-testid="create-contractor-btn" onClick={() => { setFormEmail(""); setFormName(""); setFormPassword(""); setCreateOpen(true); }}
+            className="px-4 py-2 bg-brand-600 text-white rounded text-sm hover:bg-brand-700">Create Contractor</button>
+        )}
         <input
           data-testid="contractors-search"
           type="text"
@@ -134,6 +146,32 @@ export default function ContractorsPage() {
           onRowClick={(row) => router.push(`/contractors/${row.id}`)}
         />
       )}
+
+      <SlideOver open={createOpen} onClose={() => setCreateOpen(false)} title="Create Contractor"
+        onSave={() => {
+          createMutation.mutate({ email: formEmail, full_name: formName, password: formPassword, role: "CONTRACTOR" }, {
+            onSuccess: () => setCreateOpen(false),
+          });
+        }} saving={createMutation.isPending} testId="create-contractor-slide">
+        <div className="space-y-4">
+          {createMutation.error ? <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">Failed to create contractor</div> : null}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+            <input type="text" value={formName} onChange={(e) => setFormName(e.target.value)}
+              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <input type="email" value={formEmail} onChange={(e) => setFormEmail(e.target.value)}
+              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <input type="password" value={formPassword} onChange={(e) => setFormPassword(e.target.value)}
+              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
+          </div>
+        </div>
+      </SlideOver>
     </div>
   );
 }
