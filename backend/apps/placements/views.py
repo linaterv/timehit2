@@ -143,7 +143,7 @@ class PlacementViewSet(viewsets.ModelViewSet):
 
 class PlacementDocumentViewSet(viewsets.ModelViewSet):
     http_method_names = ["get", "post", "patch", "delete"]
-    parser_classes = [MultiPartParser]
+    parser_classes = [MultiPartParser, JSONParser]
     serializer_class = PlacementDocumentSerializer
 
     def get_queryset(self):
