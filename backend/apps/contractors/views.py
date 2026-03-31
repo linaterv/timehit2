@@ -1,6 +1,7 @@
 from django.db.models import Q
 from rest_framework import viewsets
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema
 from .models import ContractorProfile
 from .serializers import (
@@ -11,7 +12,7 @@ from .serializers import (
 
 class ContractorViewSet(viewsets.ModelViewSet):
     queryset = ContractorProfile.objects.select_related("user").all()
-    http_method_names = ["get", "patch"]
+    http_method_names = ["get", "patch", "delete"]
 
     def get_serializer_class(self):
         if self.action == "list":

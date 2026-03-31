@@ -71,6 +71,18 @@ class UserCreateSerializer(serializers.ModelSerializer):
         if user.role == User.Role.CONTRACTOR:
             from apps.contractors.models import ContractorProfile
             ContractorProfile.objects.create(user=user)
+            from apps.invoices.models import InvoiceTemplate
+            InvoiceTemplate.objects.create(
+                title=f"{user.full_name} - Default",
+                code="DEFAULT",
+                template_type=InvoiceTemplate.Type.CONTRACTOR,
+                status=InvoiceTemplate.Status.DRAFT,
+                is_default=True,
+                contractor=user,
+                company_name=user.full_name,
+                billing_address=f"{user.full_name}\nAddress\nCity, Country",
+                default_currency="EUR",
+            )
         if user.role == User.Role.CLIENT_CONTACT and client_id:
             from apps.clients.models import ClientContact
             ClientContact.objects.create(user=user, client_id=client_id)

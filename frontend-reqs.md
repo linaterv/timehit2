@@ -170,7 +170,8 @@ The primary operational view. Maps to `GET /control/overview` + `GET /control/su
 - Placements tab: table of all contractor's placements (client, position, status badge, start, end) — clickable rows navigate to placement detail
 - Profile tab: all fields. Editable by contractor (own) and admin
 - Sections: Company Info, VAT Settings, Bank Details, Invoice Settings
-- data-testid: `contractor-detail`, `contractor-edit-btn`, `contractor-save`
+- **Delete button** (admin only): red "Delete" button in header. Opens confirmation dialog. Backend decides hard vs soft delete based on relations. On soft delete, shows info toast that contractor was deactivated. On hard delete, redirects to `/contractors`.
+- data-testid: `contractor-detail`, `contractor-edit-btn`, `contractor-save`, `contractor-delete-btn`
 
 ### 6. Contractor Profile (`/profile`) — CONTRACTOR only
 Two subtabs: **Account** and **Invoice Settings**.

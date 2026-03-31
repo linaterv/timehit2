@@ -494,6 +494,21 @@ Admin: any. Contractor: own only. Brokers: no access.
 // 400 — next_invoice_number < current value
 ```
 
+### `DELETE /contractors/:id`
+
+Admin only. Smart delete: if the contractor has any relations (placements, invoices, or documents via placements), the user is **soft-deleted** (`is_active` set to `false`). If no relations exist, the user and profile are **hard-deleted**.
+
+```json
+// 200 — soft deleted (has relations)
+{ "deleted": "soft", "message": "Contractor deactivated (has existing placements or invoices)" }
+
+// 200 — hard deleted (no relations)
+{ "deleted": "hard", "message": "Contractor permanently deleted" }
+
+// 403 — not admin
+// 404 — contractor not found
+```
+
 ---
 
 ## 7. Placements
