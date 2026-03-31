@@ -67,11 +67,13 @@ class PlacementCreateSerializer(serializers.ModelSerializer):
 
 
 class PlacementUpdateSerializer(serializers.ModelSerializer):
+    status = serializers.ChoiceField(choices=Placement.Status.choices, required=False)
+
     class Meta:
         model = Placement
         fields = [
             "title", "client_rate", "contractor_rate", "currency", "client_id", "contractor_id",
-            "start_date", "end_date", "approval_flow", "require_timesheet_attachment",
+            "start_date", "end_date", "status", "approval_flow", "require_timesheet_attachment",
             "client_can_view_invoices", "client_can_view_documents",
             "payment_terms_client_days", "payment_terms_contractor_days", "notes",
         ]
@@ -83,8 +85,24 @@ class PlacementUpdateSerializer(serializers.ModelSerializer):
             locked = Placement.LOCKED_FIELDS & set(data.keys())
             if locked:
                 raise serializers.ValidationError({f: "Cannot change on ACTIVE placement" for f in locked})
-        elif inst.status != Placement.Status.DRAFT:
-            raise serializers.ValidationError("Cannot edit COMPLETED or CANCELLED placement")
+        # Check client/contractor changes — only if no timesheets or invoices
+        if "client_id" in data or "contractor_id" in data:
+            has_ts = inst.timesheets.exists()
+            has_inv = inst.invoices.exists()
+            if has_ts or has_inv:
+                errors = {}
+                if "client_id" in data:
+                    errors["client_id"] = "Cannot change client — placement has timesheets or invoices"
+                if "contractor_id" in data:
+                    errors["contractor_id"] = "Cannot change contractor — placement has timesheets or invoices"
+                raise serializers.ValidationError(errors)
+        # Status change validation
+        if "status" in data and data["status"] != inst.status:
+            new_status = data["status"]
+            has_ts = inst.timesheets.exists()
+            has_inv = inst.invoices.exists()
+            if new_status == Placement.Status.DRAFT and (has_ts or has_inv):
+                raise serializers.ValidationError({"status": "Cannot revert to DRAFT — placement has timesheets or invoices"})
         return data
 
 

@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { apiUpload, api } from "@/lib/api";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { SearchableSelect } from "@/components/shared/searchable-select";
 import { CircleAlert } from "lucide-react";
 import { FileUpload } from "@/components/shared/file-upload";
 import { formatCurrency, formatDate, formatMonth } from "@/lib/utils";
@@ -23,6 +24,9 @@ type Tab = "timesheets" | "documents" | "settings";
 
 interface EditForm {
   title: string;
+  client_id: string;
+  contractor_id: string;
+  status: string;
   client_rate: string;
   contractor_rate: string;
   currency: string;
@@ -49,7 +53,9 @@ export default function PlacementDetailPage() {
   const { user } = useAuth();
 
   const [tab, setTab] = useState<Tab>("timesheets");
+  const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [docUploadOpen, setDocUploadOpen] = useState(false);
   const [docLabel, setDocLabel] = useState("");
   const [docVisClient, setDocVisClient] = useState(false);
   const [docVisContr, setDocVisContr] = useState(false);
@@ -68,6 +74,12 @@ export default function PlacementDetailPage() {
   const placementQ = useApiQuery<Placement>(
     ["placement", id],
     `/placements/${id}`
+  );
+  const clientsQ = useApiQuery<PaginatedResponse<{ id: string; company_name: string }>>(
+    ["clients-list"], "/clients?per_page=200&sort=created_at&order=desc", editing
+  );
+  const contractorsQ = useApiQuery<PaginatedResponse<{ id: string; user_id: string; full_name: string }>>(
+    ["contractors-list"], "/contractors?per_page=200&sort=created_at&order=desc", editing
   );
   const timesheetsQ = useApiQuery<PaginatedResponse<Timesheet>>(
     ["placement-timesheets", id],
@@ -114,7 +126,6 @@ export default function PlacementDetailPage() {
   );
 
   // ---- Edit form (base fields for DRAFT) ----
-  const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
   const [editError, setEditError] = useState("");
 
@@ -122,6 +133,9 @@ export default function PlacementDetailPage() {
     if (!placement) return;
     setEditForm({
       title: placement.title ?? "",
+      client_id: placement.client.id,
+      contractor_id: placement.contractor.id,
+      status: placement.status,
       client_rate: placement.client_rate ?? "",
       contractor_rate: placement.contractor_rate ?? "",
       currency: placement.currency ?? "EUR",
@@ -135,14 +149,25 @@ export default function PlacementDetailPage() {
   };
 
   const handleEditSave = async () => {
-    if (!editForm) return;
+    if (!editForm || !placement) return;
     setEditError("");
     try {
-      await settingsMut.mutateAsync({
-        ...editForm,
+      const body: Record<string, unknown> = {
+        title: editForm.title,
+        start_date: editForm.start_date,
+        end_date: editForm.end_date,
         payment_terms_client_days: editForm.payment_terms_client_days ? parseInt(editForm.payment_terms_client_days, 10) : null,
         payment_terms_contractor_days: editForm.payment_terms_contractor_days ? parseInt(editForm.payment_terms_contractor_days, 10) : null,
-      } as any);
+      };
+      if (editForm.status !== placement.status) body.status = editForm.status;
+      if (editForm.client_id !== placement.client.id) body.client_id = editForm.client_id;
+      if (editForm.contractor_id !== placement.contractor.id) body.contractor_id = editForm.contractor_id;
+      if (!isActive) {
+        body.client_rate = editForm.client_rate;
+        body.contractor_rate = editForm.contractor_rate;
+        body.currency = editForm.currency;
+      }
+      await settingsMut.mutateAsync(body as any);
       setEditing(false);
     } catch (err: any) {
       const details = err?.details as { field: string; message: string }[] | undefined;
@@ -193,7 +218,7 @@ export default function PlacementDetailPage() {
     fd.append("visible_to_client", String(docVisClient));
     fd.append("visible_to_contractor", String(docVisContr));
     await apiUpload(`/placements/${id}/documents`, fd);
-    setDocLabel(""); setDocVisClient(false); setDocVisContr(false);
+    setDocLabel(""); setDocVisClient(false); setDocVisContr(false); setDocUploadOpen(false);
     qc.invalidateQueries({ queryKey: ["placement-documents", id] });
   };
 
@@ -289,7 +314,7 @@ export default function PlacementDetailPage() {
             )}
           </div>
           <div className="flex gap-2">
-            {canManagePlacement && (isDraft || isActive) && !editing && (
+            {canManagePlacement && !editing && (
               <button
                 data-testid="placement-edit-btn"
                 onClick={startEdit}
@@ -370,12 +395,40 @@ export default function PlacementDetailPage() {
             {editError && <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{editError}</div>}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div>
+                <label className="text-gray-500 block mb-1">Status</label>
+                <select value={editForm.status}
+                  onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                  className="w-full border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600">
+                  {["DRAFT", "ACTIVE", "COMPLETED", "CANCELLED"].map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-gray-500 block mb-1">Client</label>
+                <SearchableSelect
+                  value={editForm.client_id}
+                  onChange={(v) => setEditForm({ ...editForm, client_id: v })}
+                  placeholder="Select client..."
+                  options={(clientsQ.data?.data ?? []).map((c) => ({ value: c.id, label: c.company_name }))}
+                />
+              </div>
+              <div>
+                <label className="text-gray-500 block mb-1">Contractor</label>
+                <SearchableSelect
+                  value={editForm.contractor_id}
+                  onChange={(v) => setEditForm({ ...editForm, contractor_id: v })}
+                  placeholder="Select contractor..."
+                  options={(contractorsQ.data?.data ?? []).map((c) => ({ value: c.user_id, label: c.full_name }))}
+                />
+              </div>
+              <div>
                 <label className="text-gray-500 block mb-1">Position / Title</label>
                 <input type="text" value={editForm.title}
                   onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
                   className="w-full border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
               </div>
-              {isDraft && isAdminOrBroker && (
+              {!isActive && isAdminOrBroker && (
                 <>
                   <div>
                     <label className="text-gray-500 block mb-1">Client Rate</label>
@@ -623,34 +676,12 @@ export default function PlacementDetailPage() {
       {tab === "documents" && (
         <div data-testid="tab-content-documents" className="space-y-4">
           {canUploadDocs && (
-            <>
-              <div className="flex items-end gap-3">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Label
-                  </label>
-                  <input
-                    data-testid="doc-label-input"
-                    type="text"
-                    value={docLabel}
-                    onChange={(e) => setDocLabel(e.target.value)}
-                    placeholder="Document label (optional)"
-                    className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600"
-                  />
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-1.5 text-sm text-gray-600">
-                  <input type="checkbox" checked={docVisClient} onChange={(e) => setDocVisClient(e.target.checked)} className="rounded" />
-                  Visible to client
-                </label>
-                <label className="flex items-center gap-1.5 text-sm text-gray-600">
-                  <input type="checkbox" checked={docVisContr} onChange={(e) => setDocVisContr(e.target.checked)} className="rounded" />
-                  Visible to contractor
-                </label>
-              </div>
-              <FileUpload onUpload={handleDocUpload} />
-            </>
+            <div className="flex justify-end">
+              <button onClick={() => { setDocLabel(""); setDocVisClient(false); setDocVisContr(false); setDocUploadOpen(true); }}
+                className="px-4 py-2 bg-brand-600 text-white rounded text-sm hover:bg-brand-700">
+                Upload Document
+              </button>
+            </div>
           )}
 
           <div className="border rounded-lg divide-y">
@@ -705,6 +736,36 @@ export default function PlacementDetailPage() {
                 No documents uploaded
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Upload Document Dialog */}
+      {docUploadOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/30" onClick={() => setDocUploadOpen(false)} />
+          <div className="relative bg-surface rounded-xl shadow-lg w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Upload Document</h3>
+              <button onClick={() => setDocUploadOpen(false)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Label</label>
+              <input data-testid="doc-label-input" type="text" value={docLabel}
+                onChange={(e) => setDocLabel(e.target.value)} placeholder="Document label (optional)"
+                className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
+            </div>
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer">
+                <input type="checkbox" checked={docVisClient} onChange={(e) => setDocVisClient(e.target.checked)} className="rounded" />
+                Visible to client
+              </label>
+              <label className="flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer">
+                <input type="checkbox" checked={docVisContr} onChange={(e) => setDocVisContr(e.target.checked)} className="rounded" />
+                Visible to contractor
+              </label>
+            </div>
+            <FileUpload onUpload={handleDocUpload} />
           </div>
         </div>
       )}
