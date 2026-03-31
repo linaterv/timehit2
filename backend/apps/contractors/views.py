@@ -53,6 +53,27 @@ class ContractorViewSet(viewsets.ModelViewSet):
         return super().retrieve(request, *args, **kwargs)
 
     @extend_schema(tags=["Contractors"])
+    def destroy(self, request, *args, **kwargs):
+        if not request.user.is_admin:
+            raise PermissionDenied("Only admins can delete contractors")
+        obj = self.get_object()
+        user = obj.user
+        active_placements = user.placements.filter(status="ACTIVE").count()
+        if active_placements:
+            return Response(
+                {"error": {"code": "CONFLICT", "message": f"Cannot delete contractor with {active_placements} active placement(s). Complete or cancel them first."}},
+                status=409,
+            )
+        has_placements = user.placements.exists()
+        has_invoices = user.contractor_invoices.exists()
+        if has_placements or has_invoices:
+            user.is_active = False
+            user.save(update_fields=["is_active"])
+            return Response({"deleted": "soft", "message": "Contractor deactivated (has existing placements or invoices)"})
+        user.delete()
+        return Response({"deleted": "hard", "message": "Contractor permanently deleted"})
+
+    @extend_schema(tags=["Contractors"])
     def partial_update(self, request, *args, **kwargs):
         user = request.user
         if user.is_broker:

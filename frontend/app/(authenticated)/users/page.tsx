@@ -20,6 +20,7 @@ export default function UsersPage() {
   const [sort, setSort] = useState("created_at");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
   const [slideOpen, setSlideOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
 
   // Form state
   const [formEmail, setFormEmail] = useState("");
@@ -27,6 +28,7 @@ export default function UsersPage() {
   const [formPassword, setFormPassword] = useState("");
   const [formRole, setFormRole] = useState<Role>("BROKER");
   const [formClientId, setFormClientId] = useState("");
+  const [formIsActive, setFormIsActive] = useState(true);
 
   const params = useMemo(() => {
     const p: Record<string, string> = { page: String(page), sort, order };
@@ -52,6 +54,12 @@ export default function UsersPage() {
   const createMutation = useApiMutation<User, Record<string, unknown>>(
     "POST",
     "/users",
+    [["users"]]
+  );
+
+  const updateMutation = useApiMutation<User, Record<string, unknown>>(
+    "PATCH",
+    (body) => `/users/${editingUser?.id}`,
     [["users"]]
   );
 
@@ -117,6 +125,8 @@ export default function UsersPage() {
     setFormPassword("");
     setFormRole("BROKER");
     setFormClientId("");
+    setFormIsActive(true);
+    setEditingUser(null);
   };
 
   const handleOpenCreate = () => {
@@ -124,22 +134,29 @@ export default function UsersPage() {
     setSlideOpen(true);
   };
 
+  const handleOpenEdit = (u: User) => {
+    setEditingUser(u);
+    setFormEmail(u.email);
+    setFormName(u.full_name);
+    setFormPassword("");
+    setFormRole(u.role);
+    setFormIsActive(u.is_active);
+    setSlideOpen(true);
+  };
+
   const handleSave = () => {
-    const body: Record<string, unknown> = {
-      email: formEmail,
-      full_name: formName,
-      password: formPassword,
-      role: formRole,
-    };
-    if (formRole === "CLIENT_CONTACT" && formClientId) {
-      body.client_id = formClientId;
+    if (editingUser) {
+      const body: Record<string, unknown> = { full_name: formName, email: formEmail, is_active: formIsActive };
+      updateMutation.mutate(body, {
+        onSuccess: () => { setSlideOpen(false); resetForm(); },
+      });
+    } else {
+      const body: Record<string, unknown> = { email: formEmail, full_name: formName, password: formPassword, role: formRole };
+      if (formRole === "CLIENT_CONTACT" && formClientId) body.client_id = formClientId;
+      createMutation.mutate(body, {
+        onSuccess: () => { setSlideOpen(false); resetForm(); },
+      });
     }
-    createMutation.mutate(body, {
-      onSuccess: () => {
-        setSlideOpen(false);
-        resetForm();
-      },
-    });
   };
 
   const handleSort = (key: string, newOrder: "asc" | "desc") => {
@@ -205,15 +222,16 @@ export default function UsersPage() {
           onSort={handleSort}
           sort={sort}
           order={order}
+          onRowClick={(row) => handleOpenEdit(row)}
         />
       )}
 
       <SlideOver
         open={slideOpen}
         onClose={() => setSlideOpen(false)}
-        title="Create User"
+        title={editingUser ? "Edit User" : "Create User"}
         onSave={handleSave}
-        saving={createMutation.isPending}
+        saving={editingUser ? updateMutation.isPending : createMutation.isPending}
         testId="create-user-slideover"
       >
         <div className="space-y-4">
@@ -241,57 +259,73 @@ export default function UsersPage() {
               className="w-full px-3 py-2 border rounded text-sm"
             />
           </div>
-          <div>
-            <label data-testid="field-password-label" className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
-            <input
-              data-testid="field-password"
-              type="password"
-              value={formPassword}
-              onChange={(e) => setFormPassword(e.target.value)}
-              className="w-full px-3 py-2 border rounded text-sm"
-            />
-          </div>
-          <div>
-            <label data-testid="field-role-label" className="block text-sm font-medium text-gray-700 mb-1">
-              Role
-            </label>
-            <select
-              data-testid="field-role"
-              value={formRole}
-              onChange={(e) => {
-                setFormRole(e.target.value as Role);
-                if (e.target.value !== "CLIENT_CONTACT") setFormClientId("");
-              }}
-              className="w-full px-3 py-2 border rounded text-sm"
-            >
-              {ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {r.replace(/_/g, " ")}
-                </option>
-              ))}
-            </select>
-          </div>
-          {formRole === "CLIENT_CONTACT" && (
-            <div>
-              <label data-testid="field-client-id-label" className="block text-sm font-medium text-gray-700 mb-1">
-                Client
+          {!editingUser && (
+            <>
+              <div>
+                <label data-testid="field-password-label" className="block text-sm font-medium text-gray-700 mb-1">
+                  Password
+                </label>
+                <input
+                  data-testid="field-password"
+                  type="password"
+                  value={formPassword}
+                  onChange={(e) => setFormPassword(e.target.value)}
+                  className="w-full px-3 py-2 border rounded text-sm"
+                />
+              </div>
+              <div>
+                <label data-testid="field-role-label" className="block text-sm font-medium text-gray-700 mb-1">
+                  Role
+                </label>
+                <select
+                  data-testid="field-role"
+                  value={formRole}
+                  onChange={(e) => {
+                    setFormRole(e.target.value as Role);
+                    if (e.target.value !== "CLIENT_CONTACT") setFormClientId("");
+                  }}
+                  className="w-full px-3 py-2 border rounded text-sm"
+                >
+                  {ROLES.map((r) => (
+                    <option key={r} value={r}>
+                      {r.replace(/_/g, " ")}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {formRole === "CLIENT_CONTACT" && (
+                <div>
+                  <label data-testid="field-client-id-label" className="block text-sm font-medium text-gray-700 mb-1">
+                    Client
+                  </label>
+                  <select
+                    data-testid="field-client-id"
+                    value={formClientId}
+                    onChange={(e) => setFormClientId(e.target.value)}
+                    className="w-full px-3 py-2 border rounded text-sm"
+                  >
+                    <option value="">Select a client...</option>
+                    {(clientsData?.data ?? []).map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.company_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </>
+          )}
+          {editingUser && (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700">Role</span>
+                <StatusBadge value={formRole} />
+              </div>
+              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input type="checkbox" checked={formIsActive} onChange={(e) => setFormIsActive(e.target.checked)} className="rounded" />
+                Active
               </label>
-              <select
-                data-testid="field-client-id"
-                value={formClientId}
-                onChange={(e) => setFormClientId(e.target.value)}
-                className="w-full px-3 py-2 border rounded text-sm"
-              >
-                <option value="">Select a client...</option>
-                {(clientsData?.data ?? []).map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.company_name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            </>
           )}
         </div>
       </SlideOver>

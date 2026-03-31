@@ -6,6 +6,7 @@ import { useApiQuery, useApiMutation } from "@/hooks/use-api";
 import { useAuth } from "@/hooks/use-auth";
 import { api } from "@/lib/api";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { formatDate } from "@/lib/utils";
 import {
   InvoiceTemplateA4, TplForm, emptyTplForm, tplToForm,
@@ -79,6 +80,8 @@ export default function ContractorDetailPage() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<ContractorFormData>(emptyForm());
   const [error, setError] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteMsg, setDeleteMsg] = useState("");
 
   // Template state (admin only)
   const [tplShowEditor, setTplShowEditor] = useState(false);
@@ -140,6 +143,20 @@ export default function ContractorDetailPage() {
     } catch (err: unknown) {
       const apiErr = err as { message?: string };
       setError(apiErr?.message ?? "Failed to save");
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleteOpen(false);
+    try {
+      const res = await api<{ deleted: string; message: string }>(`/contractors/${contractorId}`, { method: "DELETE" });
+      if (res.deleted === "soft") {
+        setDeleteMsg(res.message);
+      } else {
+        router.push("/contractors");
+      }
+    } catch (err: unknown) {
+      setError((err as { message?: string })?.message ?? "Failed to delete");
     }
   };
 
@@ -206,6 +223,15 @@ export default function ContractorDetailPage() {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-gray-900">{contractor.full_name}</h2>
         <div className="flex gap-2">
+          {isAdmin && !editing && (
+            <button
+              data-testid="contractor-delete-btn"
+              onClick={() => setDeleteOpen(true)}
+              className="px-4 py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700"
+            >
+              Delete
+            </button>
+          )}
           {canEdit && !editing && (
             <button
               data-testid="contractor-edit-btn"
@@ -559,6 +585,22 @@ export default function ContractorDetailPage() {
           parentTemplate={globalTemplates.find((g) => g.id === (tplForm.parent_id ?? tplEditing?.parent_id)) ?? null}
         />
       )}
+
+      {deleteMsg && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded text-sm">
+          {deleteMsg}
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={deleteOpen}
+        title="Delete Contractor"
+        message={`Are you sure you want to delete ${contractor.full_name}? If they have placements or invoices, they will be deactivated instead.`}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteOpen(false)}
+      />
     </div>
   );
 }
