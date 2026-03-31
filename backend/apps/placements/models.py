@@ -32,6 +32,10 @@ class Placement(models.Model):
     client_can_view_documents = models.BooleanField(default=False)
     payment_terms_client_days = models.IntegerField(null=True, blank=True)
     payment_terms_contractor_days = models.IntegerField(null=True, blank=True)
+    client_invoice_template = models.ForeignKey(
+        "invoices.InvoiceTemplate", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="placements_as_client_template",
+    )
     notes = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

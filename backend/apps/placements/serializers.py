@@ -22,7 +22,8 @@ class PlacementListSerializer(serializers.ModelSerializer):
             "id", "client", "contractor", "title", "client_rate", "contractor_rate",
             "currency", "start_date", "end_date", "status", "approval_flow",
             "require_timesheet_attachment", "client_can_view_invoices",
-            "client_can_view_documents", "payment_terms_client_days",
+            "client_can_view_documents", "client_invoice_template_id",
+            "payment_terms_client_days",
             "payment_terms_contractor_days", "notes", "created_at",
         ]
 
@@ -49,12 +50,14 @@ class PlacementCreateSerializer(serializers.ModelSerializer):
             "client_id", "contractor_id", "title", "client_rate", "contractor_rate",
             "currency", "start_date", "end_date", "approval_flow",
             "require_timesheet_attachment", "client_can_view_invoices",
-            "client_can_view_documents", "payment_terms_client_days",
+            "client_can_view_documents", "client_invoice_template_id",
+            "payment_terms_client_days",
             "payment_terms_contractor_days", "notes",
         ]
         extra_kwargs = {
             "payment_terms_client_days": {"required": False, "allow_null": True},
             "payment_terms_contractor_days": {"required": False, "allow_null": True},
+            "client_invoice_template_id": {"required": False, "allow_null": True},
         }
 
     def validate(self, data):
@@ -74,7 +77,7 @@ class PlacementUpdateSerializer(serializers.ModelSerializer):
         fields = [
             "title", "client_rate", "contractor_rate", "currency", "client_id", "contractor_id",
             "start_date", "end_date", "status", "approval_flow", "require_timesheet_attachment",
-            "client_can_view_invoices", "client_can_view_documents",
+            "client_can_view_invoices", "client_can_view_documents", "client_invoice_template_id",
             "payment_terms_client_days", "payment_terms_contractor_days", "notes",
         ]
         extra_kwargs = {f: {"required": False} for f in fields}

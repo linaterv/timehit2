@@ -57,6 +57,7 @@ export default function PlacementDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [docDialogOpen, setDocDialogOpen] = useState(false);
   const [docEditingId, setDocEditingId] = useState<string | null>(null);
+  const [docSelectedFile, setDocSelectedFile] = useState<File | null>(null);
   const [docLabel, setDocLabel] = useState("");
   const [docVisClient, setDocVisClient] = useState(false);
   const [docVisContr, setDocVisContr] = useState(false);
@@ -692,7 +693,7 @@ export default function PlacementDetailPage() {
         <div data-testid="tab-content-documents" className="space-y-4">
           {canUploadDocs && (
             <div className="flex justify-end">
-              <button onClick={() => { setDocEditingId(null); setDocLabel(""); setDocVisClient(false); setDocVisContr(false); setDocDialogOpen(true); }}
+              <button onClick={() => { setDocEditingId(null); setDocSelectedFile(null); setDocLabel(""); setDocVisClient(false); setDocVisContr(false); setDocDialogOpen(true); }}
                 className="px-4 py-2 bg-brand-600 text-white rounded text-sm hover:bg-brand-700">
                 Upload Document
               </button>
@@ -765,12 +766,24 @@ export default function PlacementDetailPage() {
                 Visible to contractor
               </label>
             </div>
-            {!docEditingId && <FileUpload onUpload={handleDocUpload} />}
+            {!docEditingId && (
+              <>
+                <FileUpload onUpload={(file) => setDocSelectedFile(file)} />
+                {docSelectedFile && (
+                  <p className="text-sm text-gray-600">
+                    Selected: <span className="font-medium">{docSelectedFile.name}</span> ({(docSelectedFile.size / 1024).toFixed(1)} KB)
+                  </p>
+                )}
+              </>
+            )}
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={() => setDocDialogOpen(false)} className="px-4 py-2 border rounded-md text-sm text-gray-700 hover:bg-gray-50">Cancel</button>
-              {docEditingId && (
-                <button onClick={handleDocSave} className="px-4 py-2 bg-brand-600 text-white rounded-md text-sm font-medium hover:bg-brand-700">Save</button>
-              )}
+              <button
+                onClick={() => { docEditingId ? handleDocSave() : docSelectedFile && handleDocUpload(docSelectedFile); }}
+                disabled={!docEditingId && !docSelectedFile}
+                className="px-4 py-2 bg-brand-600 text-white rounded-md text-sm font-medium hover:bg-brand-700 disabled:opacity-50">
+                Save
+              </button>
             </div>
           </div>
         </div>

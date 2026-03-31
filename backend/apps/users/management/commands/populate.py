@@ -210,38 +210,8 @@ class Command(BaseCommand):
             company_name="UAB \"WISE INTEGRATION\"", country="LT", default_currency="EUR",
         )
 
-        # Global Agency templates (LT and EN) — used for client invoices FROM the agency
-        InvoiceTemplate.objects.create(
-            title="Agency LT Template", code="LT",
-            template_type=InvoiceTemplate.Type.AGENCY, status=InvoiceTemplate.Status.ACTIVE,
-            company_name="UAB \u201eWISE INTEGRATION\u201c",
-            registration_number="302666833",
-            billing_address="Paneri\u0173 g. 11, LT-03209 Vilnius, Lietuva",
-            country="LT", default_currency="EUR",
-            vat_registered=True, vat_number="LT100006404014", vat_rate_percent=21,
-            bank_name="SEB Bank AB",
-            bank_account_iban="LT06 7044 0600 0817 7672",
-            bank_swift_bic="CBVILT2X",
-            invoice_series_prefix="AGY-", next_invoice_number=1,
-            payment_terms_days=30,
-        )
-        InvoiceTemplate.objects.create(
-            title="Agency EN Template", code="EN",
-            template_type=InvoiceTemplate.Type.AGENCY, status=InvoiceTemplate.Status.ACTIVE,
-            company_name="UAB \"WISE INTEGRATION\"",
-            registration_number="302666833",
-            billing_address="Paneriu g. 11, LT-03209 Vilnius, Lithuania",
-            country="LT", default_currency="EUR",
-            vat_registered=True, vat_number="LT100006404014", vat_rate_percent=21,
-            bank_name="SEB Bank AB",
-            bank_account_iban="LT06 7044 0600 0817 7672",
-            bank_swift_bic="CBVILT2X",
-            invoice_series_prefix="AGY-", next_invoice_number=1,
-            payment_terms_days=30,
-        )
-
         # Global Client templates (LT and EN) — used as base for per-client billing templates
-        InvoiceTemplate.objects.create(
+        client_tpl_lt = InvoiceTemplate.objects.create(
             title="Client LT Template", code="LT",
             template_type=InvoiceTemplate.Type.CLIENT, status=InvoiceTemplate.Status.ACTIVE,
             country="LT", default_currency="EUR",
@@ -263,6 +233,7 @@ class Command(BaseCommand):
             currency="EUR", start_date=date(2025, 10, 1), end_date=date(2026, 9, 30),
             status="ACTIVE", approval_flow="CLIENT_THEN_BROKER",
             client_can_view_invoices=True, client_can_view_documents=True,
+            client_invoice_template=client_tpl_lt,
             title="Backend Developer", notes="Long-term backend dev",
         )
         p2 = Placement.objects.create(
@@ -270,18 +241,21 @@ class Command(BaseCommand):
             currency="EUR", start_date=date(2026, 1, 15), end_date=date(2026, 12, 31),
             status="ACTIVE", approval_flow="CLIENT_THEN_BROKER",
             client_can_view_invoices=True, client_can_view_documents=True,
+            client_invoice_template=client_tpl_lt,
             title="Frontend Lead", notes="Frontend lead",
         )
         p3 = Placement.objects.create(
             client=cloudbase, contractor=oscar, client_rate=D("120"), contractor_rate=D("90"),
             currency="USD", start_date=date(2025, 7, 1),
             status="ACTIVE", approval_flow="BROKER_ONLY",
+            client_invoice_template=client_tpl_lt,
             title="Cloud Architect", notes="Cloud architect, open-ended",
         )
         p4 = Placement.objects.create(
             client=nordsoft, contractor=nina, client_rate=D("85"), contractor_rate=D("65"),
             currency="EUR", start_date=date(2026, 2, 1), end_date=date(2026, 7, 31),
             status="ACTIVE", approval_flow="BROKER_ONLY",
+            client_invoice_template=client_tpl_lt,
             title="Data Engineer", notes="Data engineering project",
         )
         p5 = Placement.objects.create(
@@ -289,24 +263,28 @@ class Command(BaseCommand):
             currency="EUR", start_date=date(2026, 1, 1), end_date=date(2026, 6, 30),
             status="ACTIVE", approval_flow="CLIENT_THEN_BROKER",
             client_can_view_invoices=True,
+            client_invoice_template=client_tpl_lt,
             title="Security Consultant", notes="Security audit",
         )
         p6 = Placement.objects.create(
             client=cloudbase, contractor=alex, client_rate=D("100"), contractor_rate=D("75"),
             currency="USD", start_date=date(2025, 3, 1), end_date=date(2025, 8, 31),
             status="COMPLETED", approval_flow="BROKER_ONLY",
+            client_invoice_template=client_tpl_lt,
             title="API Developer", notes="API migration (completed)",
         )
         p7 = Placement.objects.create(
             client=nordsoft, contractor=mia, client_rate=D("90"), contractor_rate=D("70"),
             currency="EUR", start_date=date(2025, 6, 1), end_date=date(2025, 12, 31),
             status="COMPLETED", approval_flow="CLIENT_THEN_BROKER",
+            client_invoice_template=client_tpl_lt,
             title="Full Stack Developer", notes="Legacy system rewrite (completed)",
         )
         p8 = Placement.objects.create(
             client=medicorp, contractor=oscar, client_rate=D("130"), contractor_rate=D("100"),
             currency="EUR", start_date=date(2026, 4, 1), end_date=date(2026, 9, 30),
             status="DRAFT", approval_flow="CLIENT_THEN_BROKER",
+            client_invoice_template=client_tpl_lt,
             title="Infrastructure Engineer", notes="Upcoming infra project",
         )
 
