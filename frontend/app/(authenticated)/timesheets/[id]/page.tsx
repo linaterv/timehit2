@@ -181,8 +181,12 @@ export default function TimesheetDetailPage() {
   // Mutations
   const saveMut = useMutation({
     mutationFn: (body: { entries: Omit<LocalEntry, "_key">[] }) =>
-      api(`/timesheets/${id}/entries/bulk_upsert`, { method: "PUT", body: JSON.stringify(body) }),
-    onSuccess: () => { setEntries(null); qc.invalidateQueries({ queryKey: ["timesheet", id] }); setDirty(false); },
+      api<{ entries: TimesheetEntry[]; total_hours: string }>(`/timesheets/${id}/entries/bulk_upsert`, { method: "PUT", body: JSON.stringify(body) }),
+    onSuccess: (data) => {
+      setEntries(data.entries.map((e) => ({ _key: makeKey(), id: e.id, date: e.date, task_name: e.task_name, hours: e.hours, notes: e.notes })));
+      setDirty(false);
+      qc.invalidateQueries({ queryKey: ["timesheet", id] });
+    },
   });
 
   const submitMut = useMutation({
