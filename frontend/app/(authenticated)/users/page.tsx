@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useApiQuery, useApiMutation } from "@/hooks/use-api";
 import { DataTable, type Column } from "@/components/data-table/data-table";
 import { SlideOver } from "@/components/forms/slide-over";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { formatDate } from "@/lib/utils";
+import { api } from "@/lib/api";
 import type { User, PaginatedResponse, Role, Client, PlacementRef } from "@/types/api";
 
 const ROLES: Role[] = ["ADMIN", "BROKER", "CONTRACTOR", "CLIENT_CONTACT"];
@@ -29,6 +31,11 @@ export default function UsersPage() {
   const [formRole, setFormRole] = useState<Role>("BROKER");
   const [formClientId, setFormClientId] = useState("");
   const [formIsActive, setFormIsActive] = useState(true);
+
+  // Delete state
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteMsg, setDeleteMsg] = useState("");
+  const [deleteError, setDeleteError] = useState("");
 
   const params = useMemo(() => {
     const p: Record<string, string> = { page: String(page), sort, order };
@@ -156,6 +163,25 @@ export default function UsersPage() {
       createMutation.mutate(body, {
         onSuccess: () => { setSlideOpen(false); resetForm(); },
       });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!editingUser) return;
+    setDeleteOpen(false);
+    setDeleteError("");
+    try {
+      const res = await api<{ deleted: string; message: string }>(`/users/${editingUser.id}`, { method: "DELETE" });
+      if (res.deleted === "soft") {
+        setDeleteMsg(res.message);
+        setSlideOpen(false);
+        resetForm();
+      } else {
+        setSlideOpen(false);
+        resetForm();
+      }
+    } catch (err: unknown) {
+      setDeleteError((err as { message?: string })?.message ?? "Failed to delete");
     }
   };
 
@@ -325,10 +351,39 @@ export default function UsersPage() {
                 <input type="checkbox" checked={formIsActive} onChange={(e) => setFormIsActive(e.target.checked)} className="rounded" />
                 Active
               </label>
+              {editingUser.id !== currentUser?.id && (
+                <div className="pt-4 border-t">
+                  {deleteError && <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded mb-2">{deleteError}</div>}
+                  <button
+                    data-testid="user-delete-btn"
+                    onClick={() => setDeleteOpen(true)}
+                    className="px-4 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+                  >
+                    Delete User
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>
       </SlideOver>
+
+      {deleteMsg && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded text-sm">
+          {deleteMsg}
+          <button onClick={() => setDeleteMsg("")} className="ml-2 text-amber-600 hover:text-amber-800">&times;</button>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={deleteOpen}
+        title="Delete User"
+        message={`Are you sure you want to delete ${editingUser?.full_name}? If they have existing relations, they will be deactivated instead.`}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteOpen(false)}
+      />
     </div>
   );
 }
