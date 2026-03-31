@@ -51,6 +51,8 @@ export default function PlacementDetailPage() {
   const [tab, setTab] = useState<Tab>("timesheets");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [docLabel, setDocLabel] = useState("");
+  const [docVisClient, setDocVisClient] = useState(false);
+  const [docVisContr, setDocVisContr] = useState(false);
   const [tsCreateOpen, setTsCreateOpen] = useState(false);
   useEffect(() => {
     if (!tsCreateOpen) return;
@@ -188,8 +190,15 @@ export default function PlacementDetailPage() {
     const fd = new FormData();
     fd.append("file", file);
     fd.append("label", docLabel || file.name);
+    fd.append("visible_to_client", String(docVisClient));
+    fd.append("visible_to_contractor", String(docVisContr));
     await apiUpload(`/placements/${id}/documents`, fd);
-    setDocLabel("");
+    setDocLabel(""); setDocVisClient(false); setDocVisContr(false);
+    qc.invalidateQueries({ queryKey: ["placement-documents", id] });
+  };
+
+  const handleDocVisToggle = async (docId: string, field: "visible_to_client" | "visible_to_contractor", value: boolean) => {
+    await api(`/placements/${id}/documents/${docId}`, { method: "PATCH", body: JSON.stringify({ [field]: value }) });
     qc.invalidateQueries({ queryKey: ["placement-documents", id] });
   };
 
@@ -630,6 +639,16 @@ export default function PlacementDetailPage() {
                   />
                 </div>
               </div>
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-1.5 text-sm text-gray-600">
+                  <input type="checkbox" checked={docVisClient} onChange={(e) => setDocVisClient(e.target.checked)} className="rounded" />
+                  Visible to client
+                </label>
+                <label className="flex items-center gap-1.5 text-sm text-gray-600">
+                  <input type="checkbox" checked={docVisContr} onChange={(e) => setDocVisContr(e.target.checked)} className="rounded" />
+                  Visible to contractor
+                </label>
+              </div>
               <FileUpload onUpload={handleDocUpload} />
             </>
           )}
@@ -641,8 +660,12 @@ export default function PlacementDetailPage() {
                 data-testid={`doc-row-${doc.id}`}
                 className="flex items-center justify-between px-4 py-3"
               >
-                <div>
-                  <p className="text-sm font-medium">{doc.label || doc.file_name}</p>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium">{doc.label || doc.file_name}</p>
+                    {doc.visible_to_client && <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-50 text-purple-600 font-medium">Client</span>}
+                    {doc.visible_to_contractor && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 font-medium">Contractor</span>}
+                  </div>
                   <p className="text-xs text-gray-500">
                     {doc.file_name} &middot;{" "}
                     {(doc.file_size_bytes / 1024).toFixed(1)} KB &middot;{" "}
@@ -650,15 +673,31 @@ export default function PlacementDetailPage() {
                     {doc.uploaded_by.full_name}
                   </p>
                 </div>
-                {canUploadDocs && (
-                  <button
-                    data-testid={`doc-delete-${doc.id}`}
-                    onClick={() => handleDocDelete(doc.id)}
-                    className="text-red-600 hover:text-red-700 text-sm"
-                  >
-                    Delete
-                  </button>
-                )}
+                <div className="flex items-center gap-3 shrink-0">
+                  {canUploadDocs && (
+                    <>
+                      <label className="flex items-center gap-1 text-xs text-gray-500 cursor-pointer">
+                        <input type="checkbox" checked={doc.visible_to_client}
+                          onChange={(e) => handleDocVisToggle(doc.id, "visible_to_client", e.target.checked)}
+                          className="rounded" />
+                        Client
+                      </label>
+                      <label className="flex items-center gap-1 text-xs text-gray-500 cursor-pointer">
+                        <input type="checkbox" checked={doc.visible_to_contractor}
+                          onChange={(e) => handleDocVisToggle(doc.id, "visible_to_contractor", e.target.checked)}
+                          className="rounded" />
+                        Contr.
+                      </label>
+                      <button
+                        data-testid={`doc-delete-${doc.id}`}
+                        onClick={() => handleDocDelete(doc.id)}
+                        className="text-red-600 hover:text-red-700 text-sm"
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             ))}
             {documents.length === 0 && (

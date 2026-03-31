@@ -19,15 +19,7 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(npm run:*)",
-      "WebSearch",
-      "Bash(curl:*)",
-      "Bash(chmod +x /Users/adomasurbanavicius/timehit3/checkbugs.sh)",
-      "Bash(for f:*)",
-      "Bash(do mv:*)",
-      "Bash(done)",
-      "Bash(bash /Users/adomasurbanavicius/timehit3/checkbugs.sh)",
-      "Bash(grep:*)"
+      "Bash(wc:*)"
     ]
   }
 }

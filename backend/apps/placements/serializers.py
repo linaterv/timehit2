@@ -99,7 +99,7 @@ class PlacementDocumentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PlacementDocument
-        fields = ["id", "file_name", "file_size_bytes", "mime_type", "label", "uploaded_by", "uploaded_at"]
+        fields = ["id", "file_name", "file_size_bytes", "mime_type", "label", "uploaded_by", "uploaded_at", "visible_to_client", "visible_to_contractor"]
 
     def get_uploaded_by(self, obj):
         return {"id": str(obj.uploaded_by_id), "full_name": obj.uploaded_by.full_name}
@@ -112,7 +112,7 @@ class PlacementDocumentFlatSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PlacementDocument
-        fields = ["id", "file_name", "file_size_bytes", "mime_type", "label", "uploaded_by", "uploaded_at", "placement"]
+        fields = ["id", "file_name", "file_size_bytes", "mime_type", "label", "uploaded_by", "uploaded_at", "visible_to_client", "visible_to_contractor", "placement"]
 
     def get_uploaded_by(self, obj):
         return {"id": str(obj.uploaded_by_id), "full_name": obj.uploaded_by.full_name}

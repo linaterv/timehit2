@@ -145,7 +145,7 @@ def generate_sample_pdf(template, parent=None) -> bytes:
 
     # Sample amounts
     hours = Decimal("160.00")
-    rate = Decimal("50.00")
+    rate = Decimal("20.00")
     subtotal = hours * rate
     vat_pct = template.vat_rate_percent
     vat_amt = (subtotal * vat_pct / 100) if vat_pct else None

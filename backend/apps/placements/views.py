@@ -142,7 +142,7 @@ class PlacementViewSet(viewsets.ModelViewSet):
 
 
 class PlacementDocumentViewSet(viewsets.ModelViewSet):
-    http_method_names = ["get", "post", "delete"]
+    http_method_names = ["get", "post", "patch", "delete"]
     parser_classes = [MultiPartParser]
     serializer_class = PlacementDocumentSerializer
 
@@ -155,9 +155,14 @@ class PlacementDocumentViewSet(viewsets.ModelViewSet):
     @extend_schema(tags=["Placement Documents"])
     def list(self, request, placement_pk=None):
         p = self._get_placement()
-        if request.user.is_client_contact and not p.client_can_view_documents:
-            raise PermissionDenied()
-        return Response({"data": PlacementDocumentSerializer(self.get_queryset(), many=True).data})
+        qs = self.get_queryset()
+        if request.user.is_client_contact:
+            if not p.client_can_view_documents:
+                raise PermissionDenied()
+            qs = qs.filter(visible_to_client=True)
+        elif request.user.is_contractor:
+            qs = qs.filter(visible_to_contractor=True)
+        return Response({"data": PlacementDocumentSerializer(qs, many=True).data})
 
     @extend_schema(tags=["Placement Documents"], request=PlacementDocumentUploadSerializer)
     def create(self, request, placement_pk=None):
@@ -174,8 +179,22 @@ class PlacementDocumentViewSet(viewsets.ModelViewSet):
             placement=p, file=f, file_name=f.name, file_size_bytes=f.size,
             mime_type=f.content_type or "application/octet-stream",
             label=request.data.get("label", ""), uploaded_by=user,
+            visible_to_client=request.data.get("visible_to_client", "false").lower() in ("true", "1"),
+            visible_to_contractor=request.data.get("visible_to_contractor", "false").lower() in ("true", "1"),
         )
         return Response(PlacementDocumentSerializer(doc).data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(tags=["Placement Documents"])
+    def partial_update(self, request, placement_pk=None, pk=None):
+        if not (request.user.is_admin or request.user.is_broker):
+            raise PermissionDenied()
+        doc = self.get_object()
+        if "visible_to_client" in request.data:
+            doc.visible_to_client = request.data["visible_to_client"]
+        if "visible_to_contractor" in request.data:
+            doc.visible_to_contractor = request.data["visible_to_contractor"]
+        doc.save()
+        return Response(PlacementDocumentSerializer(doc).data)
 
     @extend_schema(tags=["Placement Documents"])
     @action(detail=True, methods=["get"])
@@ -205,12 +224,13 @@ class DocumentListView(viewsets.ReadOnlyModelViewSet):
         if user.is_broker:
             qs = qs.filter(placement__client__broker_assignments__broker=user)
         elif user.is_contractor:
-            qs = qs.none()
+            qs = qs.filter(placement__contractor=user, visible_to_contractor=True)
         elif user.is_client_contact:
             try:
                 qs = qs.filter(
                     placement__client_id=user.client_contact.client_id,
                     placement__client_can_view_documents=True,
+                    visible_to_client=True,
                 )
             except Exception:
                 qs = qs.none()

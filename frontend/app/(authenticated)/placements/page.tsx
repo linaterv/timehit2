@@ -7,6 +7,7 @@ import { CircleAlert } from "lucide-react";
 import { DataTable, type Column } from "@/components/data-table/data-table";
 import { SlideOver } from "@/components/forms/slide-over";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { SearchableSelect } from "@/components/shared/searchable-select";
 import { useApiQuery, useApiMutation } from "@/hooks/use-api";
 import { useAuth } from "@/hooks/use-auth";
 import { api } from "@/lib/api";
@@ -169,12 +170,12 @@ export default function PlacementsPage() {
 
   const { data: clientsData } = useApiQuery<PaginatedResponse<ClientOption>>(
     ["clients-list"],
-    "/clients?per_page=200"
+    "/clients?per_page=200&sort=created_at&order=desc"
   );
 
   const { data: contractorsData } = useApiQuery<PaginatedResponse<ContractorOption>>(
     ["contractors-list"],
-    "/contractors?per_page=200"
+    "/contractors?per_page=200&sort=created_at&order=desc"
   );
 
   const createMutation = useApiMutation<Placement, CreatePlacementBody>(
@@ -383,7 +384,13 @@ export default function PlacementsPage() {
         {canCreate && (
           <button
             data-testid="placements-create-btn"
-            onClick={() => setSlideOpen(true)}
+            onClick={() => {
+              const form = emptyCreateForm();
+              if (clients.length) form.client_id = clients[0].id;
+              if (contractors.length) form.contractor_id = contractors[0].user_id;
+              setCreateForm(form);
+              setSlideOpen(true);
+            }}
             className="ml-auto px-4 py-2 bg-brand-600 text-white rounded-md text-sm hover:bg-brand-700"
           >
             Create Placement
@@ -435,36 +442,24 @@ export default function PlacementsPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Client</label>
-            <select
-              data-testid="create-client_id"
+            <SearchableSelect
+              testId="create-client_id"
               value={createForm.client_id}
-              onChange={(e) => updateCreate("client_id", e.target.value)}
-              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600"
-            >
-              <option value="">Select client...</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.company_name}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => updateCreate("client_id", v)}
+              placeholder="Search clients..."
+              options={clients.map((c) => ({ value: c.id, label: c.company_name }))}
+            />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Contractor</label>
-            <select
-              data-testid="create-contractor_id"
+            <SearchableSelect
+              testId="create-contractor_id"
               value={createForm.contractor_id}
-              onChange={(e) => updateCreate("contractor_id", e.target.value)}
-              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600"
-            >
-              <option value="">Select contractor...</option>
-              {contractors.map((c) => (
-                <option key={c.id} value={c.user_id}>
-                  {c.full_name}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => updateCreate("contractor_id", v)}
+              placeholder="Search contractors..."
+              options={contractors.map((c) => ({ value: c.user_id, label: c.full_name }))}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">

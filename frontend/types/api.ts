@@ -133,6 +133,8 @@ export interface PlacementDocument {
   label: string;
   uploaded_by: UserRef;
   uploaded_at: string;
+  visible_to_client: boolean;
+  visible_to_contractor: boolean;
   placement?: { id: string; client: ClientRef; contractor: UserRef };
 }
 

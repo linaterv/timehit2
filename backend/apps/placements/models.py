@@ -83,6 +83,8 @@ class PlacementDocument(models.Model):
     label = models.CharField(max_length=100, blank=True, default="")
     uploaded_by = models.ForeignKey("users.User", on_delete=models.CASCADE)
     uploaded_at = models.DateTimeField(auto_now_add=True)
+    visible_to_client = models.BooleanField(default=False)
+    visible_to_contractor = models.BooleanField(default=False)
 
     class Meta:
         db_table = "placement_documents"
