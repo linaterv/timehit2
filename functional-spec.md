@@ -272,6 +272,16 @@ Visibility: Admin/Broker see all notifications. Contractor/Client Contact only s
 
 **Template Resolution** (invoice generation): placement-specific -> client-scoped -> default -> fallback to ContractorProfile/Client fields.
 
+### 2.15 Agency Settings
+
+Singleton model storing agency-wide defaults. Admin only.
+
+| Field | Type | Notes |
+|---|---|---|
+| default_payment_terms_client_days | integer | default 30, applied to new placements |
+| default_payment_terms_contractor_days | integer | default 35, applied to new placements |
+| default_client_invoice_template | FK -> InvoiceTemplate | nullable, default CLIENT template for new placements |
+
 ---
 
 ## 3. State Machines

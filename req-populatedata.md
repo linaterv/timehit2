@@ -50,6 +50,14 @@ Current date for reference: **March 2026**
 
 ---
 
+## Agency Settings
+
+| Setting | Value |
+|---|---|
+| default_payment_terms_client_days | 30 |
+| default_payment_terms_contractor_days | 35 |
+| default_client_invoice_template | Client LT Template |
+
 ## Global Invoice Templates (4)
 
 | template_type | code | title | notes |

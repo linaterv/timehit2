@@ -1352,6 +1352,39 @@ ACTIVE -> ARCHIVED.
 
 ---
 
+## 13c. Agency Settings
+
+**Access:** Admin — read/write. All authenticated — read.
+
+### `GET /agency-settings`
+
+```json
+// 200
+{
+  "default_payment_terms_client_days": 30,
+  "default_payment_terms_contractor_days": 35,
+  "default_client_invoice_template_id": "uuid | null"
+}
+```
+
+### `PATCH /agency-settings`
+
+Admin only. All fields optional.
+
+```json
+// Request
+{
+  "default_payment_terms_client_days": 30,
+  "default_payment_terms_contractor_days": 35,
+  "default_client_invoice_template_id": "uuid | null"
+}
+
+// 200 — updated settings
+// 403 — not admin
+```
+
+---
+
 ## 14. Control Screen
 
 **Access:** Admin — all data. Broker — assigned clients only.

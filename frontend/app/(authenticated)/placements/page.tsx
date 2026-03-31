@@ -111,6 +111,8 @@ export default function PlacementsPage() {
     queryKey: ["timesheets-pending-placements"],
     queryFn: () => api<{ data: PendingRow[] }>("/timesheets/pending"),
     enabled: isContractor,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
   const now = new Date();
   const curYear = now.getFullYear();

@@ -318,6 +318,15 @@ Aggregated view of all placement documents the user has access to.
 
 Subtabs within the settings page:
 
+**Placement Defaults** subtab:
+- Default payment terms for client (days) — number input, default 30
+- Default payment terms for contractor (days) — number input, default 35
+- Default client invoice template — dropdown of global CLIENT templates, defaults to LT
+- Save button with success indicator
+- Values from `GET /agency-settings`, saved via `PATCH /agency-settings`
+- These defaults are applied when creating a new placement
+- data-testid: `tab-placement-settings`
+
 **Invoice Templates** (default subtab):
 - Card list of all invoice templates (all types: CONTRACTOR, CLIENT, AGENCY).
 - Each card: title, code (mono), template_type badge, status badge, is_default badge, owner name, company summary.
