@@ -74,7 +74,7 @@ class ControlOverviewView(APIView):
 
             data.append({
                 "placement": {
-                    "id": str(pl.id), "start_date": str(pl.start_date), "end_date": str(pl.end_date) if pl.end_date else None,
+                    "id": str(pl.id), "title": pl.title, "start_date": str(pl.start_date), "end_date": str(pl.end_date) if pl.end_date else None,
                     "client_rate": str(pl.client_rate), "contractor_rate": str(pl.contractor_rate),
                     "currency": pl.currency, "approval_flow": pl.approval_flow,
                     "require_timesheet_attachment": pl.require_timesheet_attachment,

@@ -57,6 +57,32 @@ test.describe("Contractors", () => {
     await page.waitForTimeout(1000);
   });
 
+  test("contractor edits own company name in profile", async ({ page }) => {
+    await loginAs.alex(page);
+    await navigateTo(page, "/profile");
+    await page.waitForTimeout(1000);
+
+    // Go to Account tab
+    await page.getByTestId("tab-account").click();
+    await page.waitForTimeout(500);
+
+    // Edit company name
+    const companyInput = page.getByTestId("field-company_name");
+    await expect(companyInput).toBeVisible();
+    const original = await companyInput.inputValue();
+    await companyInput.fill("E2E Test Company");
+    await page.getByTestId("contractor-save").click();
+    await page.waitForTimeout(1000);
+
+    // Verify saved
+    await expect(page.getByText("Saved")).toBeVisible({ timeout: 3000 });
+
+    // Restore original
+    await companyInput.fill(original);
+    await page.getByTestId("contractor-save").click();
+    await page.waitForTimeout(1000);
+  });
+
   test("client contact cannot access contractors", async ({ page }) => {
     await loginAs.client1(page);
     const items = page.getByTestId("sidebar").locator("nav a");

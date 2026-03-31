@@ -154,8 +154,10 @@ function ClientContactDashboard() {
 /* ──────────────── Admin / Broker Control Screen ──────────────── */
 function ControlScreen() {
   const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1);
+  const lastMonth = now.getMonth(); // 0-indexed, so this is last month's 1-indexed value
+  const lastMonthYear = lastMonth === 0 ? now.getFullYear() - 1 : now.getFullYear();
+  const [year, setYear] = useState(lastMonth === 0 ? lastMonthYear : now.getFullYear());
+  const [month, setMonth] = useState(lastMonth === 0 ? 12 : lastMonth);
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState("");
   const [order, setOrder] = useState<"asc" | "desc">("asc");
@@ -208,23 +210,15 @@ function ControlScreen() {
 
   const columns: Column<ControlRow>[] = [
     {
-      key: "client",
-      label: "Client",
-      render: (row) => <span>{row.client.company_name}</span>,
-    },
-    {
-      key: "contractor",
-      label: "Contractor",
-      render: (row) => <span>{row.contractor.full_name}</span>,
-    },
-    {
-      key: "rates",
-      label: "Rates",
+      key: "placement",
+      label: "Placement",
       render: (row) => (
-        <span className="text-xs">
-          {formatCurrency(row.placement.client_rate, row.placement.currency)} /{" "}
-          {formatCurrency(row.placement.contractor_rate, row.placement.currency)}
-        </span>
+        <div>
+          <span className="font-medium">{row.client.company_name}</span>
+          <span className="text-gray-400 mx-1">&rarr;</span>
+          <span>{row.placement.title || row.contractor.full_name}</span>
+          {row.placement.title && <div className="text-xs text-gray-400">{row.contractor.full_name}</div>}
+        </div>
       ),
     },
     {
@@ -232,15 +226,6 @@ function ControlScreen() {
       label: "Hours",
       render: (row) => (
         <span>{row.timesheet ? `${row.timesheet.total_hours}h` : "—"}</span>
-      ),
-    },
-    {
-      key: "margin",
-      label: "Margin",
-      render: (row) => (
-        <span className="font-medium">
-          {row.margin ? formatCurrency(row.margin, row.placement.currency) : "—"}
-        </span>
       ),
     },
     {

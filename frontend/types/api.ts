@@ -245,6 +245,7 @@ export interface InvoiceTemplate {
 export interface ControlRow {
   placement: {
     id: string;
+    title: string;
     start_date: string;
     end_date: string | null;
     client_rate: string;

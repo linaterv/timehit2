@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { loginAs, navItems } from "./helpers";
 
 test.describe("Sidebar Navigation", () => {
-  test("admin sees 8 nav items", async ({ page }) => {
+  test("admin sees 9 nav items", async ({ page }) => {
     await loginAs.admin(page);
     const items = await navItems(page);
     expect(items).toContain("Dashboard");
@@ -13,7 +13,8 @@ test.describe("Sidebar Navigation", () => {
     expect(items).toContain("Timesheets");
     expect(items).toContain("Invoices");
     expect(items).toContain("Documents");
-    expect(items).toHaveLength(8);
+    expect(items).toContain("Settings");
+    expect(items).toHaveLength(9);
   });
 
   test("broker sees 7 nav items", async ({ page }) => {
