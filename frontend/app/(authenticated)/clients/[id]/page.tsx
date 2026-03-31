@@ -7,6 +7,7 @@ import { useApiQuery, useApiMutation } from "@/hooks/use-api";
 import { DataTable, type Column } from "@/components/data-table/data-table";
 import { SlideOver } from "@/components/forms/slide-over";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { CountrySelect } from "@/components/shared/country-select";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { formatDate } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -38,11 +39,8 @@ export default function ClientDetailPage() {
 
   // Edit client form state
   const [editCompanyName, setEditCompanyName] = useState("");
-  const [editBillingAddress, setEditBillingAddress] = useState("");
+  const [editRegNumber, setEditRegNumber] = useState("");
   const [editCountry, setEditCountry] = useState("");
-  const [editCurrency, setEditCurrency] = useState("");
-  const [editPaymentTerms, setEditPaymentTerms] = useState("");
-  const [editVatNumber, setEditVatNumber] = useState("");
   const [editNotes, setEditNotes] = useState("");
 
   // Add contact form state
@@ -160,13 +158,8 @@ export default function ClientDetailPage() {
 
   const openEditSlide = () => {
     setEditCompanyName(client.company_name);
-    setEditBillingAddress(client.billing_address);
+    setEditRegNumber(client.registration_number ?? "");
     setEditCountry(client.country);
-    setEditCurrency(client.default_currency);
-    setEditPaymentTerms(
-      client.payment_terms_days != null ? String(client.payment_terms_days) : ""
-    );
-    setEditVatNumber(client.vat_number);
     setEditNotes(client.notes ?? "");
     setEditSlideOpen(true);
   };
@@ -174,15 +167,10 @@ export default function ClientDetailPage() {
   const handleEditSave = () => {
     const body: Record<string, unknown> = {
       company_name: editCompanyName,
-      billing_address: editBillingAddress,
+      registration_number: editRegNumber,
       country: editCountry,
-      default_currency: editCurrency,
-      vat_number: editVatNumber,
       notes: editNotes,
     };
-    if (editPaymentTerms) {
-      body.payment_terms_days = Number(editPaymentTerms);
-    }
     updateClientMutation.mutate(body, {
       onSuccess: () => setEditSlideOpen(false),
     });
@@ -599,62 +587,20 @@ export default function ClientDetailPage() {
             />
           </div>
           <div>
-            <label data-testid="edit-billing-address-label" className="block text-sm font-medium text-gray-700 mb-1">
-              Billing Address
-            </label>
-            <textarea
-              data-testid="edit-billing-address"
-              value={editBillingAddress}
-              onChange={(e) => setEditBillingAddress(e.target.value)}
-              rows={3}
-              className="w-full px-3 py-2 border rounded text-sm"
-            />
-          </div>
-          <div>
             <label data-testid="edit-country-label" className="block text-sm font-medium text-gray-700 mb-1">
               Country
             </label>
-            <input
-              data-testid="edit-country"
-              type="text"
-              value={editCountry}
-              onChange={(e) => setEditCountry(e.target.value)}
-              className="w-full px-3 py-2 border rounded text-sm"
-            />
+            <CountrySelect value={editCountry} onChange={setEditCountry} testId="edit-country" className="w-full px-3 py-2 border rounded text-sm" />
           </div>
           <div>
-            <label data-testid="edit-currency-label" className="block text-sm font-medium text-gray-700 mb-1">
-              Default Currency
+            <label data-testid="edit-reg-number-label" className="block text-sm font-medium text-gray-700 mb-1">
+              Company Code
             </label>
             <input
-              data-testid="edit-currency"
+              data-testid="edit-reg-number"
               type="text"
-              value={editCurrency}
-              onChange={(e) => setEditCurrency(e.target.value)}
-              className="w-full px-3 py-2 border rounded text-sm"
-            />
-          </div>
-          <div>
-            <label data-testid="edit-payment-terms-label" className="block text-sm font-medium text-gray-700 mb-1">
-              Payment Terms (days)
-            </label>
-            <input
-              data-testid="edit-payment-terms"
-              type="number"
-              value={editPaymentTerms}
-              onChange={(e) => setEditPaymentTerms(e.target.value)}
-              className="w-full px-3 py-2 border rounded text-sm"
-            />
-          </div>
-          <div>
-            <label data-testid="edit-vat-number-label" className="block text-sm font-medium text-gray-700 mb-1">
-              VAT Number
-            </label>
-            <input
-              data-testid="edit-vat-number"
-              type="text"
-              value={editVatNumber}
-              onChange={(e) => setEditVatNumber(e.target.value)}
+              value={editRegNumber}
+              onChange={(e) => setEditRegNumber(e.target.value)}
               className="w-full px-3 py-2 border rounded text-sm"
             />
           </div>

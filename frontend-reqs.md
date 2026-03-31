@@ -165,7 +165,13 @@ The primary operational view. Maps to `GET /control/overview` + `GET /control/su
 ### 5. Contractors (`/contractors`)
 - Table: name, placement (current/last active as "Client → Title"), ends (active placement end date), status ("In Effect" green if active placement, "No Placement" gray otherwise)
 - Filters: search, is_active
-- data-testid: `contractors-table`
+- **Create Contractor** button (admin/broker): centered modal dialog with:
+  - Full Name, Email fields
+  - "Auto-generate password" checkbox (default on) — calls `POST /users/generate-password`
+  - Password field (read-only when autogen on, editable when off), show/hide toggle (eye icon)
+  - Confirm Password field (only when autogen off), "Regenerate password" link (when autogen on)
+  - Validation: shows per-field API errors. On create: backend auto-creates ContractorProfile + DRAFT invoice template
+- data-testid: `contractors-table`, `create-contractor-btn`, `create-contractor-dialog`
 
 **Contractor Detail** (`/contractors/[id]`):
 - Tabs: **Placements** (default tab, all roles), **Profile**, **Templates** (admin only, CONTRACTOR-type invoice templates, card list + A4 invoice editor)

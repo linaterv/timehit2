@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useApiQuery, useApiMutation } from "@/hooks/use-api";
 import { DataTable, type Column } from "@/components/data-table/data-table";
 import { SlideOver } from "@/components/forms/slide-over";
-
+import { CountrySelect } from "@/components/shared/country-select";
 import type { Client, PaginatedResponse } from "@/types/api";
 
 export default function ClientsPage() {
@@ -22,11 +22,8 @@ export default function ClientsPage() {
 
   // Form state
   const [formCompanyName, setFormCompanyName] = useState("");
-  const [formBillingAddress, setFormBillingAddress] = useState("");
-  const [formCountry, setFormCountry] = useState("");
-  const [formCurrency, setFormCurrency] = useState("EUR");
-  const [formPaymentTerms, setFormPaymentTerms] = useState("");
-  const [formVatNumber, setFormVatNumber] = useState("");
+  const [formRegNumber, setFormRegNumber] = useState("");
+  const [formCountry, setFormCountry] = useState("LT");
   const [formNotes, setFormNotes] = useState("");
 
   const allowed = user?.role === "ADMIN" || user?.role === "BROKER";
@@ -115,11 +112,8 @@ export default function ClientsPage() {
 
   const resetForm = () => {
     setFormCompanyName("");
-    setFormBillingAddress("");
-    setFormCountry("");
-    setFormCurrency("EUR");
-    setFormPaymentTerms("");
-    setFormVatNumber("");
+    setFormRegNumber("");
+    setFormCountry("LT");
     setFormNotes("");
   };
 
@@ -128,24 +122,28 @@ export default function ClientsPage() {
     setSlideOpen(true);
   };
 
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
   const handleSave = () => {
-    const body: Record<string, unknown> = {
-      company_name: formCompanyName,
-      billing_address: formBillingAddress,
-      country: formCountry,
-      default_currency: formCurrency,
-      vat_number: formVatNumber,
-      notes: formNotes,
-    };
-    if (formPaymentTerms) {
-      body.payment_terms_days = Number(formPaymentTerms);
-    }
-    createMutation.mutate(body, {
-      onSuccess: () => {
-        setSlideOpen(false);
-        resetForm();
+    const errors: Record<string, string> = {};
+    if (!formCompanyName.trim()) errors.company_name = "Company name is required";
+    if (!formCountry) errors.country = "Country is required";
+    if (Object.keys(errors).length) { setFieldErrors(errors); return; }
+    setFieldErrors({});
+    createMutation.mutate(
+      { company_name: formCompanyName, registration_number: formRegNumber, country: formCountry, notes: formNotes },
+      {
+        onSuccess: () => { setSlideOpen(false); resetForm(); setFieldErrors({}); },
+        onError: (err: unknown) => {
+          const e = err as { details?: { field: string; message: string }[] };
+          if (e.details?.length) {
+            const map: Record<string, string> = {};
+            e.details.forEach((d) => { map[d.field] = d.message; });
+            setFieldErrors(map);
+          }
+        },
       },
-    });
+    );
   };
 
   const handleSort = (key: string, newOrder: "asc" | "desc") => {
@@ -227,75 +225,41 @@ export default function ClientsPage() {
         <div className="space-y-4">
           <div>
             <label data-testid="field-company-name-label" className="block text-sm font-medium text-gray-700 mb-1">
-              Company Name
+              Company Name <span className="text-red-500">*</span>
             </label>
             <input
               data-testid="field-company-name"
               type="text"
               value={formCompanyName}
-              onChange={(e) => setFormCompanyName(e.target.value)}
-              className="w-full px-3 py-2 border rounded text-sm"
+              onChange={(e) => { setFormCompanyName(e.target.value); setFieldErrors((p) => ({ ...p, company_name: "" })); }}
+              className={`w-full px-3 py-2 border rounded text-sm ${fieldErrors.company_name ? "border-red-400" : ""}`}
             />
-          </div>
-          <div>
-            <label data-testid="field-billing-address-label" className="block text-sm font-medium text-gray-700 mb-1">
-              Billing Address
-            </label>
-            <textarea
-              data-testid="field-billing-address"
-              value={formBillingAddress}
-              onChange={(e) => setFormBillingAddress(e.target.value)}
-              rows={3}
-              className="w-full px-3 py-2 border rounded text-sm"
-            />
+            {fieldErrors.company_name && <p className="text-xs text-red-600 mt-1">{fieldErrors.company_name}</p>}
           </div>
           <div>
             <label data-testid="field-country-label" className="block text-sm font-medium text-gray-700 mb-1">
-              Country
+              Country <span className="text-red-500">*</span>
             </label>
-            <input
-              data-testid="field-country"
-              type="text"
+            <CountrySelect
               value={formCountry}
-              onChange={(e) => setFormCountry(e.target.value)}
-              className="w-full px-3 py-2 border rounded text-sm"
+              onChange={(v) => { setFormCountry(v); setFieldErrors((p) => ({ ...p, country: "" })); }}
+              testId="field-country"
+              className={`w-full px-3 py-2 border rounded text-sm ${fieldErrors.country ? "border-red-400" : ""}`}
             />
+            {fieldErrors.country && <p className="text-xs text-red-600 mt-1">{fieldErrors.country}</p>}
           </div>
           <div>
-            <label data-testid="field-currency-label" className="block text-sm font-medium text-gray-700 mb-1">
-              Default Currency
+            <label data-testid="field-reg-number-label" className="block text-sm font-medium text-gray-700 mb-1">
+              Company Code
             </label>
             <input
-              data-testid="field-currency"
+              data-testid="field-reg-number"
               type="text"
-              value={formCurrency}
-              onChange={(e) => setFormCurrency(e.target.value)}
-              className="w-full px-3 py-2 border rounded text-sm"
+              value={formRegNumber}
+              onChange={(e) => setFormRegNumber(e.target.value)}
+              className={`w-full px-3 py-2 border rounded text-sm ${fieldErrors.registration_number ? "border-red-400" : ""}`}
             />
-          </div>
-          <div>
-            <label data-testid="field-payment-terms-label" className="block text-sm font-medium text-gray-700 mb-1">
-              Payment Terms (days)
-            </label>
-            <input
-              data-testid="field-payment-terms"
-              type="number"
-              value={formPaymentTerms}
-              onChange={(e) => setFormPaymentTerms(e.target.value)}
-              className="w-full px-3 py-2 border rounded text-sm"
-            />
-          </div>
-          <div>
-            <label data-testid="field-vat-number-label" className="block text-sm font-medium text-gray-700 mb-1">
-              VAT Number
-            </label>
-            <input
-              data-testid="field-vat-number"
-              type="text"
-              value={formVatNumber}
-              onChange={(e) => setFormVatNumber(e.target.value)}
-              className="w-full px-3 py-2 border rounded text-sm"
-            />
+            {fieldErrors.registration_number && <p className="text-xs text-red-600 mt-1">{fieldErrors.registration_number}</p>}
           </div>
           <div>
             <label data-testid="field-notes-label" className="block text-sm font-medium text-gray-700 mb-1">

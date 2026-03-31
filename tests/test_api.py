@@ -878,3 +878,91 @@ class TestSamplePdf:
 
         # Cleanup
         admin_api.delete(f"/invoice-templates/{tpl_id}")
+
+
+class TestContractorCreation:
+    """Tests for contractor creation, password generation, and auto-created template."""
+
+    def test_generate_password(self, admin_api):
+        """POST /users/generate-password returns a memorable password."""
+        r = admin_api.post("/users/generate-password")
+        assert r.status_code == 200
+        pwd = r.json()["password"]
+        assert len(pwd) >= 8, f"Password too short: {pwd}"
+        # Should contain at least one letter and one digit
+        assert any(c.isalpha() for c in pwd), f"No letters in: {pwd}"
+        assert any(c.isdigit() for c in pwd), f"No digits in: {pwd}"
+
+    def test_generate_password_unique(self, admin_api):
+        """Two calls should return different passwords."""
+        r1 = admin_api.post("/users/generate-password").json()["password"]
+        r2 = admin_api.post("/users/generate-password").json()["password"]
+        # Extremely unlikely to be the same (200+ words * 200+ words * 90 numbers)
+        assert r1 != r2, f"Generated same password twice: {r1}"
+
+    def test_create_contractor_creates_profile_and_template(self, admin_api):
+        """Creating a CONTRACTOR user auto-creates ContractorProfile + DRAFT InvoiceTemplate."""
+        # Cleanup leftover from previous failed runs
+        users = admin_api.get("/users?search=test-autocreate-tmp").json()["data"]
+        for u in users:
+            if u["email"] == "test-autocreate-tmp@example.com":
+                cs = admin_api.get("/contractors").json()["data"]
+                for c in cs:
+                    if c["user_id"] == u["id"]:
+                        admin_api.delete(f"/contractors/{c['id']}")
+                        break
+
+        # Generate password
+        pwd = admin_api.post("/users/generate-password").json()["password"]
+
+        # Create contractor
+        r = admin_api.post("/users", json={
+            "email": "test-autocreate-tmp@example.com",
+            "full_name": "Test AutoCreate",
+            "password": pwd,
+            "role": "CONTRACTOR",
+        })
+        assert r.status_code == 201, f"Create failed: {r.text}"
+
+        # Look up user by email to get ID
+        users = admin_api.get("/users?search=autocreate").json()["data"]
+        matched = [u for u in users if u["email"] == "test-autocreate-tmp@example.com"]
+        assert matched, f"User not found after create. Users: {[u['email'] for u in users]}"
+        user_id = matched[0]["id"]
+
+        # Verify contractor profile exists
+        contractors = admin_api.get("/contractors").json()["data"]
+        contr = [c for c in contractors if c["user_id"] == user_id]
+        assert len(contr) == 1, "ContractorProfile not created"
+        contr_id = contr[0]["id"]
+
+        # Verify DRAFT template was auto-created
+        templates = admin_api.get(f"/invoice-templates?template_type=CONTRACTOR&contractor_id={user_id}").json()["data"]
+        own_templates = [t for t in templates if t.get("contractor") and t["contractor"]["id"] == user_id]
+        assert len(own_templates) >= 1, "Template not auto-created"
+        assert own_templates[0]["status"] == "DRAFT"
+        assert own_templates[0]["code"] == "DEFAULT"
+
+        # Verify contractor can log in with generated password
+        from conftest import Api
+        contr_api = Api(admin_api.base.replace("/api/v1", ""))
+        contr_api.auth("test-autocreate-tmp@example.com", pwd)
+        me = contr_api.get("/users/me").json()
+        assert me["role"] == "CONTRACTOR"
+
+        # Cleanup: delete templates first, then contractor
+        for t in own_templates:
+            admin_api.delete(f"/invoice-templates/{t['id']}")
+        admin_api.delete(f"/contractors/{contr_id}")
+
+    def test_create_contractor_duplicate_email_fails(self, admin_api):
+        """Creating a contractor with an existing email returns field-level error."""
+        r = admin_api.post("/users", json={
+            "email": "admin@test.com",  # already exists
+            "full_name": "Duplicate Test",
+            "password": "test123",
+            "role": "CONTRACTOR",
+        })
+        assert r.status_code == 400
+        error = r.json().get("error", {})
+        assert error.get("details") or "email" in str(error), f"Expected email error: {r.text}"

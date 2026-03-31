@@ -268,6 +268,19 @@ Returns current authenticated user with role-specific profile included.
 }
 ```
 
+### `POST /users/generate-password`
+
+Generates a memorable password from a word dictionary (Lithuanian/world geography, history, nature). Requires authentication.
+
+```json
+// 200 Response
+{ "password": "VilniusEverest42" }
+```
+
+Format: two capitalized words + two-digit number, no separators.
+
+**Side effect of creating CONTRACTOR user:** backend auto-creates ContractorProfile + DRAFT InvoiceTemplate with placeholder data.
+
 ---
 
 ## 4. Clients

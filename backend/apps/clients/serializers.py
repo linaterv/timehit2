@@ -56,6 +56,14 @@ class ClientCreateSerializer(serializers.ModelSerializer):
             "billing_address", "country", "default_currency", "payment_terms_days",
             "notes", "broker_ids",
         ]
+        extra_kwargs = {
+            "billing_address": {"required": False},
+            "registration_number": {"required": False},
+            "vat_number": {"required": False},
+            "payment_terms_days": {"required": False},
+            "default_currency": {"required": False},
+            "notes": {"required": False},
+        }
 
     def create(self, validated_data):
         broker_ids = validated_data.pop("broker_ids", [])

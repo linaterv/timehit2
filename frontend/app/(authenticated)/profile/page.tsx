@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useApiQuery, useApiMutation } from "@/hooks/use-api";
 import { useAuth } from "@/hooks/use-auth";
+import { CountrySelect } from "@/components/shared/country-select";
 import { api } from "@/lib/api";
 import {
   InvoiceTemplateA4, TplForm, emptyTplForm, tplToForm, STATUS_COLORS,
@@ -195,8 +196,7 @@ export default function ProfilePage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
-                <input data-testid="field-country" type="text" value={acctForm.country}
-                  onChange={(e) => setAcctForm((p) => ({ ...p, country: e.target.value }))} className={inputCls} />
+                <CountrySelect value={acctForm.country} onChange={(v) => setAcctForm((p) => ({ ...p, country: v }))} testId="field-country" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Default Currency</label>

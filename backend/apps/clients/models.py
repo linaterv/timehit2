@@ -7,7 +7,7 @@ class Client(models.Model):
     company_name = models.CharField(max_length=255)
     registration_number = models.CharField(max_length=100, blank=True, default="")
     vat_number = models.CharField(max_length=100, blank=True, default="")
-    billing_address = models.TextField()
+    billing_address = models.TextField(blank=True, default="")
     country = models.CharField(max_length=100)
     default_currency = models.CharField(max_length=3, default="EUR")
     payment_terms_days = models.IntegerField(null=True, blank=True)

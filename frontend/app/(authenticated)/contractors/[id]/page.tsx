@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { api } from "@/lib/api";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { CountrySelect } from "@/components/shared/country-select";
 import { formatDate } from "@/lib/utils";
 import {
   InvoiceTemplateA4, TplForm, emptyTplForm, tplToForm,
@@ -368,14 +369,7 @@ export default function ContractorDetailPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
-            <input
-              data-testid="field-country"
-              type="text"
-              value={form.country}
-              onChange={(e) => updateField("country", e.target.value)}
-              disabled={disabled}
-              className="w-full border rounded-md px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-600"
-            />
+            <CountrySelect value={form.country} onChange={(v) => updateField("country", v)} disabled={disabled} testId="field-country" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Default Currency</label>

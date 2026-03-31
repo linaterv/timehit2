@@ -19,6 +19,44 @@ test.describe("Contractors", () => {
     await expect(page.getByText(/company|profile|john/i).first()).toBeVisible({ timeout: 5000 });
   });
 
+  test("admin creates contractor with autogen password, then deletes", async ({ page }) => {
+    await loginAs.admin(page);
+    await navigateTo(page, "/contractors");
+    await page.waitForURL(/\/contractors/, { timeout: 10000 });
+
+    // Open create dialog
+    await page.getByTestId("create-contractor-btn").click();
+    await expect(page.getByTestId("create-contractor-dialog")).toBeVisible();
+
+    // Fill name and email
+    const name = "E2E Test Contractor";
+    const email = "e2e-test-contr@example.com";
+    const dialog = page.getByTestId("create-contractor-dialog");
+    const inputs = dialog.locator("input");
+    await inputs.nth(0).fill(name);  // Full Name
+    await inputs.nth(1).fill(email); // Email
+
+    // Wait for autogen password
+    await page.waitForTimeout(1500);
+
+    // Submit
+    await page.getByTestId("create-contractor-submit").click();
+    await page.waitForTimeout(1500);
+
+    // Verify contractor appears in list
+    await expect(page.getByText(name)).toBeVisible({ timeout: 5000 });
+
+    // Click on contractor to open detail
+    await page.getByText(name).click();
+    await page.waitForURL(/\/contractors\//, { timeout: 5000 });
+    await expect(page.getByText(name)).toBeVisible();
+
+    // Delete contractor
+    await page.getByTestId("contractor-delete-btn").click();
+    await page.getByRole("button", { name: "Delete" }).last().click();
+    await page.waitForTimeout(1000);
+  });
+
   test("client contact cannot access contractors", async ({ page }) => {
     await loginAs.client1(page);
     const items = page.getByTestId("sidebar").locator("nav a");
