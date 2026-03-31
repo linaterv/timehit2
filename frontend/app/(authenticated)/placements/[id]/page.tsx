@@ -55,7 +55,8 @@ export default function PlacementDetailPage() {
   const [tab, setTab] = useState<Tab>("timesheets");
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [docUploadOpen, setDocUploadOpen] = useState(false);
+  const [docDialogOpen, setDocDialogOpen] = useState(false);
+  const [docEditingId, setDocEditingId] = useState<string | null>(null);
   const [docLabel, setDocLabel] = useState("");
   const [docVisClient, setDocVisClient] = useState(false);
   const [docVisContr, setDocVisContr] = useState(false);
@@ -218,12 +219,25 @@ export default function PlacementDetailPage() {
     fd.append("visible_to_client", String(docVisClient));
     fd.append("visible_to_contractor", String(docVisContr));
     await apiUpload(`/placements/${id}/documents`, fd);
-    setDocLabel(""); setDocVisClient(false); setDocVisContr(false); setDocUploadOpen(false);
+    setDocLabel(""); setDocVisClient(false); setDocVisContr(false); setDocDialogOpen(false);
     qc.invalidateQueries({ queryKey: ["placement-documents", id] });
   };
 
-  const handleDocVisToggle = async (docId: string, field: "visible_to_client" | "visible_to_contractor", value: boolean) => {
-    await api(`/placements/${id}/documents/${docId}`, { method: "PATCH", body: JSON.stringify({ [field]: value }) });
+  const handleDocEdit = (doc: PlacementDocument) => {
+    setDocEditingId(doc.id);
+    setDocLabel(doc.label);
+    setDocVisClient(doc.visible_to_client);
+    setDocVisContr(doc.visible_to_contractor);
+    setDocDialogOpen(true);
+  };
+
+  const handleDocSave = async () => {
+    if (!docEditingId) return;
+    await api(`/placements/${id}/documents/${docEditingId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ label: docLabel, visible_to_client: docVisClient, visible_to_contractor: docVisContr }),
+    });
+    setDocDialogOpen(false);
     qc.invalidateQueries({ queryKey: ["placement-documents", id] });
   };
 
@@ -678,7 +692,7 @@ export default function PlacementDetailPage() {
         <div data-testid="tab-content-documents" className="space-y-4">
           {canUploadDocs && (
             <div className="flex justify-end">
-              <button onClick={() => { setDocLabel(""); setDocVisClient(false); setDocVisContr(false); setDocUploadOpen(true); }}
+              <button onClick={() => { setDocEditingId(null); setDocLabel(""); setDocVisClient(false); setDocVisContr(false); setDocDialogOpen(true); }}
                 className="px-4 py-2 bg-brand-600 text-white rounded text-sm hover:bg-brand-700">
                 Upload Document
               </button>
@@ -690,7 +704,8 @@ export default function PlacementDetailPage() {
               <div
                 key={doc.id}
                 data-testid={`doc-row-${doc.id}`}
-                className="flex items-center justify-between px-4 py-3"
+                className={`flex items-center justify-between px-4 py-3 ${canUploadDocs ? "cursor-pointer hover:bg-gray-50" : ""}`}
+                onClick={() => canUploadDocs && handleDocEdit(doc)}
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -705,31 +720,15 @@ export default function PlacementDetailPage() {
                     {doc.uploaded_by.full_name}
                   </p>
                 </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  {canUploadDocs && (
-                    <>
-                      <label className="flex items-center gap-1 text-xs text-gray-500 cursor-pointer">
-                        <input type="checkbox" checked={doc.visible_to_client}
-                          onChange={(e) => handleDocVisToggle(doc.id, "visible_to_client", e.target.checked)}
-                          className="rounded" />
-                        Client
-                      </label>
-                      <label className="flex items-center gap-1 text-xs text-gray-500 cursor-pointer">
-                        <input type="checkbox" checked={doc.visible_to_contractor}
-                          onChange={(e) => handleDocVisToggle(doc.id, "visible_to_contractor", e.target.checked)}
-                          className="rounded" />
-                        Contr.
-                      </label>
-                      <button
-                        data-testid={`doc-delete-${doc.id}`}
-                        onClick={() => handleDocDelete(doc.id)}
-                        className="text-red-600 hover:text-red-700 text-sm"
-                      >
-                        Delete
-                      </button>
-                    </>
-                  )}
-                </div>
+                {canUploadDocs && (
+                  <button
+                    data-testid={`doc-delete-${doc.id}`}
+                    onClick={(e) => { e.stopPropagation(); handleDocDelete(doc.id); }}
+                    className="text-red-600 hover:text-red-700 text-sm shrink-0"
+                  >
+                    Delete
+                  </button>
+                )}
               </div>
             ))}
             {documents.length === 0 && (
@@ -741,19 +740,19 @@ export default function PlacementDetailPage() {
         </div>
       )}
 
-      {/* Upload Document Dialog */}
-      {docUploadOpen && (
+      {/* Document Dialog (upload new / edit existing) */}
+      {docDialogOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="fixed inset-0 bg-black/30" onClick={() => setDocUploadOpen(false)} />
+          <div className="fixed inset-0 bg-black/30" onClick={() => setDocDialogOpen(false)} />
           <div className="relative bg-surface rounded-xl shadow-lg w-full max-w-md p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Upload Document</h3>
-              <button onClick={() => setDocUploadOpen(false)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+              <h3 className="text-lg font-semibold text-gray-900">{docEditingId ? "Edit Document" : "Upload Document"}</h3>
+              <button onClick={() => setDocDialogOpen(false)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Label</label>
               <input data-testid="doc-label-input" type="text" value={docLabel}
-                onChange={(e) => setDocLabel(e.target.value)} placeholder="Document label (optional)"
+                onChange={(e) => setDocLabel(e.target.value)} placeholder="Document label"
                 className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
             </div>
             <div className="flex items-center gap-4">
@@ -766,7 +765,14 @@ export default function PlacementDetailPage() {
                 Visible to contractor
               </label>
             </div>
-            <FileUpload onUpload={handleDocUpload} />
+            {docEditingId ? (
+              <div className="flex justify-end gap-2 pt-2">
+                <button onClick={() => setDocDialogOpen(false)} className="px-4 py-2 border rounded-md text-sm text-gray-700 hover:bg-gray-50">Cancel</button>
+                <button onClick={handleDocSave} className="px-4 py-2 bg-brand-600 text-white rounded-md text-sm font-medium hover:bg-brand-700">Save</button>
+              </div>
+            ) : (
+              <FileUpload onUpload={handleDocUpload} />
+            )}
           </div>
         </div>
       )}

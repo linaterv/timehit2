@@ -189,6 +189,8 @@ class PlacementDocumentViewSet(viewsets.ModelViewSet):
         if not (request.user.is_admin or request.user.is_broker):
             raise PermissionDenied()
         doc = self.get_object()
+        if "label" in request.data:
+            doc.label = request.data["label"]
         if "visible_to_client" in request.data:
             doc.visible_to_client = request.data["visible_to_client"]
         if "visible_to_contractor" in request.data:
