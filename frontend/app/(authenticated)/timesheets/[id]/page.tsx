@@ -48,6 +48,7 @@ export default function TimesheetDetailPage() {
   // ---- All hooks at the top, unconditionally ----
   const [entries, setEntries] = useState<LocalEntry[] | null>(null);
   const [dirty, setDirty] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [confirmSubmitEmpty, setConfirmSubmitEmpty] = useState(false);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   useEffect(() => {
@@ -183,9 +184,15 @@ export default function TimesheetDetailPage() {
     mutationFn: (body: { entries: Omit<LocalEntry, "_key">[] }) =>
       api<{ entries: TimesheetEntry[]; total_hours: string }>(`/timesheets/${id}/entries/bulk_upsert`, { method: "PUT", body: JSON.stringify(body) }),
     onSuccess: (data) => {
+      setSaveError("");
       setEntries(data.entries.map((e) => ({ _key: makeKey(), id: e.id, date: e.date, task_name: e.task_name, hours: e.hours, notes: e.notes })));
       setDirty(false);
       qc.invalidateQueries({ queryKey: ["timesheet", id] });
+    },
+    onError: (err) => {
+      const e = err as { message?: string; details?: { field: string; message: string }[] };
+      if (e.details?.length) setSaveError(e.details.map((d) => `${d.field}: ${d.message}`).join("; "));
+      else setSaveError(e.message || "Failed to save");
     },
   });
 
@@ -235,6 +242,21 @@ export default function TimesheetDetailPage() {
     setDirty(true);
   };
   const handleSave = () => {
+    setSaveError("");
+    // Frontend validation: hours per entry 0-24, no negatives
+    for (const e of localEntries) {
+      const h = parseFloat(e.hours);
+      if (isNaN(h) || h < 0 || h > 24) {
+        setSaveError(`Invalid hours "${e.hours}" on ${e.date}. Must be 0-24.`);
+        return;
+      }
+    }
+    // Check total per day
+    const byDate: Record<string, number> = {};
+    for (const e of localEntries) { byDate[e.date] = (byDate[e.date] || 0) + (parseFloat(e.hours) || 0); }
+    for (const [d, total] of Object.entries(byDate)) {
+      if (total > 24) { setSaveError(`${d}: total ${total}h exceeds 24h limit.`); return; }
+    }
     saveMut.mutate({ entries: localEntries.map(({ _key, ...rest }) => rest) });
   };
   const isFutureMonth = ts ? (() => {
@@ -393,6 +415,9 @@ export default function TimesheetDetailPage() {
               </button>
             )}
           </div>
+          {saveError && (
+            <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{saveError}</div>
+          )}
         </div>
 
         {!showDetailed ? (
