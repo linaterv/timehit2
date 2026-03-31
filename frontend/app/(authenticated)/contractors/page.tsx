@@ -173,7 +173,7 @@ export default function ContractorsPage() {
               <h3 className="text-lg font-semibold text-gray-900">New Contractor</h3>
               <button onClick={() => setCreateOpen(false)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
             </div>
-            {createMutation.error ? <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">Failed to create contractor</div> : null}
+            {createMutation.error ? <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{String((createMutation.error as { message?: string })?.message || "Failed to create contractor")}</div> : null}
             {formPwdError && <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{formPwdError}</div>}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
@@ -225,7 +225,7 @@ export default function ContractorsPage() {
                 disabled={createMutation.isPending}
                 onClick={() => {
                   if (!formAutoGen && formPassword !== formConfirm) { setFormPwdError("Passwords do not match"); return; }
-                  if (!formPassword) { setFormPwdError("Password is required"); return; }
+                  if (!formAutoGen && !formPassword) { setFormPwdError("Password is required"); return; }
                   createMutation.mutate({ email: formEmail, full_name: formName, password: formPassword, role: "CONTRACTOR" }, { onSuccess: () => setCreateOpen(false) });
                 }}
                 className="px-4 py-2 bg-brand-600 text-white rounded-md text-sm font-medium hover:bg-brand-700 disabled:opacity-50">
