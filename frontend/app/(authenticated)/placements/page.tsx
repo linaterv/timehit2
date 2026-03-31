@@ -50,15 +50,39 @@ interface CreatePlacementBody {
 
 const PLACEMENT_STATUSES: PlacementStatus[] = ["DRAFT", "ACTIVE", "COMPLETED", "CANCELLED"];
 
+function fmt(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function defaultDates(): { start: string; end: string } {
+  const today = new Date();
+  const day = today.getDate();
+  const dow = today.getDay(); // 0=Sun
+  let start: Date;
+  if (day >= 20) {
+    // Late in month → 1st of next month
+    start = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+  } else {
+    // Next Monday
+    const daysUntilMon = dow === 0 ? 1 : 8 - dow;
+    start = new Date(today);
+    start.setDate(day + daysUntilMon);
+  }
+  // End = last day of month, 3 months after start
+  const end = new Date(start.getFullYear(), start.getMonth() + 3, 0);
+  return { start: fmt(start), end: fmt(end) };
+}
+
 function emptyCreateForm(): CreatePlacementBody {
+  const dates = defaultDates();
   return {
     client_id: "",
     contractor_id: "",
     client_rate: "",
     contractor_rate: "",
     currency: "EUR",
-    start_date: "",
-    end_date: "",
+    start_date: dates.start,
+    end_date: dates.end,
     approval_flow: "BROKER_ONLY",
     require_timesheet_attachment: false,
     client_can_view_invoices: false,
@@ -467,6 +491,12 @@ export default function PlacementsPage() {
               />
             </div>
           </div>
+
+          {createForm.client_rate && createForm.contractor_rate && parseFloat(createForm.contractor_rate) >= parseFloat(createForm.client_rate) && (
+            <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+              Warning: contractor rate ({createForm.contractor_rate}) is not less than client rate ({createForm.client_rate}) — this means zero or negative margin.
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Currency</label>
