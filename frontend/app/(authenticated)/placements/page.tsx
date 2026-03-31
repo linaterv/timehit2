@@ -196,6 +196,10 @@ export default function PlacementsPage() {
   );
   const clientTemplates = (clientTplData?.data ?? []).filter((t) => !(t as any).client && !(t as any).contractor);
 
+  const { data: agencySettings } = useApiQuery<{ default_payment_terms_client_days: number; default_payment_terms_contractor_days: number }>(
+    ["agency-settings"], "/agency-settings"
+  );
+
   const clients = clientsData?.data ?? [];
   const contractors = contractorsData?.data ?? [];
 
@@ -405,6 +409,10 @@ export default function PlacementsPage() {
               const ltTpl = clientTemplates.find((t) => t.code === "LT");
               if (ltTpl) form.client_invoice_template_id = ltTpl.id;
               else if (clientTemplates.length) form.client_invoice_template_id = clientTemplates[0].id;
+              if (agencySettings) {
+                form.payment_terms_client_days = String(agencySettings.default_payment_terms_client_days);
+                form.payment_terms_contractor_days = String(agencySettings.default_payment_terms_contractor_days);
+              }
               setCreateForm(form);
               setSlideOpen(true);
             }}

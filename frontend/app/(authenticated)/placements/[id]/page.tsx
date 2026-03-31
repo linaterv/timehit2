@@ -729,15 +729,33 @@ export default function PlacementDetailPage() {
                     {doc.uploaded_by.full_name}
                   </p>
                 </div>
-                {canUploadDocs && (
+                <div className="flex items-center gap-2 shrink-0">
                   <button
-                    data-testid={`doc-delete-${doc.id}`}
-                    onClick={(e) => { e.stopPropagation(); handleDocDelete(doc.id); }}
-                    className="text-red-600 hover:text-red-700 text-sm shrink-0"
+                    data-testid={`doc-download-${doc.id}`}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      const token = localStorage.getItem("timehit_access_token");
+                      const r = await fetch(`/api/v1/placements/${id}/documents/${doc.id}/download`, {
+                        headers: token ? { Authorization: `Bearer ${token}` } : {},
+                      });
+                      const blob = await r.blob();
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a"); a.href = url; a.download = doc.file_name; a.click(); URL.revokeObjectURL(url);
+                    }}
+                    className="text-brand-600 hover:text-brand-700 text-sm"
                   >
-                    Delete
+                    Download
                   </button>
-                )}
+                  {canUploadDocs && (
+                    <button
+                      data-testid={`doc-delete-${doc.id}`}
+                      onClick={(e) => { e.stopPropagation(); handleDocDelete(doc.id); }}
+                      className="text-red-600 hover:text-red-700 text-sm"
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
             {documents.length === 0 && (
