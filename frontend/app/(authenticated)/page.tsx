@@ -273,12 +273,27 @@ function ControlScreen() {
     },
     {
       key: "inv_status",
-      label: "Invoice Status",
+      label: "Invoice",
       render: (row) => {
-        if (row.client_invoice) {
-          return <StatusBadge value={row.client_invoice.status} />;
+        if (!row.client_invoice && !row.contractor_invoice) {
+          return <span className="text-xs text-gray-400">No Invoice</span>;
         }
-        return <span className="text-xs text-gray-400">No Invoice</span>;
+        return (
+          <div className="flex flex-col gap-0.5">
+            {row.client_invoice && (
+              <button onClick={(e) => { e.stopPropagation(); router.push(`/invoices/${row.client_invoice!.id}`); }}
+                className="text-xs text-brand-600 hover:underline text-left">
+                {row.client_invoice.invoice_number} <StatusBadge value={row.client_invoice.status} />
+              </button>
+            )}
+            {row.contractor_invoice && (
+              <button onClick={(e) => { e.stopPropagation(); router.push(`/invoices/${row.contractor_invoice!.id}`); }}
+                className="text-xs text-brand-600 hover:underline text-left">
+                {row.contractor_invoice.invoice_number} <StatusBadge value={row.contractor_invoice.status} />
+              </button>
+            )}
+          </div>
+        );
       },
     },
     {

@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     "apps.timesheets",
     "apps.invoices",
     "apps.control",
+    "apps.audit",
     "apps.authentication",
 ]
 
