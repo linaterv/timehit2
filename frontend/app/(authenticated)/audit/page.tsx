@@ -106,8 +106,8 @@ export default function AuditPage() {
               <tr>
                 <th className="px-4 py-2 text-left">Time</th>
                 <th className="px-4 py-2 text-left">Type</th>
+                <th className="px-4 py-2 text-left">Name</th>
                 <th className="px-4 py-2 text-left">Action</th>
-                <th className="px-4 py-2 text-left">Title</th>
                 <th className="px-4 py-2 text-left">User</th>
               </tr>
             </thead>
@@ -119,23 +119,17 @@ export default function AuditPage() {
                   <tr key={e.id} className="hover:bg-gray-50">
                     <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-500">{formatDateTime(e.created_at)}</td>
                     <td className="px-4 py-2">
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 capitalize">{typeLabel}</span>
+                    </td>
+                    <td className="px-4 py-2">
                       {link ? (
-                        <a href={link} target="_blank" rel="noopener" className="text-brand-600 hover:underline text-xs">
-                          {typeLabel}
-                        </a>
+                        <a href={link} target="_blank" rel="noopener" className="text-brand-600 hover:underline text-sm">{e.title}</a>
                       ) : (
-                        <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{typeLabel}</span>
+                        <span className="text-sm text-gray-900">{e.title}</span>
                       )}
                     </td>
                     <td className="px-4 py-2">
                       <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${ACTION_COLORS[e.action] || "bg-gray-100 text-gray-600"}`}>{e.action}</span>
-                    </td>
-                    <td className="px-4 py-2 text-gray-900">
-                      {link ? (
-                        <a href={link} target="_blank" rel="noopener" className="hover:underline">{e.title}</a>
-                      ) : (
-                        e.title
-                      )}
                     </td>
                     <td className="px-4 py-2 text-gray-500 text-xs">{e.created_by?.full_name ?? "—"}</td>
                   </tr>
