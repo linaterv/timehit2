@@ -362,7 +362,7 @@ Subtabs within the settings page:
 | Component | Purpose | data-testid |
 |---|---|---|
 | `Sidebar` | Navigation, collapsible | `sidebar`, `sidebar-toggle` |
-| `TopBar` | Page title, breadcrumbs, user menu | `topbar`, `user-menu` |
+| `TopBar` | Page title, global filters (Client/Contractor dropdowns for admin/broker), user menu | `topbar`, `user-menu` |
 | `DataTable` | Sortable, filterable, paginated table | `{name}-table` |
 | `SlideOver` | Create/edit forms | `{name}-form` |
 | `StatusBadge` | Colored status pill | `status-{value}` |
@@ -418,6 +418,12 @@ frontend/
 ├── tailwind.config.ts
 └── package.json
 ```
+
+---
+
+## Global Filter
+
+Admin/Broker see two compact dropdowns in the TopBar: **Client** and **Contractor** (default "All"). Selecting a value persists to localStorage and seeds local filters on all filtered pages (Dashboard, Placements, Timesheets, Invoices, Documents). Local page filters can override the global selection. Implemented via `GlobalFilterContext` in `lib/global-filter-context.tsx`.
 
 ---
 
