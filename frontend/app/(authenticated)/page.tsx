@@ -3,13 +3,14 @@
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
+import { useQueryClient } from "@tanstack/react-query";
 import { useApiQuery } from "@/hooks/use-api";
 import { DataTable, type Column } from "@/components/data-table/data-table";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { MonthPicker } from "@/components/shared/month-picker";
+
 import { GenerateInvoicesModal } from "@/components/shared/generate-invoices-modal";
 import { formatCurrency, formatMonth } from "@/lib/utils";
-import { getAccessToken } from "@/lib/api";
+import { api, getAccessToken } from "@/lib/api";
 import type {
   ControlRow,
   ControlSummary,
@@ -166,6 +167,21 @@ function ControlScreen() {
   const [needsAttention, setNeedsAttention] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [generateOpen, setGenerateOpen] = useState(false);
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
+  const qc = useQueryClient();
+
+  const handleGenerateInline = async (tsId: string) => {
+    setGeneratingId(tsId);
+    try {
+      await api("/invoices/generate", { method: "POST", body: JSON.stringify({ timesheet_ids: [tsId] }) });
+      qc.invalidateQueries({ queryKey: ["control-overview"] });
+      qc.invalidateQueries({ queryKey: ["control-summary"] });
+    } catch (err: unknown) {
+      alert((err as { message?: string })?.message || "Failed to generate invoices");
+    } finally {
+      setGeneratingId(null);
+    }
+  };
 
   const summaryParams = useMemo(
     () => `year=${year}&month=${month}`,
@@ -265,19 +281,31 @@ function ControlScreen() {
           </div>
         ) : null,
     },
+    {
+      key: "action" as keyof ControlRow,
+      label: "",
+      render: (row) => {
+        if (row.timesheet?.status === "APPROVED" && !row.client_invoice) {
+          const isGen = generatingId === row.timesheet.id;
+          return (
+            <button
+              onClick={(e) => { e.stopPropagation(); handleGenerateInline(row.timesheet!.id); }}
+              disabled={isGen}
+              className="px-2 py-1 rounded text-xs font-medium bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50 whitespace-nowrap"
+            >
+              {isGen ? "Generating..." : "Generate Invoice"}
+            </button>
+          );
+        }
+        return null;
+      },
+    },
   ];
 
   const handleSort = (key: string, newOrder: "asc" | "desc") => {
     setSort(key);
     setOrder(newOrder);
     setPage(1);
-  };
-
-  const handleMonthChange = (y: number, m: number) => {
-    setYear(y);
-    setMonth(m);
-    setPage(1);
-    setSelectedIds(new Set());
   };
 
   const handleExport = () => {
@@ -307,10 +335,7 @@ function ControlScreen() {
 
   return (
     <div data-testid="control-screen" className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Control Screen</h1>
-        <MonthPicker year={year} month={month} onChange={handleMonthChange} />
-      </div>
+      <h1 className="text-2xl font-bold text-gray-900">Control Screen</h1>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -354,6 +379,31 @@ function ControlScreen() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-center">
+        <select
+          data-testid="control-month-filter"
+          value={`${year}-${String(month).padStart(2, "0")}`}
+          onChange={(e) => {
+            const [y, m] = e.target.value.split("-").map(Number);
+            setYear(y); setMonth(m); setPage(1);
+          }}
+          className="px-3 py-2 border rounded text-sm font-medium"
+        >
+          {(() => {
+            const opts: { value: string; label: string }[] = [];
+            const d = new Date(now.getFullYear(), now.getMonth(), 1);
+            for (let i = 0; i < 18; i++) {
+              const y = d.getFullYear();
+              const m = d.getMonth() + 1;
+              opts.push({
+                value: `${y}-${String(m).padStart(2, "0")}`,
+                label: d.toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+              });
+              d.setMonth(d.getMonth() - 1);
+            }
+            return opts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>);
+          })()}
+        </select>
+
         <select
           data-testid="control-client-filter"
           value={clientFilter}
