@@ -6,6 +6,7 @@ const COUNTRIES = [
   { code: "GB", name: "United Kingdom" },
   { code: "US", name: "United States" },
   { code: "SE", name: "Sweden" },
+  { code: "DK", name: "Denmark" },
   { code: "PL", name: "Poland" },
   { code: "LV", name: "Latvia" },
   { code: "EE", name: "Estonia" },

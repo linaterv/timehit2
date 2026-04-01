@@ -168,7 +168,24 @@ function ControlScreen() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [generateOpen, setGenerateOpen] = useState(false);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
+  const [creatingTsForPlacement, setCreatingTsForPlacement] = useState<string | null>(null);
+  const router = useRouter();
   const qc = useQueryClient();
+
+  const handleCreateTs = async (placementId: string) => {
+    setCreatingTsForPlacement(placementId);
+    try {
+      const res = await api<{ id: string }>(`/placements/${placementId}/timesheets`, {
+        method: "POST",
+        body: JSON.stringify({ year: year, month: month }),
+      });
+      router.push(`/timesheets/${res.id}`);
+    } catch (err: unknown) {
+      alert((err as { message?: string })?.message || "Failed to create timesheet");
+    } finally {
+      setCreatingTsForPlacement(null);
+    }
+  };
 
   const handleGenerateInline = async (tsId: string) => {
     setGeneratingId(tsId);
@@ -285,19 +302,48 @@ function ControlScreen() {
       key: "action" as keyof ControlRow,
       label: "",
       render: (row) => {
+        const btns: React.ReactNode[] = [];
+        // No timesheet → Create
+        if (!row.timesheet) {
+          const isCreating = creatingTsForPlacement === row.placement.id;
+          btns.push(
+            <button key="create" onClick={(e) => { e.stopPropagation(); handleCreateTs(row.placement.id); }}
+              disabled={isCreating}
+              className="px-2 py-1 rounded text-xs font-medium border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 disabled:opacity-50 whitespace-nowrap">
+              {isCreating ? "Creating..." : "Create TS"}
+            </button>
+          );
+        }
+        // Draft → Edit
+        if (row.timesheet?.status === "DRAFT") {
+          btns.push(
+            <button key="edit" onClick={(e) => { e.stopPropagation(); router.push(`/timesheets/${row.timesheet!.id}`); }}
+              className="px-2 py-1 rounded text-xs font-medium border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 whitespace-nowrap">
+              Edit TS
+            </button>
+          );
+        }
+        // Submitted/Client Approved → View
+        if (row.timesheet?.status === "SUBMITTED" || row.timesheet?.status === "CLIENT_APPROVED") {
+          btns.push(
+            <button key="view" onClick={(e) => { e.stopPropagation(); router.push(`/timesheets/${row.timesheet!.id}`); }}
+              className="px-2 py-1 rounded text-xs font-medium border border-gray-300 text-gray-600 hover:bg-gray-50 whitespace-nowrap">
+              View TS
+            </button>
+          );
+        }
+        // Approved without invoice → Generate
         if (row.timesheet?.status === "APPROVED" && !row.client_invoice) {
           const isGen = generatingId === row.timesheet.id;
-          return (
-            <button
-              onClick={(e) => { e.stopPropagation(); handleGenerateInline(row.timesheet!.id); }}
+          btns.push(
+            <button key="gen" onClick={(e) => { e.stopPropagation(); handleGenerateInline(row.timesheet!.id); }}
               disabled={isGen}
-              className="px-2 py-1 rounded text-xs font-medium bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50 whitespace-nowrap"
-            >
+              className="px-2 py-1 rounded text-xs font-medium bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50 whitespace-nowrap">
               {isGen ? "Generating..." : "Generate Invoice"}
             </button>
           );
         }
-        return null;
+        return btns.length ? <div className="flex gap-1">{btns}</div> : null;
       },
     },
   ];

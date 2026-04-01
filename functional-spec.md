@@ -397,18 +397,16 @@ PAID  --[void]---> VOIDED (mistake correction)
 
 | Column | Content |
 |---|---|
-| Client | Company name |
-| Contractor | Full name |
-| Rates | Client / Contractor rate + currency |
-| Margin | (client_rate - contractor_rate) * hours |
-| Dates | Start - End |
+| Placement | Client → Position (contractor subtitle) |
+| Hours | Total hours from timesheet |
 | Timesheet status | NOT_STARTED / DRAFT / SUBMITTED / CLIENT_APPROVED / APPROVED / REJECTED |
 | Invoice status | NOT_GENERATED / DRAFT / ISSUED / PAID / VOIDED |
 | Flags | Missing timesheet, missing attachment, approved but no invoice, missing bank details |
+| Action | Contextual: Create TS / Edit TS / View TS / Generate Invoice |
 
 ### Filters
 
-By client, contractor, broker (admin only), month/year, timesheet status, invoice status, "needs attention".
+Month dropdown (last 18 months, defaults to last month), client, contractor, broker (admin only), "needs attention".
 
 ### Summary Counters (Header)
 
@@ -420,7 +418,7 @@ By client, contractor, broker (admin only), month/year, timesheet status, invoic
 ### Actions
 
 - **Bulk**: generate invoices for multiple approved timesheets, export CSV.
-- **Per row**: view/approve/reject timesheet, generate invoices, view invoices, view placement.
+- **Per row** (contextual): no timesheet → Create TS, DRAFT → Edit TS, SUBMITTED → View TS, APPROVED without invoice → Generate Invoice.
 
 ---
 

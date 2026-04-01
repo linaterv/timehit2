@@ -446,10 +446,34 @@ export default function TimesheetDetailPage() {
               {showDetailed ? "Calendar View" : "Detailed View"}
             </button>
             {canEdit && (
-              <button data-testid="ts-calendar-save" onClick={handleSave} disabled={!dirty || saveMut.isPending}
-                className="px-4 py-1 bg-brand-600 text-white rounded text-sm hover:bg-brand-700 disabled:opacity-50">
-                {saveMut.isPending ? "Saving..." : "Save"}
-              </button>
+              <>
+                <button
+                  data-testid="ts-prefill-btn"
+                  onClick={() => {
+                    const existingDates = new Set(localEntries.map((e) => e.date));
+                    const newEntries: LocalEntry[] = [];
+                    for (const iso of enabledDates) {
+                      if (existingDates.has(iso)) continue;
+                      const dt = new Date(iso + "T00:00:00");
+                      const dow = dt.getDay();
+                      if (dow === 0 || dow === 6) continue;
+                      if (holidayMap.has(iso)) continue;
+                      newEntries.push({ _key: makeKey(), date: iso, task_name: "", hours: "8", notes: "" });
+                    }
+                    if (newEntries.length) {
+                      setEntries((prev) => [...(prev ?? []), ...newEntries]);
+                      setDirty(true);
+                    }
+                  }}
+                  className="px-3 py-1 border border-brand-300 text-brand-700 bg-brand-50 rounded text-sm hover:bg-brand-100"
+                >
+                  Prefill Working Days
+                </button>
+                <button data-testid="ts-calendar-save" onClick={handleSave} disabled={!dirty || saveMut.isPending}
+                  className="px-4 py-1 bg-brand-600 text-white rounded text-sm hover:bg-brand-700 disabled:opacity-50">
+                  {saveMut.isPending ? "Saving..." : "Save"}
+                </button>
+              </>
             )}
           </div>
           {saveError && (

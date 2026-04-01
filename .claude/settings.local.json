@@ -25,7 +25,11 @@
       "WebSearch",
       "WebFetch(domain:www.gov.uk)",
       "WebFetch(domain:www.mfa.gov.lv)",
-      "WebFetch(domain:www.government.nl)"
+      "WebFetch(domain:www.government.nl)",
+      "WebFetch(domain:date.nager.at)",
+      "WebFetch(domain:publicholidays.dk)",
+      "Bash(find . -name \"*.py\" -type f -exec grep -l \"history\\\\|audit\\\\|log\" {})",
+      "Bash(npm run:*)"
     ]
   }
 }

@@ -11,6 +11,9 @@ import { CountrySelect } from "@/components/shared/country-select";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { formatDate } from "@/lib/utils";
 import { api } from "@/lib/api";
+import {
+  InvoiceTemplateA4, TplForm, emptyTplForm, tplToForm, STATUS_COLORS,
+} from "@/components/shared/invoice-template-editor";
 import type {
   Client,
   ClientContact,
@@ -31,9 +34,10 @@ export default function ClientDetailPage() {
   const [editSlideOpen, setEditSlideOpen] = useState(false);
   const [contactSlideOpen, setContactSlideOpen] = useState(false);
   const [brokerSlideOpen, setBrokerSlideOpen] = useState(false);
-  const [tplOpen, setTplOpen] = useState(false);
+  const [tplShowEditor, setTplShowEditor] = useState(false);
+  const [tplIsNew, setTplIsNew] = useState(false);
   const [tplEditing, setTplEditing] = useState<InvoiceTemplate | null>(null);
-  const [tplForm, setTplForm] = useState<Record<string, unknown>>({});
+  const [tplForm, setTplForm] = useState<TplForm>(emptyTplForm("CLIENT"));
   const [tplError, setTplError] = useState("");
   const [tplSaving, setTplSaving] = useState(false);
 
@@ -96,7 +100,14 @@ export default function ClientDetailPage() {
     `/invoice-templates?template_type=CLIENT&client_id=${id}`,
     allowed && !!id && activeTab === "templates"
   );
-  const clientTemplates = templatesQ.data?.data ?? [];
+  const clientTemplates = (templatesQ.data?.data ?? []).filter((t) => !!t.client);
+
+  const globalTplQ = useApiQuery<{ data: InvoiceTemplate[] }>(
+    ["invoice-templates", "global", "CLIENT"],
+    `/invoice-templates?template_type=CLIENT&status=ACTIVE`,
+    allowed
+  );
+  const globalTemplates = (globalTplQ.data?.data ?? []).filter((t) => !t.contractor && !t.client);
 
   // ----- Mutations -----
 
@@ -305,13 +316,40 @@ export default function ClientDetailPage() {
     (b) => !assignedBrokerIds.has(b.id)
   );
 
-  const STATUS_COLORS: Record<string, string> = { DRAFT: "bg-gray-100 text-gray-600", ACTIVE: "bg-green-50 text-green-700", ARCHIVED: "bg-gray-100 text-gray-400" };
-  const tplInputCls = "w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600";
-  const openNewTpl = () => { setTplEditing(null); setTplForm({ title: "", code: "", template_type: "CLIENT", client_id: id }); setTplError(""); setTplOpen(true); };
-  const openEditTpl = (t: InvoiceTemplate) => { setTplEditing(t); setTplForm({ title: t.title, code: t.code, company_name: t.company_name, registration_number: t.registration_number, billing_address: t.billing_address, country: t.country, default_currency: t.default_currency, vat_number: t.vat_number, payment_terms_days: t.payment_terms_days, is_default: t.is_default }); setTplError(""); setTplOpen(true); };
-  const handleTplSave = async () => { setTplError(""); setTplSaving(true); try { if (tplEditing) { await api(`/invoice-templates/${tplEditing.id}`, { method: "PATCH", body: JSON.stringify(tplForm) }); } else { await api("/invoice-templates", { method: "POST", body: JSON.stringify(tplForm) }); } setTplOpen(false); templatesQ.refetch(); } catch (err: unknown) { setTplError((err as { message?: string })?.message ?? "Failed"); } finally { setTplSaving(false); } };
-  const handleTplDelete = async (t: InvoiceTemplate) => { if (!confirm(`Delete "${t.title}"?`)) return; try { await api(`/invoice-templates/${t.id}`, { method: "DELETE" }); templatesQ.refetch(); setTplOpen(false); } catch (err: unknown) { alert((err as { message?: string })?.message ?? "Failed"); } };
-  const handleTplAction = async (t: InvoiceTemplate, act: string) => { try { await api(`/invoice-templates/${t.id}/${act}`, { method: "POST" }); templatesQ.refetch(); setTplOpen(false); } catch (err: unknown) { alert((err as { message?: string })?.message ?? "Failed"); } };
+  const openNewTpl = () => { setTplEditing(null); setTplIsNew(true); setTplForm({ ...emptyTplForm("CLIENT"), client_id: id } as TplForm); setTplError(""); setTplShowEditor(true); };
+  const openEditTpl = async (t: InvoiceTemplate) => {
+    setTplError("");
+    try {
+      const detail = await api<InvoiceTemplate>(`/invoice-templates/${t.id}`);
+      setTplEditing(detail); setTplIsNew(false); setTplForm(tplToForm(detail));
+    } catch { setTplEditing(t); setTplIsNew(false); setTplForm(tplToForm(t)); }
+    setTplShowEditor(true);
+  };
+  const closeTpl = () => { setTplShowEditor(false); setTplEditing(null); setTplIsNew(false); };
+  const handleTplSave = async () => {
+    setTplError(""); setTplSaving(true);
+    try {
+      if (tplEditing) {
+        const { template_type: _tt, ...rest } = tplForm;
+        await api(`/invoice-templates/${tplEditing.id}`, { method: "PATCH", body: JSON.stringify(rest) });
+      } else {
+        await api("/invoice-templates", { method: "POST", body: JSON.stringify({ ...tplForm, client_id: id }) });
+      }
+      closeTpl(); templatesQ.refetch();
+    } catch (err: unknown) { setTplError((err as { message?: string })?.message ?? "Failed"); }
+    finally { setTplSaving(false); }
+  };
+  const handleTplDelete = async () => {
+    if (!tplEditing || !confirm(`Delete "${tplEditing.title}"?`)) return;
+    try { await api(`/invoice-templates/${tplEditing.id}`, { method: "DELETE" }); closeTpl(); templatesQ.refetch(); }
+    catch (err: unknown) { alert((err as { message?: string })?.message ?? "Failed"); }
+  };
+  const handleTplAction = async (action: string) => {
+    if (!tplEditing) return;
+    try { await api(`/invoice-templates/${tplEditing.id}/${action}`, { method: "POST" }); closeTpl(); templatesQ.refetch(); }
+    catch (err: unknown) { alert((err as { message?: string })?.message ?? "Failed"); }
+  };
+  const updateTplForm = <K extends keyof TplForm>(k: K, v: TplForm[K]) => setTplForm((p) => ({ ...p, [k]: v }));
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "contacts", label: "Contacts" },
@@ -498,8 +536,8 @@ export default function ClientDetailPage() {
           </div>
         )}
 
-        {/* Templates tab */}
-        {activeTab === "templates" && (
+        {/* Templates tab — list */}
+        {activeTab === "templates" && !tplShowEditor && (
           <div data-testid="templates-tab-content" className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">Billing Templates</h2>
@@ -524,45 +562,20 @@ export default function ClientDetailPage() {
             ))}
           </div>
         )}
-      </div>
 
-      {/* Template SlideOver */}
-      <SlideOver open={tplOpen} onClose={() => setTplOpen(false)}
-        title={tplEditing ? `Edit: ${tplEditing.title}` : "New Billing Template"}
-        onSave={handleTplSave} saving={tplSaving} testId="tpl-slideover">
-        <div className="space-y-4">
-          {tplError && <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{tplError}</div>}
-          {tplEditing && (
-            <div className="flex gap-2">
-              {tplEditing.status === "DRAFT" && <button onClick={() => handleTplAction(tplEditing, "activate")} className="px-3 py-1 text-xs font-medium rounded bg-green-50 text-green-700 hover:bg-green-100">Activate</button>}
-              {tplEditing.status === "ACTIVE" && <button onClick={() => handleTplAction(tplEditing, "archive")} className="px-3 py-1 text-xs font-medium rounded bg-gray-100 text-gray-600 hover:bg-gray-200">Archive</button>}
-              {tplEditing.status !== "ACTIVE" && <button onClick={() => handleTplDelete(tplEditing)} className="px-3 py-1 text-xs font-medium rounded bg-red-50 text-red-600 hover:bg-red-100">Delete</button>}
-            </div>
-          )}
-          {["title", "code", "company_name", "registration_number", "country", "default_currency", "vat_number", "billing_address"].map((f) => (
-            <div key={f}>
-              <label className="block text-xs text-gray-600 mb-1">{f.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</label>
-              {f === "billing_address" ? (
-                <textarea value={String(tplForm[f] ?? "")} onChange={(e) => setTplForm((p) => ({ ...p, [f]: e.target.value }))} rows={2} className={tplInputCls} />
-              ) : (
-                <input type="text" value={String(tplForm[f] ?? "")} onChange={(e) => setTplForm((p) => ({ ...p, [f]: e.target.value }))} className={tplInputCls} />
-              )}
-            </div>
-          ))}
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">Payment Terms (days)</label>
-            <input type="number" value={String(tplForm.payment_terms_days ?? "")} onChange={(e) => setTplForm((p) => ({ ...p, payment_terms_days: e.target.value ? parseInt(e.target.value, 10) : null }))} className={tplInputCls} />
-          </div>
-          <div className="flex items-center gap-3">
-            <label className="text-xs text-gray-600">Default</label>
-            <button type="button" role="switch" aria-checked={!!tplForm.is_default}
-              onClick={() => setTplForm((p) => ({ ...p, is_default: !p.is_default }))}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${tplForm.is_default ? "bg-brand-600" : "bg-gray-300"}`}>
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${tplForm.is_default ? "translate-x-6" : "translate-x-1"}`} />
-            </button>
-          </div>
-        </div>
-      </SlideOver>
+        {/* Templates tab — A4 editor */}
+        {activeTab === "templates" && tplShowEditor && (
+          <InvoiceTemplateA4
+            form={tplForm} onChange={updateTplForm} isNew={tplIsNew} editing={tplEditing}
+            onSave={handleTplSave} onDelete={handleTplDelete} onAction={handleTplAction} onClose={closeTpl}
+            saving={tplSaving} error={tplError}
+            showTypeSelector={false}
+            globalTemplates={globalTemplates}
+            contractorOwnEdit
+            parentTemplate={globalTemplates.find((g) => g.id === (tplForm.parent_id ?? tplEditing?.parent_id)) ?? null}
+          />
+        )}
+      </div>
 
       {/* Edit Client SlideOver */}
       <SlideOver

@@ -135,8 +135,13 @@ The primary operational view. Maps to `GET /control/overview` + `GET /control/su
 **Filters bar**: client, contractor, broker (admin only), timesheet status, invoice status, needs attention toggle
 - data-testid: `filter-client`, `filter-contractor`, `filter-status`, `filter-attention`
 
-**Table columns**: Client, Contractor, Rates, Hours, Margin, TS Status (badge), Invoice Status (badge), Flags (icon chips)
-- Row actions dropdown: View Timesheet, Approve, Reject, Generate Invoices, View Placement
+**Table columns**: Placement (Client → Position, contractor subtitle), Hours, TS Status (badge), Invoice Status (badge), Flags (icon chips), Action
+- **Month filter**: dropdown showing last 18 months, defaults to last month (replaces arrow-based MonthPicker)
+- **Action column** (contextual per row):
+  - No timesheet → "Create TS" (amber, creates timesheet for the selected month and navigates to it)
+  - DRAFT → "Edit TS" (amber, navigates to timesheet)
+  - SUBMITTED/CLIENT_APPROVED → "View TS" (gray, navigates)
+  - APPROVED without invoice → "Generate Invoice" (blue brand, inline generation)
 - Bulk action bar (visible when rows selected): "Generate Invoices" button, "Export CSV" button
 - data-testid: `control-table`, `control-row-{id}`, `bulk-generate`, `bulk-export`
 
@@ -159,7 +164,7 @@ The primary operational view. Maps to `GET /control/overview` + `GET /control/su
   - **Contacts** — table + add contact button
   - **Brokers** — list with assign/remove buttons
   - **Placements** — filtered placement table
-  - **Billing Templates** — card list of CLIENT-type invoice templates. Create/edit via slide-over. Activate/archive/delete actions. Admin/broker can CRUD.
+  - **Billing Templates** — card list of CLIENT-type invoice templates. Click card → A4 invoice editor (same shared component). "Based on" dropdown for global CLIENT templates (e.g. LT template). Client edits "Bill To" side (blue), agency "From" from parent template (amber). Admin/broker can CRUD.
 - data-testid: `client-detail`, `client-tab-contacts`, `client-tab-brokers`, `client-tab-placements`, `tab-templates`, `client-delete-btn`
 
 ### 5. Contractors (`/contractors`)
