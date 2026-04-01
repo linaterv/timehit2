@@ -188,7 +188,14 @@ function ControlScreen() {
   const [generateOpen, setGenerateOpen] = useState(false);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [creatingTsForPlacement, setCreatingTsForPlacement] = useState<string | null>(null);
-  const [lastActedRowId, setLastActedRowId] = useState<string | null>(null);
+  const [lastActedRowId, setLastActedRowId] = useState<string | null>(() => {
+    if (typeof window !== "undefined") return sessionStorage.getItem("control-highlight") || null;
+    return null;
+  });
+  useEffect(() => {
+    if (lastActedRowId) sessionStorage.setItem("control-highlight", lastActedRowId);
+    else sessionStorage.removeItem("control-highlight");
+  }, [lastActedRowId]);
   const router = useRouter();
   const qc = useQueryClient();
 
@@ -334,19 +341,20 @@ function ControlScreen() {
       key: "inv_status",
       label: "Invoice",
       render: (row) => {
+        const rid = `${row.placement.id}_${(row as any).year ?? year}_${(row as any).month ?? month}`;
         if (!row.client_invoice && !row.contractor_invoice) {
           return <span className="text-xs text-gray-400">No Invoice</span>;
         }
         return (
           <div className="flex flex-col gap-0.5">
             {row.client_invoice && (
-              <button onClick={(e) => { e.stopPropagation(); router.push(`/invoices/${row.client_invoice!.id}`); }}
+              <button onClick={(e) => { e.stopPropagation(); setLastActedRowId(rid); router.push(`/invoices/${row.client_invoice!.id}`); }}
                 className="text-xs text-brand-600 hover:underline text-left">
                 {row.client_invoice.invoice_number} <StatusBadge value={row.client_invoice.status} />
               </button>
             )}
             {row.contractor_invoice && (
-              <button onClick={(e) => { e.stopPropagation(); router.push(`/invoices/${row.contractor_invoice!.id}`); }}
+              <button onClick={(e) => { e.stopPropagation(); setLastActedRowId(rid); router.push(`/invoices/${row.contractor_invoice!.id}`); }}
                 className="text-xs text-brand-600 hover:underline text-left">
                 {row.contractor_invoice.invoice_number} <StatusBadge value={row.contractor_invoice.status} />
               </button>
@@ -381,7 +389,7 @@ function ControlScreen() {
         if (!row.timesheet) {
           const isCreating = creatingTsForPlacement === row.placement.id;
           btns.push(
-            <button key="create" onClick={(e) => { e.stopPropagation(); handleCreateTs(row.placement.id); }}
+            <button key="create" onClick={(e) => { e.stopPropagation(); setLastActedRowId(`${row.placement.id}_${(row as any).year ?? year}_${(row as any).month ?? month}`); handleCreateTs(row.placement.id); }}
               disabled={isCreating}
               className="px-2 py-1 rounded text-xs font-medium border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 disabled:opacity-50 whitespace-nowrap">
               {isCreating ? "Creating..." : "Create TS"}
@@ -391,7 +399,7 @@ function ControlScreen() {
         // Draft → Edit
         if (row.timesheet?.status === "DRAFT") {
           btns.push(
-            <button key="edit" onClick={(e) => { e.stopPropagation(); router.push(`/timesheets/${row.timesheet!.id}`); }}
+            <button key="edit" onClick={(e) => { e.stopPropagation(); setLastActedRowId(`${row.placement.id}_${(row as any).year ?? year}_${(row as any).month ?? month}`); router.push(`/timesheets/${row.timesheet!.id}`); }}
               className="px-2 py-1 rounded text-xs font-medium border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 whitespace-nowrap">
               Edit TS
             </button>
@@ -400,7 +408,7 @@ function ControlScreen() {
         // Submitted/Client Approved → View
         if (row.timesheet?.status === "SUBMITTED" || row.timesheet?.status === "CLIENT_APPROVED") {
           btns.push(
-            <button key="view" onClick={(e) => { e.stopPropagation(); router.push(`/timesheets/${row.timesheet!.id}`); }}
+            <button key="view" onClick={(e) => { e.stopPropagation(); setLastActedRowId(`${row.placement.id}_${(row as any).year ?? year}_${(row as any).month ?? month}`); router.push(`/timesheets/${row.timesheet!.id}`); }}
               className="px-2 py-1 rounded text-xs font-medium border border-gray-300 text-gray-600 hover:bg-gray-50 whitespace-nowrap">
               View TS
             </button>
@@ -517,7 +525,7 @@ function ControlScreen() {
           value={`${year}-${String(month).padStart(2, "0")}`}
           onChange={(e) => {
             const [y, m] = e.target.value.split("-").map(Number);
-            setYear(y); setMonth(m); setPage(1);
+            setYear(y); setMonth(m); setPage(1); setLastActedRowId(null);
           }}
           className="px-3 py-2 border rounded text-sm font-medium"
         >
@@ -545,7 +553,7 @@ function ControlScreen() {
           value={clientFilter}
           onChange={(e) => {
             setClientFilter(e.target.value);
-            setPage(1);
+            setPage(1); setLastActedRowId(null);
           }}
           className="px-3 py-2 border rounded text-sm"
         >
@@ -562,7 +570,7 @@ function ControlScreen() {
           value={contractorFilter}
           onChange={(e) => {
             setContractorFilter(e.target.value);
-            setPage(1);
+            setPage(1); setLastActedRowId(null);
           }}
           className="px-3 py-2 border rounded text-sm"
         >
@@ -581,7 +589,7 @@ function ControlScreen() {
             checked={needsAttention}
             onChange={(e) => {
               setNeedsAttention(e.target.checked);
-              setPage(1);
+              setPage(1); setLastActedRowId(null);
             }}
             className="rounded"
           />
