@@ -6,4 +6,5 @@ urlpatterns = [
     path("control/summary", views.ControlSummaryView.as_view(), name="control-summary"),
     path("control/export", views.ControlExportView.as_view(), name="control-export"),
     path("agency-settings", views.AgencySettingsView.as_view(), name="agency-settings"),
+    path("holidays", views.HolidaysView.as_view(), name="holidays"),
 ]

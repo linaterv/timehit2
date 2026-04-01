@@ -24,7 +24,8 @@
       "WebFetch(domain:www.officeholidays.com)",
       "WebSearch",
       "WebFetch(domain:www.gov.uk)",
-      "WebFetch(domain:www.mfa.gov.lv)"
+      "WebFetch(domain:www.mfa.gov.lv)",
+      "WebFetch(domain:www.government.nl)"
     ]
   }
 }

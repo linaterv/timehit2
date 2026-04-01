@@ -6,7 +6,7 @@ from django.http import HttpResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from apps.placements.models import Placement
 from apps.timesheets.models import Timesheet
 from apps.invoices.models import Invoice
@@ -196,4 +196,30 @@ class AgencySettingsView(APIView):
             "default_payment_terms_client_days": s.default_payment_terms_client_days,
             "default_payment_terms_contractor_days": s.default_payment_terms_contractor_days,
             "default_client_invoice_template_id": str(s.default_client_invoice_template_id) if s.default_client_invoice_template_id else None,
+        })
+
+
+class HolidaysView(APIView):
+    """GET /holidays?country=LT&year=2026 — public holidays for timesheet pre-fill."""
+
+    @extend_schema(
+        tags=["Control"],
+        parameters=[
+            OpenApiParameter("country", str, description="Country code: LT, PL, LV, SE, FI, NL, GB, DE"),
+            OpenApiParameter("year", str, description="Year: 2026 or 2027"),
+        ],
+    )
+    def get(self, request):
+        from .holidays import get_holidays, HOLIDAYS
+        country = request.query_params.get("country", "").upper()
+        year = request.query_params.get("year")
+        if not country or not year:
+            return Response({
+                "countries": sorted(HOLIDAYS.keys()),
+                "years": ["2026", "2027"],
+            })
+        return Response({
+            "country": country,
+            "year": int(year),
+            "holidays": get_holidays(country, int(year)),
         })

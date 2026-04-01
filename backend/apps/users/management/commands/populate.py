@@ -338,6 +338,73 @@ class Command(BaseCommand):
             title="QA Engineer", notes="Demo placement for invoice generation",
         )
 
+        # Demo contractor 2
+        demo_contr2 = User.objects.create_user(
+            "demo.contr2@mail.com", PWD, full_name="Demo DevOps", role="CONTRACTOR"
+        )
+        demo_prof2 = ContractorProfile.objects.create(
+            user=demo_contr2, company_name="DevOps Pro UAB",
+            country="LT", vat_registered=True, vat_number="LT777000333",
+            vat_rate_percent=D("21"), invoice_series_prefix="DOP-",
+            bank_name="Swedbank", bank_account_iban="LT00 5555 6666 7777 8888",
+            bank_swift_bic="HABALT22", billing_address="DevOps St. 5, Kaunas",
+            payment_terms_days=21,
+        )
+        InvoiceTemplate.objects.create(
+            title="DevOps Pro - Default", code="DEFAULT",
+            template_type=InvoiceTemplate.Type.CONTRACTOR, status=InvoiceTemplate.Status.ACTIVE,
+            is_default=True, contractor=demo_contr2,
+            company_name=demo_prof2.company_name, billing_address=demo_prof2.billing_address,
+            country="LT", default_currency="EUR",
+            vat_registered=True, vat_number=demo_prof2.vat_number,
+            vat_rate_percent=demo_prof2.vat_rate_percent,
+            bank_name=demo_prof2.bank_name, bank_account_iban=demo_prof2.bank_account_iban,
+            bank_swift_bic=demo_prof2.bank_swift_bic,
+            invoice_series_prefix=demo_prof2.invoice_series_prefix,
+            next_invoice_number=1, payment_terms_days=21,
+        )
+        p_demo2 = Placement.objects.create(
+            client=demo_client, contractor=demo_contr2,
+            client_rate=D("110"), contractor_rate=D("80"),
+            currency="EUR", start_date=date(2026, 2, 1),
+            status="ACTIVE", approval_flow="BROKER_ONLY",
+            client_invoice_template=client_tpl_lt,
+            title="DevOps Engineer", notes="Demo DevOps placement",
+        )
+
+        # Demo contractor 3
+        demo_contr3 = User.objects.create_user(
+            "demo.contr3@mail.com", PWD, full_name="Demo Designer", role="CONTRACTOR"
+        )
+        demo_prof3 = ContractorProfile.objects.create(
+            user=demo_contr3, company_name="Design Studio MB",
+            country="LT", vat_registered=False,
+            invoice_series_prefix="DS-",
+            bank_name="Luminor", bank_account_iban="LT00 9999 0000 1111 2222",
+            bank_swift_bic="AGBLLT2X", billing_address="Design Ave. 10, Vilnius",
+            payment_terms_days=30,
+        )
+        InvoiceTemplate.objects.create(
+            title="Design Studio - Default", code="DEFAULT",
+            template_type=InvoiceTemplate.Type.CONTRACTOR, status=InvoiceTemplate.Status.ACTIVE,
+            is_default=True, contractor=demo_contr3,
+            company_name=demo_prof3.company_name, billing_address=demo_prof3.billing_address,
+            country="LT", default_currency="EUR",
+            vat_registered=False,
+            bank_name=demo_prof3.bank_name, bank_account_iban=demo_prof3.bank_account_iban,
+            bank_swift_bic=demo_prof3.bank_swift_bic,
+            invoice_series_prefix=demo_prof3.invoice_series_prefix,
+            next_invoice_number=1, payment_terms_days=30,
+        )
+        p_demo3 = Placement.objects.create(
+            client=demo_client, contractor=demo_contr3,
+            client_rate=D("75"), contractor_rate=D("55"),
+            currency="EUR", start_date=date(2026, 2, 1),
+            status="ACTIVE", approval_flow="BROKER_ONLY",
+            client_invoice_template=client_tpl_lt,
+            title="UI/UX Designer", notes="Demo design placement",
+        )
+
         # ── HELPER: create timesheet with entries ────────────────────────────
         def make_ts(placement, year, month, status, task, num_days=None, start_from=None):
             if start_from:
@@ -420,10 +487,18 @@ class Command(BaseCommand):
         ts_demo.append(make_ts(p_demo, 2026, 2, "APPROVED", "QA testing setup"))
         ts_demo.append(make_ts(p_demo, 2026, 3, "APPROVED", "Regression testing"))  # March — no invoice!
 
+        ts_demo2 = []
+        ts_demo2.append(make_ts(p_demo2, 2026, 2, "APPROVED", "CI/CD setup"))
+        ts_demo2.append(make_ts(p_demo2, 2026, 3, "APPROVED", "Kubernetes migration"))  # March — no invoice!
+
+        ts_demo3 = []
+        ts_demo3.append(make_ts(p_demo3, 2026, 2, "APPROVED", "Wireframes"))
+        ts_demo3.append(make_ts(p_demo3, 2026, 3, "APPROVED", "UI mockups"))  # March — no invoice!
+
         # ── HELPER: create invoice pair ──────────────────────────────────────
         agy_counter = {"2025": 0, "2026": 0}
-        contr_counters = {alex.id: 0, mia.id: 0, oscar.id: 0, nina.id: 0, sam.id: 0, demo_contr.id: 0}
-        profiles = {alex.id: prof_alex, mia.id: prof_mia, oscar.id: prof_oscar, nina.id: prof_nina, sam.id: prof_sam, demo_contr.id: demo_prof}
+        contr_counters = {alex.id: 0, mia.id: 0, oscar.id: 0, nina.id: 0, sam.id: 0, demo_contr.id: 0, demo_contr2.id: 0, demo_contr3.id: 0}
+        profiles = {alex.id: prof_alex, mia.id: prof_mia, oscar.id: prof_oscar, nina.id: prof_nina, sam.id: prof_sam, demo_contr.id: demo_prof, demo_contr2.id: demo_prof2, demo_contr3.id: demo_prof3}
 
         def make_invoices(ts, inv_status, payment_date=None):
             pl = ts.placement
@@ -504,7 +579,9 @@ class Command(BaseCommand):
         all_approved += ts_p5[:2]   # P5: Jan-Feb (2)
         all_approved += ts_p6       # P6: Mar-Aug 2025 (6)
         all_approved += ts_p7       # P7: Jun-Dec 2025 (7)
-        all_approved += ts_demo[:1] # Demo: Feb only (March left without invoice!)
+        all_approved += ts_demo[:1]  # Demo: Feb only (March left without invoice!)
+        all_approved += ts_demo2[:1] # Demo2: Feb only
+        all_approved += ts_demo3[:1] # Demo3: Feb only
 
         for ts in all_approved:
             is_2025 = ts.year == 2025
