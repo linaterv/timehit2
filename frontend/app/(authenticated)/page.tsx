@@ -367,23 +367,6 @@ function ControlScreen() {
       },
     },
     {
-      key: "flags",
-      label: "Flags",
-      render: (row) =>
-        row.flags.length > 0 ? (
-          <div className="flex flex-wrap gap-1">
-            {row.flags.map((flag) => (
-              <span
-                key={flag}
-                className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700"
-              >
-                {flag}
-              </span>
-            ))}
-          </div>
-        ) : null,
-    },
-    {
       key: "action" as keyof ControlRow,
       label: "",
       render: (row) => {
@@ -430,6 +413,23 @@ function ControlScreen() {
         }
         return btns.length ? <div className="flex gap-1">{btns}</div> : null;
       },
+    },
+    {
+      key: "flags",
+      label: "Flags",
+      render: (row) =>
+        row.flags.length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {row.flags.map((flag) => (
+              <span
+                key={flag}
+                className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700"
+              >
+                {flag}
+              </span>
+            ))}
+          </div>
+        ) : null,
     },
   ];
 
