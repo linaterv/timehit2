@@ -92,6 +92,43 @@ class ControlOverviewView(APIView):
                 if ts and ts.status == Timesheet.Status.APPROVED and not c_inv:
                     flags.append("approved_no_invoice")
 
+            # Suspicious time check — for SUBMITTED timesheets
+            if ts and ts.status in (Timesheet.Status.SUBMITTED, Timesheet.Status.CLIENT_APPROVED):
+                from .holidays import get_holiday_dates
+                country = pl.client.country or "LT"
+                holiday_dates = get_holiday_dates(country, year)
+                # Calculate workdays in month (Mon-Fri, not holidays)
+                workdays = 0
+                eff_start = max(month_start, pl.start_date)
+                eff_end = min(month_end, pl.end_date) if pl.end_date else month_end
+                d = eff_start
+                while d <= eff_end:
+                    if d.weekday() < 5 and str(d) not in holiday_dates:
+                        workdays += 1
+                    d += timedelta(days=1)
+                expected = Decimal(str(workdays * 8))
+                reasons = []
+                if expected > 0 and hours <= expected / 2:
+                    reasons.append(f"low_hours({hours}/{expected})")
+                if hours > expected and expected > 0:
+                    reasons.append(f"over_hours({hours}/{expected})")
+                # Check entries for weekends, holidays, >8h days
+                if ts:
+                    entries = ts.entries.all()
+                    hours_by_date = {}
+                    for e in entries:
+                        ed = str(e.date)
+                        hours_by_date[ed] = hours_by_date.get(ed, Decimal("0")) + e.hours
+                        if e.date.weekday() >= 5:
+                            reasons.append(f"weekend({ed})")
+                        if ed in holiday_dates:
+                            reasons.append(f"holiday({ed})")
+                    for ed, dh in hours_by_date.items():
+                        if dh > 8:
+                            reasons.append(f"over8h({ed}:{dh}h)")
+                if reasons:
+                    flags.append(f"suspicious:{','.join(set(reasons))}")
+
             if p.get("needs_attention") == "true" and not flags:
                 continue
             if p.get("timesheet_status") and (not ts or ts.status not in p["timesheet_status"].split(",")):

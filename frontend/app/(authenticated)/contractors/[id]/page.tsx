@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useApiQuery, useApiMutation } from "@/hooks/use-api";
 import { useAuth } from "@/hooks/use-auth";
 import { api } from "@/lib/api";
@@ -17,59 +18,26 @@ import type { ContractorProfile, InvoiceTemplate, Placement, PaginatedResponse }
 
 interface ContractorFormData {
   code: string;
-  company_name: string;
-  registration_number: string;
+  full_name: string;
+  email: string;
   country: string;
-  default_currency: string;
-  vat_registered: boolean;
-  vat_number: string;
-  vat_rate_percent: string;
-  bank_name: string;
-  bank_account_iban: string;
-  bank_swift_bic: string;
-  invoice_series_prefix: string;
-  next_invoice_number: number;
-  payment_terms_days: number | null;
-  billing_address: string;
 }
 
 function emptyForm(): ContractorFormData {
   return {
     code: "",
-    company_name: "",
-    registration_number: "",
+    full_name: "",
+    email: "",
     country: "",
-    default_currency: "EUR",
-    vat_registered: false,
-    vat_number: "",
-    vat_rate_percent: "",
-    bank_name: "",
-    bank_account_iban: "",
-    bank_swift_bic: "",
-    invoice_series_prefix: "",
-    next_invoice_number: 1,
-    payment_terms_days: null,
-    billing_address: "",
   };
 }
 
 function profileToForm(p: ContractorProfile): ContractorFormData {
   return {
     code: p.code ?? "",
-    company_name: p.company_name ?? "",
-    registration_number: p.registration_number ?? "",
+    full_name: p.full_name ?? "",
+    email: p.email ?? "",
     country: p.country ?? "",
-    default_currency: p.default_currency ?? "EUR",
-    vat_registered: p.vat_registered ?? false,
-    vat_number: p.vat_number ?? "",
-    vat_rate_percent: p.vat_rate_percent ?? "",
-    bank_name: p.bank_name ?? "",
-    bank_account_iban: p.bank_account_iban ?? "",
-    bank_swift_bic: p.bank_swift_bic ?? "",
-    invoice_series_prefix: p.invoice_series_prefix ?? "",
-    next_invoice_number: p.next_invoice_number ?? 1,
-    payment_terms_days: p.payment_terms_days,
-    billing_address: p.billing_address ?? "",
   };
 }
 
@@ -78,6 +46,7 @@ export default function ContractorDetailPage() {
   const router = useRouter();
   const contractorId = params.id as string;
   const { user } = useAuth();
+  const qc = useQueryClient();
 
   const [tab, setTab] = useState<"placements" | "profile" | "templates">("placements");
   const [placementStatus, setPlacementStatus] = useState<string>("");
@@ -123,7 +92,7 @@ export default function ContractorDetailPage() {
   );
   const placements = placementsQ.data?.data ?? [];
 
-  const mutation = useApiMutation<ContractorProfile, ContractorFormData>(
+  const mutation = useApiMutation<ContractorProfile, Partial<ContractorFormData>>(
     "PATCH",
     `/contractors/${contractorId}`,
     [["contractors", contractorId], ["contractors"]]
@@ -142,7 +111,15 @@ export default function ContractorDetailPage() {
   const handleSave = async () => {
     setError("");
     try {
-      await mutation.mutateAsync(form);
+      await mutation.mutateAsync({ code: form.code, country: form.country });
+      if (contractor) {
+        await api(`/users/${contractor.user_id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ full_name: form.full_name, email: form.email }),
+        });
+        qc.invalidateQueries({ queryKey: ["contractors", contractorId] });
+        qc.invalidateQueries({ queryKey: ["contractors"] });
+      }
       setEditing(false);
     } catch (err: unknown) {
       const apiErr = err as { message?: string };
@@ -363,6 +340,28 @@ export default function ContractorDetailPage() {
               onChange={(e) => updateField("code", e.target.value.toUpperCase())}
               disabled={disabled}
               className="w-20 border rounded-md px-3 py-2 text-sm font-mono uppercase disabled:bg-gray-50 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-600"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+            <input
+              data-testid="field-full_name"
+              type="text"
+              value={form.full_name}
+              onChange={(e) => updateField("full_name", e.target.value)}
+              disabled={disabled}
+              className="w-full border rounded-md px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-600"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <input
+              data-testid="field-email"
+              type="email"
+              value={form.email}
+              onChange={(e) => updateField("email", e.target.value)}
+              disabled={disabled}
+              className="w-full border rounded-md px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-600"
             />
           </div>
           <div>
