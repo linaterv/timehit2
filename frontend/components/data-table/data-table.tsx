@@ -58,10 +58,10 @@ export function DataTable<T extends Record<string, any>>({
                   <input type="checkbox" onChange={toggleAll} checked={data.length > 0 && data.every((r) => selectedIds?.has(String(r[idKey])))} />
                 </th>
               )}
-              {columns.map((col) => (
+              {columns.map((col, ci) => (
                 <th
                   key={col.key}
-                  className={cn("px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider", col.sortable && "cursor-pointer select-none")}
+                  className={cn("px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider", col.sortable && "cursor-pointer select-none", ci === columns.length - 1 && col.key === "action" && "sticky right-0 bg-gray-50")}
                   onClick={() => col.sortable && onSort?.(col.key, sort === col.key && order === "asc" ? "desc" : "asc")}
                 >
                   <span className="flex items-center gap-1">
@@ -90,8 +90,11 @@ export function DataTable<T extends Record<string, any>>({
                     <input type="checkbox" checked={selectedIds?.has(String(row[idKey])) || false} onChange={() => toggleOne(String(row[idKey]))} />
                   </td>
                 )}
-                {columns.map((col) => (
-                  <td key={col.key} className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
+                {columns.map((col, ci) => (
+                  <td key={col.key} className={cn(
+                    "px-4 py-3 text-sm text-gray-700 whitespace-nowrap",
+                    ci === columns.length - 1 && col.key === "action" && "sticky right-0 bg-surface",
+                  )}>
                     {col.render ? col.render(row) : String(row[col.key] ?? "—")}
                   </td>
                 ))}
