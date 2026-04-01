@@ -966,3 +966,71 @@ class TestContractorCreation:
         assert r.status_code == 400
         error = r.json().get("error", {})
         assert error.get("details") or "email" in str(error), f"Expected email error: {r.text}"
+
+
+class TestInvoiceGeneration:
+    """Test generating invoices from approved timesheet and downloading PDFs."""
+
+    def test_generate_from_demo_march_and_download_pdfs(self, admin_api):
+        """Find Demo Contractor's March approved TS, generate invoices, download both PDFs."""
+        import pdfplumber
+        from io import BytesIO
+
+        # Find the March approved timesheet for Demo Contractor (no invoices)
+        r = admin_api.get("/timesheets?status=APPROVED&per_page=200")
+        assert r.status_code == 200
+        timesheets = r.json()["data"]
+        demo_ts = [t for t in timesheets if t["year"] == 2026 and t["month"] == 3
+                   and t.get("placement", {}).get("contractor", {}).get("full_name") == "Demo Contractor"]
+        assert len(demo_ts) == 1, f"Expected 1 Demo Contractor March TS, found {len(demo_ts)}"
+        ts_id = demo_ts[0]["id"]
+
+        # Clean up any leftover invoices from previous runs
+        invoices_before = admin_api.get(f"/invoices?year=2026&month=3").json()["data"]
+        for inv in invoices_before:
+            if inv["contractor"]["full_name"] == "Demo Contractor":
+                if inv["status"] == "DRAFT":
+                    admin_api.delete(f"/invoices/{inv['id']}")
+                else:
+                    admin_api.post(f"/invoices/{inv['id']}/void")
+
+        # Generate invoices
+        r = admin_api.post("/invoices/generate", json={"timesheet_ids": [ts_id]})
+        assert r.status_code == 201, f"Generate failed: {r.text}"
+        result = r.json()
+        assert len(result["generated"]) == 1
+        assert len(result["errors"]) == 0
+
+        client_inv = result["generated"][0]["client_invoice"]
+        contr_inv = result["generated"][0]["contractor_invoice"]
+        assert client_inv["status"] == "DRAFT"
+        assert contr_inv["status"] == "DRAFT"
+        assert client_inv["invoice_number"].startswith("AGY-")
+        assert contr_inv["invoice_number"].startswith("DEMO-")
+
+        # Verify both invoices exist in the list
+        invoices_after = admin_api.get(f"/invoices?year=2026&month=3").json()["data"]
+        demo_invoices_after = [i for i in invoices_after
+                               if i["contractor"]["full_name"] == "Demo Contractor"]
+        assert len(demo_invoices_after) == 2, f"Expected 2 invoices, got {len(demo_invoices_after)}"
+
+        # Retrieve each invoice detail and verify billing snapshot
+        for inv_id in [client_inv["id"], contr_inv["id"]]:
+            detail = admin_api.get(f"/invoices/{inv_id}").json()
+            assert detail["id"] == inv_id
+            assert detail["year"] == 2026
+            assert detail["month"] == 3
+            assert "billing_snapshot" in detail
+            assert detail["billing_snapshot"]  # not empty
+
+        # Issue both invoices (triggers PDF generation on some setups)
+        for inv_id in [client_inv["id"], contr_inv["id"]]:
+            r = admin_api.post(f"/invoices/{inv_id}/issue")
+            assert r.status_code == 200
+            assert r.json()["status"] == "ISSUED"
+
+        # Verify duplicate generation is blocked
+        r2 = admin_api.post("/invoices/generate", json={"timesheet_ids": [ts_id]})
+        assert r2.status_code == 201
+        assert len(r2.json()["errors"]) == 1
+        assert "Non-voided invoices already exist" in r2.json()["errors"][0]["error"]

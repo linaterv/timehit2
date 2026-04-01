@@ -519,9 +519,12 @@ class Command(BaseCommand):
             else:
                 make_invoices(ts, "ISSUED")
 
-        # Update contractor next_invoice_numbers
+        # Update contractor next_invoice_numbers (both profile and template)
         for uid, count in contr_counters.items():
             ContractorProfile.objects.filter(user_id=uid).update(next_invoice_number=count + 1)
+            InvoiceTemplate.objects.filter(
+                contractor_id=uid, template_type="CONTRACTOR", is_default=True
+            ).update(next_invoice_number=count + 1)
 
         # ── GENERATE PDFs ────────────────────────────────────────────────────
         self.stdout.write("Generating invoice PDFs...")
