@@ -108,6 +108,10 @@ class TimesheetViewSet(viewsets.ModelViewSet):
             qs = qs.filter(month=p["month"])
         if p.get("status"):
             qs = qs.filter(status__in=p["status"].split(","))
+        if p.get("client_id"):
+            qs = qs.filter(placement__client_id=p["client_id"])
+        if p.get("contractor_id"):
+            qs = qs.filter(placement__contractor_id=p["contractor_id"])
         # Sorting
         sort_field = p.get("sort", "updated_at")
         allowed_sorts = {"created_at", "updated_at", "year", "month", "total_hours", "status"}

@@ -9,6 +9,7 @@ import { SlideOver } from "@/components/forms/slide-over";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { SearchableSelect } from "@/components/shared/searchable-select";
 import { useApiQuery, useApiMutation } from "@/hooks/use-api";
+import { useGlobalFilter } from "@/lib/global-filter-context";
 import { useAuth } from "@/hooks/use-auth";
 import { api } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -151,8 +152,9 @@ export default function PlacementsPage() {
   };
 
   const [statusFilter, setStatusFilter] = useState<string>(isContractor ? "ACTIVE" : "");
-  const [clientFilter, setClientFilter] = useState<string>("");
-  const [contractorFilter, setContractorFilter] = useState<string>("");
+  const { clientId: globalClient, contractorId: globalContractor } = useGlobalFilter();
+  const [clientFilter, setClientFilter] = useState<string>(globalClient);
+  const [contractorFilter, setContractorFilter] = useState<string>(globalContractor);
   const [sort, setSort] = useState("start_date");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
   const [slideOpen, setSlideOpen] = useState(false);

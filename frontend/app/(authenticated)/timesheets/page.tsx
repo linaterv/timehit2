@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CircleAlert } from "lucide-react";
 import { useApiQuery } from "@/hooks/use-api";
 import { useAuth } from "@/hooks/use-auth";
+import { useGlobalFilter } from "@/lib/global-filter-context";
 import { api } from "@/lib/api";
 import { DataTable, type Column } from "@/components/data-table/data-table";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -42,10 +43,14 @@ export default function TimesheetsListPage() {
   const { user } = useAuth();
   const isContractor = user?.role === "CONTRACTOR";
 
+  const { clientId: globalClient, contractorId: globalContractor } = useGlobalFilter();
+  const isBrokerOrAdmin = user?.role === "ADMIN" || user?.role === "BROKER";
   const currentDate = new Date();
   const [year, setYear] = useState<number>(currentDate.getFullYear());
   const [month, setMonth] = useState<string>("");
   const [status, setStatus] = useState<string>("");
+  const [clientFilter, setClientFilter] = useState(globalClient);
+  const [contractorFilterAdmin, setContractorFilterAdmin] = useState(globalContractor);
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<string>("updated_at");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
@@ -65,13 +70,22 @@ export default function TimesheetsListPage() {
     else if (isContractor && contractorFilter === "APPROVED") params.set("status", "APPROVED");
     else if (status) params.set("status", status);
     if (sort) { params.set("sort", sort); params.set("order", order); }
+    if (clientFilter) params.set("client_id", clientFilter);
+    if (contractorFilterAdmin) params.set("contractor_id", contractorFilterAdmin);
   }
 
   const showStandard = !isContractor || contractorFilter !== "pending";
   const timesheetsQ = useApiQuery<PaginatedResponse<Timesheet>>(
-    ["timesheets", { year, month, status, page, sort, order, contractorFilter }],
+    ["timesheets", { year, month, status, page, sort, order, contractorFilter, clientFilter, contractorFilterAdmin }],
     `/timesheets?${params.toString()}`,
     showStandard
+  );
+
+  const { data: clientsData } = useApiQuery<PaginatedResponse<{ id: string; company_name: string }>>(
+    ["clients-ts-filter"], "/clients?per_page=200", isBrokerOrAdmin
+  );
+  const { data: contractorsData } = useApiQuery<PaginatedResponse<{ id: string; user_id: string; full_name: string }>>(
+    ["contractors-ts-filter"], "/contractors?per_page=200", isBrokerOrAdmin
   );
 
   // Pending query (contractor only — for "pending" and "all" views)
@@ -337,6 +351,24 @@ export default function TimesheetsListPage() {
                 className="border rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600">
                 <option value="">All statuses</option>
                 {STATUS_OPTIONS.map((s) => (<option key={s} value={s}>{s.replace(/_/g, " ")}</option>))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Client</label>
+              <select value={clientFilter}
+                onChange={(e) => { setClientFilter(e.target.value); setPage(1); }}
+                className="border rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600">
+                <option value="">All clients</option>
+                {(clientsData?.data ?? []).map((c) => (<option key={c.id} value={c.id}>{c.company_name}</option>))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Contractor</label>
+              <select value={contractorFilterAdmin}
+                onChange={(e) => { setContractorFilterAdmin(e.target.value); setPage(1); }}
+                className="border rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600">
+                <option value="">All contractors</option>
+                {(contractorsData?.data ?? []).map((c) => (<option key={c.id} value={c.user_id}>{c.full_name}</option>))}
               </select>
             </div>
           </>

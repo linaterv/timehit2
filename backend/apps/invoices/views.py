@@ -131,7 +131,7 @@ class GenerateInvoicesView(APIView):
                 c_snap = {
                     "client_billing_address": bill_to,
                     "agency_billing_address": from_block,
-                    "client_payment_terms_days": pl.client.payment_terms_days,
+                    "client_payment_terms_days": pl.payment_terms_client_days or pl.client.payment_terms_days,
                 }
                 if ct:
                     c_snap["template_id"] = str(ct.id)
@@ -170,7 +170,7 @@ class GenerateInvoicesView(APIView):
                     "contractor_billing_address": from_block,
                     "contractor_bank_name": payment_block,
                     "agency_billing_address": agency_block,
-                    "contractor_payment_terms_days": co_src.payment_terms_days,
+                    "contractor_payment_terms_days": pl.payment_terms_contractor_days or co_src.payment_terms_days,
                     "contractor_invoice_series_prefix": co_src.invoice_series_prefix,
                 }
                 if cot:

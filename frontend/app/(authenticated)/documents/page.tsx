@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useGlobalFilter } from "@/lib/global-filter-context";
 import { useApiQuery, useApiMutation } from "@/hooks/use-api";
 import { DataTable, type Column } from "@/components/data-table/data-table";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
@@ -23,7 +24,8 @@ export default function DocumentsPage() {
   const [sort, setSort] = useState("uploaded_at");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
   const [search, setSearch] = useState("");
-  const [clientFilter, setClientFilter] = useState("");
+  const { clientId: globalClient } = useGlobalFilter();
+  const [clientFilter, setClientFilter] = useState(globalClient);
   const [labelFilter, setLabelFilter] = useState("");
   const [uploadedFrom, setUploadedFrom] = useState("");
   const [uploadedTo, setUploadedTo] = useState("");

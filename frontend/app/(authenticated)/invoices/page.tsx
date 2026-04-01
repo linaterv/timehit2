@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
+import { useGlobalFilter } from "@/lib/global-filter-context";
 import { useQuery } from "@tanstack/react-query";
 import { useApiQuery } from "@/hooks/use-api";
 import { api } from "@/lib/api";
@@ -43,7 +44,8 @@ export default function InvoicesPage() {
   const [order, setOrder] = useState<"asc" | "desc">("desc");
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [clientFilter, setClientFilter] = useState("");
+  const { clientId: globalClient } = useGlobalFilter();
+  const [clientFilter, setClientFilter] = useState(globalClient);
   const [yearFilter, setYearFilter] = useState("");
   const [monthFilter, setMonthFilter] = useState("");
   const [generateOpen, setGenerateOpen] = useState(false);

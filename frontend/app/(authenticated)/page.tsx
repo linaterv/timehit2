@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
+import { useGlobalFilter } from "@/lib/global-filter-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { useApiQuery } from "@/hooks/use-api";
 import { DataTable, type Column } from "@/components/data-table/data-table";
@@ -162,8 +163,9 @@ function ControlScreen() {
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState("");
   const [order, setOrder] = useState<"asc" | "desc">("asc");
-  const [clientFilter, setClientFilter] = useState("");
-  const [contractorFilter, setContractorFilter] = useState("");
+  const { clientId: globalClient, contractorId: globalContractor } = useGlobalFilter();
+  const [clientFilter, setClientFilter] = useState(globalClient);
+  const [contractorFilter, setContractorFilter] = useState(globalContractor);
   const [needsAttention, setNeedsAttention] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [generateOpen, setGenerateOpen] = useState(false);
