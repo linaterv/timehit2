@@ -9,7 +9,7 @@ import { api, apiUpload } from "@/lib/api";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { FileUpload } from "@/components/shared/file-upload";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import type { Timesheet, TimesheetEntry, TimesheetAttachment } from "@/types/api";
 
 interface LocalEntry {
@@ -49,6 +49,7 @@ export default function TimesheetDetailPage() {
   const [entries, setEntries] = useState<LocalEntry[] | null>(null);
   const [dirty, setDirty] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [prefillInfo, setPrefillInfo] = useState("");
   const [confirmSubmitEmpty, setConfirmSubmitEmpty] = useState(false);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   useEffect(() => {
@@ -176,7 +177,7 @@ export default function TimesheetDetailPage() {
   const isBrokerOrAdmin = user?.role === "BROKER" || user?.role === "ADMIN";
   const ownsTimesheet = isContractor && placement?.contractor.id === user?.id;
   const isDraft = ts?.status === "DRAFT";
-  const canEdit = isDraft && ownsTimesheet;
+  const canEdit = isDraft && (ownsTimesheet || isBrokerOrAdmin);
 
   const enabledDates = useMemo(() => {
     if (!ts || !placementDates) return [] as string[];
@@ -480,7 +481,7 @@ export default function TimesheetDetailPage() {
                     <p className="font-medium text-gray-900">{entry.title}</p>
                     {entry.text && <p className="text-gray-500">{entry.text}</p>}
                     <p className="text-xs text-gray-400 mt-0.5">
-                      {new Date(entry.created_at).toLocaleString()}
+                      {formatDateTime(entry.created_at)}
                       {entry.created_by && ` · ${entry.created_by.full_name}`}
                     </p>
                     {(entry.data_before || entry.data_after) && (
@@ -542,20 +543,40 @@ export default function TimesheetDetailPage() {
                 <button
                   data-testid="ts-prefill-btn"
                   onClick={() => {
-                    const existingDates = new Set(localEntries.map((e) => e.date));
+                    const existingByDate: Record<string, number> = {};
+                    for (const e of localEntries) {
+                      existingByDate[e.date] = (existingByDate[e.date] || 0) + (parseFloat(e.hours) || 0);
+                    }
                     const newEntries: LocalEntry[] = [];
+                    const skippedWeekendHoliday: string[] = [];
+                    const skippedPartial: string[] = [];
                     for (const iso of enabledDates) {
-                      if (existingDates.has(iso)) continue;
                       const dt = new Date(iso + "T00:00:00");
                       const dow = dt.getDay();
-                      if (dow === 0 || dow === 6) continue;
-                      if (holidayMap.has(iso)) continue;
+                      const isWeekend = dow === 0 || dow === 6;
+                      const isHoliday = holidayMap.has(iso);
+                      const hasEntry = iso in existingByDate;
+                      if (hasEntry) {
+                        if (isWeekend || isHoliday) {
+                          skippedWeekendHoliday.push(`${iso.slice(5)} (${isHoliday ? holidayMap.get(iso) : "weekend"})`);
+                        } else if (existingByDate[iso] < 8) {
+                          skippedPartial.push(`${iso.slice(5)} (${existingByDate[iso]}h)`);
+                        }
+                        continue;
+                      }
+                      if (isWeekend || isHoliday) continue;
                       newEntries.push({ _key: makeKey(), date: iso, task_name: "", hours: "8", notes: "" });
                     }
                     if (newEntries.length) {
                       setEntries((prev) => [...(prev ?? []), ...newEntries]);
                       setDirty(true);
                     }
+                    const msgs: string[] = [];
+                    if (newEntries.length) msgs.push(`Filled ${newEntries.length} working days with 8h.`);
+                    else msgs.push("No days to fill.");
+                    if (skippedWeekendHoliday.length) msgs.push(`Left intact (weekend/holiday): ${skippedWeekendHoliday.join(", ")}`);
+                    if (skippedPartial.length) msgs.push(`Left intact (already has hours): ${skippedPartial.join(", ")}`);
+                    setPrefillInfo(msgs.join(" "));
                   }}
                   className="px-3 py-1 border border-brand-300 text-brand-700 bg-brand-50 rounded text-sm hover:bg-brand-100"
                 >
@@ -570,6 +591,12 @@ export default function TimesheetDetailPage() {
           </div>
           {saveError && (
             <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{saveError}</div>
+          )}
+          {prefillInfo && (
+            <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 flex items-start justify-between">
+              <span>{prefillInfo}</span>
+              <button onClick={() => setPrefillInfo("")} className="ml-2 text-amber-500 hover:text-amber-700 shrink-0">&times;</button>
+            </div>
           )}
         </div>
 

@@ -18,6 +18,18 @@ export function formatDate(date: string | null) {
   return `${yy}.${mm}.${dd}`;
 }
 
+export function formatDateTime(date: string | null) {
+  if (!date) return "—";
+  const d = new Date(date);
+  const yy = String(d.getFullYear()).slice(2);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  const ss = String(d.getSeconds()).padStart(2, "0");
+  return `${yy}.${mm}.${dd} ${hh}:${mi}:${ss}`;
+}
+
 export function formatMonth(year: number, month: number) {
   const yy = String(year).slice(2);
   const mm = String(month).padStart(2, "0");

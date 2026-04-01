@@ -205,10 +205,10 @@ def generate_invoice_pdf(invoice):
     is_client = inv.invoice_type == "CLIENT_INVOICE"
 
     if is_client:
-        from_block = "TimeHit Agency"
+        from_block = snap.get("agency_billing_address") or snap.get("agency_company_name") or "TimeHit Agency"
         to_block = "\n".join(filter(None, [
             snap.get("client_company_name", ""),
-            str(snap.get("client_billing_address", ""))[:60],
+            snap.get("client_billing_address", ""),
             f"VAT: {snap['client_vat_number']}" if snap.get("client_vat_number") else "",
         ]))
     else:

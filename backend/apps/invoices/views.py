@@ -115,17 +115,18 @@ class GenerateInvoicesView(APIView):
                 if cot:
                     cot = InvoiceTemplate.objects.select_for_update().get(pk=cot.pk)
 
-                # Client invoice
+                # Client invoice — From=agency (from template), Bill To=client (from model)
                 c_sub = ts.total_hours * pl.client_rate
-                c_src = ct or pl.client
                 c_snap = {
-                    "client_company_name": c_src.company_name,
-                    "client_billing_address": c_src.billing_address,
-                    "client_vat_number": c_src.vat_number if hasattr(c_src, "vat_number") else "",
-                    "client_payment_terms_days": c_src.payment_terms_days,
+                    "client_company_name": pl.client.company_name,
+                    "client_billing_address": pl.client.billing_address,
+                    "client_vat_number": pl.client.vat_number,
+                    "client_payment_terms_days": pl.client.payment_terms_days,
                 }
                 if ct:
                     c_snap["template_id"] = str(ct.id)
+                    c_snap["agency_company_name"] = ct.company_name
+                    c_snap["agency_billing_address"] = ct.billing_address
                 c_inv = Invoice.objects.create(
                     invoice_number=_next_agency_number(), invoice_type=Invoice.Type.CLIENT_INVOICE,
                     timesheet=ts, placement=pl, client=pl.client, contractor=pl.contractor,
@@ -133,7 +134,7 @@ class GenerateInvoicesView(APIView):
                     hourly_rate=pl.client_rate, total_hours=ts.total_hours,
                     subtotal=c_sub, total_amount=c_sub, status=inv_status,
                     issue_date=date.today(),
-                    due_date=date.today() + timedelta(days=c_src.payment_terms_days or 30),
+                    due_date=date.today() + timedelta(days=pl.payment_terms_client_days or pl.client.payment_terms_days or 30),
                     billing_snapshot=c_snap,
                     generated_by=request.user,
                 )
@@ -164,7 +165,7 @@ class GenerateInvoicesView(APIView):
                     hourly_rate=pl.contractor_rate, total_hours=ts.total_hours,
                     subtotal=co_sub, vat_rate_percent=vat, vat_amount=vat_amt,
                     total_amount=total, status=inv_status, issue_date=date.today(),
-                    due_date=date.today() + timedelta(days=co_src.payment_terms_days or 14),
+                    due_date=date.today() + timedelta(days=pl.payment_terms_contractor_days or co_src.payment_terms_days or 14),
                     billing_snapshot=co_snap,
                     generated_by=request.user,
                 )
