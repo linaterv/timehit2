@@ -17,6 +17,7 @@ from .serializers import (
     UserUpdateSerializer, UserMeSerializer,
 )
 from .permissions import IsAdmin
+from apps.audit.service import log_audit
 
 
 class TestUsersView(APIView):
@@ -124,7 +125,18 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @extend_schema(tags=["Users"])
     def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
+        resp = super().create(request, *args, **kwargs)
+        if resp.status_code == 201:
+            email = request.data.get("email", "")
+            role = request.data.get("role", "")
+            # Find created user by email
+            try:
+                u = User.objects.get(email=email)
+                log_audit(entity_type="user", entity_id=u.id, action="CREATED",
+                          title=f"User {u.full_name} ({role}) created", user=request.user, data_after={"email": email, "role": role})
+            except User.DoesNotExist:
+                pass
+        return resp
 
     @extend_schema(tags=["Users"])
     def retrieve(self, request, *args, **kwargs):
@@ -166,7 +178,13 @@ class UserViewSet(viewsets.ModelViewSet):
         if has_relations:
             target.is_active = False
             target.save(update_fields=["is_active"])
+            log_audit(entity_type="user", entity_id=target.id, action="DEACTIVATED",
+                      title=f"User {target.full_name} deactivated", user=request.user,
+                      data_before={"is_active": True}, data_after={"is_active": False})
             return Response({"deleted": "soft", "message": "User deactivated (has existing relations)"})
+        log_audit(entity_type="user", entity_id=target.id, action="DELETED",
+                  title=f"User {target.full_name} deleted", user=request.user,
+                  data_before={"email": target.email, "role": target.role})
         target.delete()
         return Response({"deleted": "hard", "message": "User permanently deleted"})
 
@@ -176,7 +194,16 @@ class UserViewSet(viewsets.ModelViewSet):
             extra = set(request.data.keys()) - {"full_name", "theme"}
             if extra:
                 raise PermissionDenied(f"Cannot update fields: {extra}")
-        return super().partial_update(request, *args, **kwargs)
+        obj = self.get_object()
+        before = {"full_name": obj.full_name, "email": obj.email, "is_active": obj.is_active}
+        resp = super().partial_update(request, *args, **kwargs)
+        obj.refresh_from_db()
+        after = {"full_name": obj.full_name, "email": obj.email, "is_active": obj.is_active}
+        if before != after:
+            log_audit(entity_type="user", entity_id=obj.id, action="UPDATED",
+                      title=f"User {obj.full_name} updated", user=request.user,
+                      data_before=before, data_after=after)
+        return resp
 
     @extend_schema(tags=["Users"])
     @action(detail=False, methods=["get"])

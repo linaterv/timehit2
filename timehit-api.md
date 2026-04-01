@@ -1123,6 +1123,32 @@ Returns audit history for a timesheet. Admin/Broker see all. Contractor sees onl
 
 **Access:** Admin/Broker — full management. Contractor — own contractor invoices (read + PDF). Client Contact — client invoices if configured (read + PDF).
 
+### `POST /invoices/preview-series`
+
+Dry-run preview of an invoice series template. Does not increment counters.
+
+```json
+// Request
+{
+  "template": "INV-{YYYY}{MM}-{COUNT_MONTH:3}",
+  "placement_id": "uuid | null"  // optional, resolves {CLIENT}/{CONTRACTOR} codes
+}
+
+// 200
+{
+  "valid": true,
+  "errors": [],
+  "preview": "INV-202604-001",
+  "variables": [
+    { "name": "YYYY", "padding": 1 },
+    { "name": "MM", "padding": 1 },
+    { "name": "COUNT_MONTH", "padding": 3 }
+  ]
+}
+```
+
+See [`seriesgen.md`](seriesgen.md) for full template variable reference and rules.
+
 ### `POST /invoices/generate`
 
 Generate invoice pairs for one or more approved timesheets. Broker/Admin only.

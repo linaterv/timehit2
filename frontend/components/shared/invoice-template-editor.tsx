@@ -131,7 +131,21 @@ export function InvoiceTemplateA4({
   const toEditable = isContractorType ? !contractorOwnEdit : contractorOwnEdit;
   const vatEditable = contractorOwnEdit;
   const bankEditable = contractorOwnEdit || !isContractorType;
-  const previewNumber = `${form.invoice_series_prefix || "???-"}${String(form.next_invoice_number ?? 1).padStart(4, "0")}`;
+  const previewNumber = form.invoice_series_prefix?.includes("{")
+    ? form.invoice_series_prefix.replace(/\{[^}]+\}/g, (m) => {
+        const [name, pad] = m.slice(1, -1).split(":");
+        const p = parseInt(pad) || 1;
+        if (name === "YYYY") return String(new Date().getFullYear());
+        if (name === "YY") return String(new Date().getFullYear()).slice(2);
+        if (name === "MM") return String(new Date().getMonth() + 1).padStart(2, "0");
+        if (name === "DD") return String(new Date().getDate()).padStart(2, "0");
+        if (name === "Q") return String(Math.ceil((new Date().getMonth() + 1) / 3));
+        if (name === "CLIENT") return "ACME";
+        if (name === "CONTRACTOR") return "JOHN";
+        if (name.startsWith("COUNT")) return "1".padStart(p, "0");
+        return m;
+      })
+    : `${form.invoice_series_prefix || "???-"}${String(form.next_invoice_number ?? 1).padStart(4, "0")}`;
 
   return (
     <>
@@ -312,7 +326,9 @@ export function InvoiceTemplateA4({
             <span className="text-amber-600/60">VAT: {contractorOwnEdit ? "from global template" : "from contractor"}</span>
           )}
           <span>&middot;</span>
-          <span>Series: <Field value={form.invoice_series_prefix} onChange={(v) => u("invoice_series_prefix", v)} placeholder="PREFIX-" className="text-xs w-24 font-mono" mono /></span>
+          <span className="relative group">Series: <Field value={form.invoice_series_prefix} onChange={(v) => u("invoice_series_prefix", v)} placeholder="{CONTRACTOR}-{YY}-{COUNT_YEAR:4}" className="text-xs w-56 font-mono" mono />
+            <span className="hidden group-hover:block absolute bottom-full left-0 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-pre z-50 mb-1">{"Variables: {YYYY} {YY} {MM} {DD} {Q}\n{CLIENT} {CONTRACTOR}\n{COUNT} {COUNT_YEAR} {COUNT_MONTH} {COUNT_QUARTER}\nPadding: {COUNT:4} → 0001"}</span>
+          </span>
           <span>&middot;</span>
           <span>Next #: <input type="number" value={form.next_invoice_number ?? ""} onChange={(e) => u("next_invoice_number", e.target.value ? parseInt(e.target.value, 10) : null)} className="w-16 bg-blue-50/60 border-b-2 border-brand-200 focus:border-brand-600 focus:bg-blue-50 focus:outline-none rounded-sm text-xs font-mono text-center px-1" /></span>
           <span>&middot;</span>

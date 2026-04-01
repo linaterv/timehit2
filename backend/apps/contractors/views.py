@@ -8,6 +8,7 @@ from .serializers import (
     ContractorProfileListSerializer, ContractorProfileDetailSerializer,
     ContractorProfileUpdateSerializer,
 )
+from apps.audit.service import log_audit
 
 
 class ContractorViewSet(viewsets.ModelViewSet):
@@ -69,7 +70,13 @@ class ContractorViewSet(viewsets.ModelViewSet):
         if has_placements or has_invoices:
             user.is_active = False
             user.save(update_fields=["is_active"])
+            log_audit(entity_type="contractor", entity_id=user.id, action="DEACTIVATED",
+                      title=f"Contractor {user.full_name} deactivated", user=request.user,
+                      data_before={"is_active": True}, data_after={"is_active": False})
             return Response({"deleted": "soft", "message": "Contractor deactivated (has existing placements or invoices)"})
+        log_audit(entity_type="contractor", entity_id=user.id, action="DELETED",
+                  title=f"Contractor {user.full_name} deleted", user=request.user,
+                  data_before={"full_name": user.full_name, "company": obj.company_name})
         user.delete()
         return Response({"deleted": "hard", "message": "Contractor permanently deleted"})
 
@@ -82,4 +89,13 @@ class ContractorViewSet(viewsets.ModelViewSet):
             obj = self.get_object()
             if obj.user_id != user.id:
                 raise PermissionDenied()
-        return super().partial_update(request, *args, **kwargs)
+        obj = self.get_object()
+        before = {"company_name": obj.company_name, "country": obj.country}
+        resp = super().partial_update(request, *args, **kwargs)
+        obj.refresh_from_db()
+        after = {"company_name": obj.company_name, "country": obj.country}
+        if before != after:
+            log_audit(entity_type="contractor", entity_id=obj.user_id, action="UPDATED",
+                      title=f"Contractor {obj.user.full_name} profile updated", user=request.user,
+                      data_before=before, data_after=after)
+        return resp

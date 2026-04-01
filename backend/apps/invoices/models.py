@@ -130,8 +130,9 @@ class InvoiceTemplate(models.Model):
     bank_account_iban = models.CharField(max_length=50, blank=True, default="")
     bank_swift_bic = models.CharField(max_length=20, blank=True, default="")
 
-    invoice_series_prefix = models.CharField(max_length=50, blank=True, default="")
+    invoice_series_prefix = models.CharField(max_length=100, blank=True, default="")
     next_invoice_number = models.IntegerField(null=True, blank=True)
+    counters = models.JSONField(default=dict, blank=True)
 
     payment_terms_days = models.IntegerField(null=True, blank=True)
 

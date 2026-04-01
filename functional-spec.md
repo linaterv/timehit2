@@ -448,7 +448,7 @@ Month dropdown (last 18 months, defaults to last month), client, contractor, bro
 1. **Rate immutability**: locked once ACTIVE. Copy placement for rate changes.
 2. **Month boundaries**: if placement starts/ends mid-month, only those days are available for entry.
 3. **Duplicate invoice prevention**: blocked if non-VOIDED invoices exist for timesheet. Re-enabled if all VOIDED.
-4. **Invoice number sequence**: never recycled. Contractor can adjust next_number upward only.
+4. **Invoice number sequence**: Template engine supports variables: `{YYYY}`, `{YY}`, `{MM}`, `{DD}`, `{Q}`, `{CLIENT}`, `{CONTRACTOR}`, `{COUNT}`, `{COUNT_YEAR}`, `{COUNT_MONTH}`, `{COUNT_QUARTER}`. Padding via `{COUNT:4}` → `0001`. Legacy plain prefixes auto-append `{COUNT_YEAR:4}`. Counters stored as JSON on InvoiceTemplate/ContractorProfile. Never recycled.
 5. **Currency**: single currency per placement, no conversion. Different placements can use different currencies.
 6. **Deletion rules**: Contractors and Clients can be deleted by Admin. **Cannot delete** if they have any ACTIVE placements (must complete/cancel first). If they have non-active placements or invoices, they are **soft-deleted** (deactivated, `is_active=false`). If no relations exist, they are **hard-deleted** (removed from database). DRAFT placements with no timesheets can be deleted. Invoices never deleted (VOIDED instead).
 7. **Deactivated contractor**: can't log in, existing data stays, brokers can still process pending timesheets/invoices.

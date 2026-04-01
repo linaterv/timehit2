@@ -355,7 +355,7 @@ Subtabs within the settings page:
   - **Line Items table**: placeholder row with editable currency field.
   - **Totals**: subtotal, editable VAT rate, total — all with currency.
   - **Payment Details** (contractor type only): editable bank name, IBAN, SWIFT.
-  - **Footer bar**: VAT registered toggle, series prefix, next invoice number, payment terms — all inline editable.
+  - **Footer bar**: VAT registered toggle, **series template** (wider field, supports `{YYYY}`, `{CLIENT}`, `{COUNT_YEAR:4}` etc — hover tooltip shows all variables, see [`seriesgen.md`](seriesgen.md)), next invoice number, payment terms — all inline editable. Live preview of next invoice number shown in header.
   - **Footer**: preview invoice number + platform name.
 - **Visual distinction**: editable fields have **blue tint** background + brand-colored border. Auto-filled placeholders have **amber/yellow tint** + dashed border. A **legend** above the A4 page explains both styles.
 - data-testid: `settings-page`, `tab-invoice-templates`, `btn-new-template`

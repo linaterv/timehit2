@@ -18,6 +18,7 @@ TimeHit is a recruitment/contracting agency platform. The agency places IT contr
 - `timehit-api.md` — Full REST API spec (JWT auth, all endpoints incl. /timesheets/pending, /invoices/:id/notifications)
 - `frontend-reqs.md` — Frontend spec: pages per role, navigation, components, contractor UX, attention buttons, rate confidentiality
 - `frontend-tests-reqs.md` — Playwright E2E test plan
+- `seriesgen.md` — Invoice series template engine: variables, counters, padding, rules, examples
 - `backend-reqs.md` — Backend stack, project structure, seed data, implementation notes
 - `req-populatedata.md` — Detailed seed data definition
 - `reqs.md` / `questions.md` — Original requirements and clarified decisions

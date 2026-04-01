@@ -44,32 +44,36 @@ def _inv_audit(inv, action, title, user, snap_before, snap_after=None, text=""):
     )
 
 
-def _next_agency_number():
-    year = date.today().year
-    prefix = f"AGY-{year}-"
-    existing = Invoice.objects.filter(
-        invoice_number__startswith=prefix
-    ).values_list("invoice_number", flat=True)
-    max_num = 0
-    for inv_num in existing:
-        try:
-            n = int(inv_num.split("-")[-1])
-            if n > max_num:
-                max_num = n
-        except (ValueError, IndexError):
-            pass
-    return f"{prefix}{max_num + 1:04d}"
+def _inv_audit_tpl(tpl, action, title, user):
+    log_audit(entity_type="invoice_template", entity_id=tpl.id, action=action,
+              title=title, user=user, data_after={"title": tpl.title, "code": tpl.code, "status": tpl.status})
 
 
-def _next_contractor_number(source):
-    """Accept InvoiceTemplate or ContractorProfile."""
-    prefix = source.invoice_series_prefix or "C-"
-    num = source.next_invoice_number or 1
+def _next_number(source, client_code="", contractor_code="", default_template=""):
+    """
+    Generate next invoice number using the series template engine.
+    source: InvoiceTemplate or ContractorProfile (has invoice_series_prefix + counters).
+    Falls back to default_template if source has no template.
+    Legacy prefixes (no {VAR}) get {COUNT_YEAR:4} appended automatically.
+    """
+    from .series_engine import resolve_series, VARIABLE_PATTERN
+    template = source.invoice_series_prefix or default_template
+    if not template:
+        template = "INV-{YYYY}-{COUNT_YEAR:4}"
+    # Legacy prefix support: if no variables found, treat as prefix + counter
+    if not VARIABLE_PATTERN.search(template):
+        template = template + "{COUNT_YEAR:4}"
+    counters = source.counters or {}
+    result, new_counters = resolve_series(
+        template, client_code=client_code, contractor_code=contractor_code,
+        counters=counters,
+    )
+    # Atomic save of counters
     if isinstance(source, InvoiceTemplate):
-        InvoiceTemplate.objects.filter(pk=source.pk).update(next_invoice_number=F("next_invoice_number") + 1)
+        InvoiceTemplate.objects.filter(pk=source.pk).update(counters=new_counters)
     else:
-        ContractorProfile.objects.filter(pk=source.pk).update(next_invoice_number=F("next_invoice_number") + 1)
-    return f"{prefix}{num:04d}"
+        ContractorProfile.objects.filter(pk=source.pk).update(counters=new_counters)
+    return result
 
 
 def resolve_template(template_type, contractor=None, client=None, placement=None):
@@ -96,6 +100,45 @@ def resolve_template(template_type, contractor=None, client=None, placement=None
     if t:
         return t
     return None
+
+
+class PreviewSeriesView(APIView):
+    """POST /invoices/preview-series — dry-run template resolution."""
+
+    @extend_schema(tags=["Invoices"])
+    def post(self, request):
+        from .series_engine import validate_template, resolve_series, parse_variables
+        from apps.placements.models import Placement
+        from apps.clients.models import Client
+
+        template = request.data.get("template", "")
+        placement_id = request.data.get("placement_id")
+
+        errors = validate_template(template)
+        if errors:
+            return Response({"valid": False, "errors": errors, "preview": None})
+
+        client_code = ""
+        contractor_code = ""
+        if placement_id:
+            try:
+                pl = Placement.objects.select_related("client", "contractor__contractor_profile").get(pk=placement_id)
+                client_code = pl.client.code
+                contractor_code = pl.contractor.contractor_profile.code if hasattr(pl.contractor, "contractor_profile") else ""
+            except Placement.DoesNotExist:
+                pass
+
+        preview, _ = resolve_series(
+            template, dry_run=True,
+            client_code=client_code, contractor_code=contractor_code,
+            counters={},
+        )
+        return Response({
+            "valid": True,
+            "errors": [],
+            "preview": preview,
+            "variables": parse_variables(template),
+        })
 
 
 class GenerateInvoicesView(APIView):
@@ -164,8 +207,11 @@ class GenerateInvoicesView(APIView):
                     }
                     if ct:
                         c_snap["template_id"] = str(ct.id)
+                        _cl_code = pl.client.code if hasattr(pl.client, "code") else ""
+                    _co_code = profile.code if hasattr(profile, "code") else ""
                     c_inv = Invoice.objects.create(
-                        invoice_number=_next_agency_number(), invoice_type=Invoice.Type.CLIENT_INVOICE,
+                        invoice_number=_next_number(ct or profile, client_code=_cl_code, contractor_code=_co_code, default_template="AGY-{YYYY}-{COUNT_YEAR:4}"),
+                        invoice_type=Invoice.Type.CLIENT_INVOICE,
                         timesheet=ts, placement=pl, client=pl.client, contractor=pl.contractor,
                         year=ts.year, month=ts.month, currency=pl.currency,
                         hourly_rate=pl.client_rate, total_hours=ts.total_hours,
@@ -205,7 +251,8 @@ class GenerateInvoicesView(APIView):
                     if cot:
                         co_snap["template_id"] = str(cot.id)
                     co_inv = Invoice.objects.create(
-                        invoice_number=_next_contractor_number(cot or profile), invoice_type=Invoice.Type.CONTRACTOR_INVOICE,
+                        invoice_number=_next_number(cot or profile, client_code=_cl_code, contractor_code=_co_code, default_template="{CONTRACTOR}-{COUNT_YEAR:4}"),
+                        invoice_type=Invoice.Type.CONTRACTOR_INVOICE,
                         timesheet=ts, placement=pl, client=pl.client, contractor=pl.contractor,
                         year=ts.year, month=ts.month, currency=pl.currency,
                         hourly_rate=pl.contractor_rate, total_hours=ts.total_hours,
@@ -342,7 +389,12 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         vr = d.get("vat_rate_percent", inv.vat_rate_percent)
         va = (sub * vr / 100) if vr else None
         ta = sub + (va or 0)
-        num = _next_contractor_number(inv.contractor.contractor_profile) if inv.invoice_type == Invoice.Type.CONTRACTOR_INVOICE else _next_agency_number()
+        _cl_code = inv.client.code if hasattr(inv.client, "code") else ""
+        _co_code = inv.contractor.contractor_profile.code if hasattr(inv.contractor, "contractor_profile") and hasattr(inv.contractor.contractor_profile, "code") else ""
+        if inv.invoice_type == Invoice.Type.CONTRACTOR_INVOICE:
+            num = _next_number(inv.contractor.contractor_profile, client_code=_cl_code, contractor_code=_co_code, default_template="{CONTRACTOR}-{COUNT_YEAR:4}")
+        else:
+            num = _next_number(inv.contractor.contractor_profile, client_code=_cl_code, contractor_code=_co_code, default_template="AGY-{YYYY}-{COUNT_YEAR:4}")
         corrective = Invoice.objects.create(
             invoice_number=num, invoice_type=inv.invoice_type,
             timesheet=inv.timesheet, placement=inv.placement,
@@ -436,6 +488,8 @@ class InvoiceTemplateViewSet(viewsets.ModelViewSet):
             serializer.save()
         else:
             serializer.save()
+        tpl = serializer.instance
+        _inv_audit_tpl(tpl, "CREATED", f"Template '{tpl.title}' created", self.request.user)
 
     def perform_update(self, serializer):
         user = self.request.user
@@ -447,12 +501,15 @@ class InvoiceTemplateViewSet(viewsets.ModelViewSet):
             if not has_broker_access_to_client(user, serializer.instance.client_id):
                 raise PermissionDenied()
         serializer.save()
+        tpl = serializer.instance
+        _inv_audit_tpl(tpl, "UPDATED", f"Template '{tpl.title}' updated", self.request.user)
 
     def destroy(self, request, *args, **kwargs):
         obj = self.get_object()
         if obj.status not in (InvoiceTemplate.Status.DRAFT, InvoiceTemplate.Status.ARCHIVED):
             from apps.users.exceptions import ConflictError
             raise ConflictError("Can only delete DRAFT or ARCHIVED templates")
+        _inv_audit_tpl(obj, "DELETED", f"Template '{obj.title}' deleted", request.user)
         obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -465,6 +522,7 @@ class InvoiceTemplateViewSet(viewsets.ModelViewSet):
             raise InvalidStateTransition("Can only activate from DRAFT")
         obj.status = InvoiceTemplate.Status.ACTIVE
         obj.save()
+        _inv_audit_tpl(obj, "ACTIVATED", f"Template '{obj.title}' activated", request.user)
         return Response(InvoiceTemplateDetailSerializer(obj).data)
 
     @extend_schema(tags=["Invoice Templates"], request=None)
@@ -476,6 +534,7 @@ class InvoiceTemplateViewSet(viewsets.ModelViewSet):
             raise InvalidStateTransition("Can only archive from ACTIVE")
         obj.status = InvoiceTemplate.Status.ARCHIVED
         obj.save()
+        _inv_audit_tpl(obj, "ARCHIVED", f"Template '{obj.title}' archived", request.user)
         return Response(InvoiceTemplateDetailSerializer(obj).data)
 
     @extend_schema(tags=["Invoice Templates"])

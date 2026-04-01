@@ -101,7 +101,7 @@ class InvoiceTemplateListSerializer(serializers.ModelSerializer):
             "contractor", "client", "placement_id", "parent_id",
             "company_name", "country", "default_currency",
             "billing_address", "bank_name", "vat_rate_percent",
-            "invoice_series_prefix", "created_at", "updated_at",
+            "invoice_series_prefix", "counters", "created_at", "updated_at",
         ]
 
     def get_contractor(self, obj):
@@ -171,6 +171,17 @@ class InvoiceTemplateUpdateSerializer(serializers.ModelSerializer):
             "payment_terms_days",
         ]
         extra_kwargs = {f: {"required": False} for f in fields}
+
+    def validate_invoice_series_prefix(self, value):
+        if not value:
+            return value
+        from .series_engine import validate_template, VARIABLE_PATTERN
+        # Only validate if it contains template variables
+        if VARIABLE_PATTERN.search(value):
+            errors = validate_template(value)
+            if errors:
+                raise serializers.ValidationError(errors)
+        return value
 
     def validate_next_invoice_number(self, value):
         if self.instance and value is not None and self.instance.next_invoice_number is not None:

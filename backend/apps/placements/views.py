@@ -228,6 +228,9 @@ class PlacementDocumentViewSet(viewsets.ModelViewSet):
             visible_to_client=request.data.get("visible_to_client", "false").lower() in ("true", "1"),
             visible_to_contractor=request.data.get("visible_to_contractor", "false").lower() in ("true", "1"),
         )
+        log_audit(entity_type="document", entity_id=doc.id, action="UPLOADED",
+                  title=f"Document '{doc.label or doc.file_name}' uploaded to {p.title or str(p.id)[:8]}",
+                  user=user, data_after={"file_name": doc.file_name, "label": doc.label})
         return Response(PlacementDocumentSerializer(doc).data, status=status.HTTP_201_CREATED)
 
     @extend_schema(tags=["Placement Documents"])
@@ -235,6 +238,7 @@ class PlacementDocumentViewSet(viewsets.ModelViewSet):
         if not (request.user.is_admin or request.user.is_broker):
             raise PermissionDenied()
         doc = self.get_object()
+        before = {"label": doc.label, "visible_to_client": doc.visible_to_client, "visible_to_contractor": doc.visible_to_contractor}
         if "label" in request.data:
             doc.label = request.data["label"]
         if "visible_to_client" in request.data:
@@ -242,6 +246,11 @@ class PlacementDocumentViewSet(viewsets.ModelViewSet):
         if "visible_to_contractor" in request.data:
             doc.visible_to_contractor = request.data["visible_to_contractor"]
         doc.save()
+        after = {"label": doc.label, "visible_to_client": doc.visible_to_client, "visible_to_contractor": doc.visible_to_contractor}
+        if before != after:
+            log_audit(entity_type="document", entity_id=doc.id, action="UPDATED",
+                      title=f"Document '{doc.label or doc.file_name}' updated", user=request.user,
+                      data_before=before, data_after=after)
         return Response(PlacementDocumentSerializer(doc).data)
 
     @extend_schema(tags=["Placement Documents"])
@@ -255,6 +264,9 @@ class PlacementDocumentViewSet(viewsets.ModelViewSet):
         if not (request.user.is_admin or request.user.is_broker):
             raise PermissionDenied()
         doc = self.get_object()
+        log_audit(entity_type="document", entity_id=doc.id, action="DELETED",
+                  title=f"Document '{doc.label or doc.file_name}' deleted", user=request.user,
+                  data_before={"file_name": doc.file_name, "label": doc.label})
         doc.file.delete()
         doc.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

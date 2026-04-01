@@ -8,5 +8,6 @@ router.register("invoice-templates", views.InvoiceTemplateViewSet)
 
 urlpatterns = [
     path("invoices/generate", views.GenerateInvoicesView.as_view(), name="invoice-generate"),
+    path("invoices/preview-series", views.PreviewSeriesView.as_view(), name="invoice-preview-series"),
     path("", include(router.urls)),
 ]

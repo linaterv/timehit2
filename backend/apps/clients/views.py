@@ -12,6 +12,7 @@ from .serializers import (
 from apps.users.models import User
 from apps.users.permissions import IsAdminOrBroker, has_broker_access_to_client
 from apps.users.exceptions import ConflictError
+from apps.audit.service import log_audit
 
 
 class ClientViewSet(viewsets.ModelViewSet):
@@ -69,7 +70,12 @@ class ClientViewSet(viewsets.ModelViewSet):
 
     @extend_schema(tags=["Clients"])
     def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
+        resp = super().create(request, *args, **kwargs)
+        if resp.status_code == 201 and resp.data.get("id"):
+            log_audit(entity_type="client", entity_id=resp.data["id"], action="CREATED",
+                      title=f"Client {resp.data.get('company_name', '')} created", user=request.user,
+                      data_after={"company_name": resp.data.get("company_name")})
+        return resp
 
     @extend_schema(tags=["Clients"])
     def retrieve(self, request, *args, **kwargs):
@@ -79,7 +85,16 @@ class ClientViewSet(viewsets.ModelViewSet):
     def partial_update(self, request, *args, **kwargs):
         if "is_active" in request.data and not request.user.is_admin:
             raise PermissionDenied("Only admin can change is_active")
-        return super().partial_update(request, *args, **kwargs)
+        obj = self.get_object()
+        before = {"company_name": obj.company_name, "is_active": obj.is_active, "country": obj.country}
+        resp = super().partial_update(request, *args, **kwargs)
+        obj.refresh_from_db()
+        after = {"company_name": obj.company_name, "is_active": obj.is_active, "country": obj.country}
+        if before != after:
+            log_audit(entity_type="client", entity_id=obj.id, action="UPDATED",
+                      title=f"Client {obj.company_name} updated", user=request.user,
+                      data_before=before, data_after=after)
+        return resp
 
     @extend_schema(tags=["Clients"])
     def destroy(self, request, *args, **kwargs):
@@ -97,7 +112,13 @@ class ClientViewSet(viewsets.ModelViewSet):
         if has_placements or has_invoices:
             client.is_active = False
             client.save(update_fields=["is_active"])
+            log_audit(entity_type="client", entity_id=client.id, action="DEACTIVATED",
+                      title=f"Client {client.company_name} deactivated", user=request.user,
+                      data_before={"is_active": True}, data_after={"is_active": False})
             return Response({"deleted": "soft", "message": "Client deactivated (has existing placements or invoices)"})
+        log_audit(entity_type="client", entity_id=client.id, action="DELETED",
+                  title=f"Client {client.company_name} deleted", user=request.user,
+                  data_before={"company_name": client.company_name})
         client.delete()
         return Response({"deleted": "hard", "message": "Client permanently deleted"})
 
