@@ -330,9 +330,10 @@ export default function TimesheetDetailPage() {
 
   const approvalFlow = placement?.approval_flow;
   const attachments: TimesheetAttachment[] = ts.attachments ?? [];
-  const showSubmit = ownsTimesheet && isDraft;
-  const showWithdraw = ownsTimesheet && ts.status === "SUBMITTED";
-  const showDelete = ownsTimesheet && isDraft;
+  const canActOnTs = ownsTimesheet || isBrokerOrAdmin;
+  const showSubmit = canActOnTs && isDraft;
+  const showWithdraw = canActOnTs && ts.status === "SUBMITTED";
+  const showDelete = canActOnTs && isDraft;
   const showClientApprove = isClientContact && ts.status === "SUBMITTED" && approvalFlow === "CLIENT_THEN_BROKER";
   const showBrokerApprove = isBrokerOrAdmin && (ts.status === "SUBMITTED" || ts.status === "CLIENT_APPROVED");
   const showReject = (isClientContact && ts.status === "SUBMITTED" && approvalFlow === "CLIENT_THEN_BROKER") ||

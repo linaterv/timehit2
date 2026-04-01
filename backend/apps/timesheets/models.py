@@ -64,7 +64,7 @@ class Timesheet(models.Model):
 
     def approve(self, user):
         from apps.placements.models import Placement
-        valid = [self.Status.CLIENT_APPROVED] if self.placement.approval_flow == Placement.ApprovalFlow.CLIENT_THEN_BROKER else [self.Status.SUBMITTED]
+        valid = [self.Status.SUBMITTED, self.Status.CLIENT_APPROVED] if self.placement.approval_flow == Placement.ApprovalFlow.CLIENT_THEN_BROKER else [self.Status.SUBMITTED]
         if self.status not in valid:
             raise InvalidStateTransition(f"Can only approve from {' or '.join(valid)} status")
         self.status = self.Status.APPROVED

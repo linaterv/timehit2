@@ -115,18 +115,26 @@ class GenerateInvoicesView(APIView):
                 if cot:
                     cot = InvoiceTemplate.objects.select_for_update().get(pk=cot.pk)
 
-                # Client invoice — From=agency (from template), Bill To=client (from model)
+                # Client invoice — From=agency (from parent template), Bill To=client (from template or model)
                 c_sub = ts.total_hours * pl.client_rate
+                # Bill To: use template's own data if it has billing_address, else Client model
+                c_bill_to = ct if ct and ct.billing_address else None
                 c_snap = {
-                    "client_company_name": pl.client.company_name,
-                    "client_billing_address": pl.client.billing_address,
+                    "client_company_name": (c_bill_to.company_name if c_bill_to else None) or pl.client.company_name,
+                    "client_billing_address": (c_bill_to.billing_address if c_bill_to else None) or pl.client.billing_address,
                     "client_vat_number": pl.client.vat_number,
                     "client_payment_terms_days": pl.client.payment_terms_days,
                 }
                 if ct:
                     c_snap["template_id"] = str(ct.id)
-                    c_snap["agency_company_name"] = ct.company_name
-                    c_snap["agency_billing_address"] = ct.billing_address
+                    # From: walk up parent chain for agency data
+                    agency_tpl = ct.parent
+                    while agency_tpl:
+                        if agency_tpl.billing_address:
+                            c_snap["agency_company_name"] = agency_tpl.company_name
+                            c_snap["agency_billing_address"] = agency_tpl.billing_address
+                            break
+                        agency_tpl = agency_tpl.parent
                 c_inv = Invoice.objects.create(
                     invoice_number=_next_agency_number(), invoice_type=Invoice.Type.CLIENT_INVOICE,
                     timesheet=ts, placement=pl, client=pl.client, contractor=pl.contractor,
@@ -158,6 +166,14 @@ class GenerateInvoicesView(APIView):
                 }
                 if cot:
                     co_snap["template_id"] = str(cot.id)
+                    # Agency "Bill To" from parent chain
+                    agency_tpl = cot.parent
+                    while agency_tpl:
+                        if agency_tpl.billing_address:
+                            co_snap["agency_company_name"] = agency_tpl.company_name
+                            co_snap["agency_billing_address"] = agency_tpl.billing_address
+                            break
+                        agency_tpl = agency_tpl.parent
                 co_inv = Invoice.objects.create(
                     invoice_number=_next_contractor_number(cot or profile), invoice_type=Invoice.Type.CONTRACTOR_INVOICE,
                     timesheet=ts, placement=pl, client=pl.client, contractor=pl.contractor,

@@ -214,10 +214,10 @@ def generate_invoice_pdf(invoice):
     else:
         from_block = "\n".join(filter(None, [
             snap.get("contractor_company_name", inv.contractor.full_name),
-            str(snap.get("contractor_billing_address", ""))[:60],
+            snap.get("contractor_billing_address", ""),
             f"VAT: {snap['contractor_vat_number']}" if snap.get("contractor_vat_number") else "",
         ]))
-        to_block = "TimeHit Agency"
+        to_block = snap.get("agency_billing_address") or snap.get("agency_company_name") or "TimeHit Agency"
 
     data = {
         "invoice_number": inv.invoice_number,

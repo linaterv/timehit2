@@ -22,6 +22,17 @@ from apps.users.exceptions import ConflictError, InvalidStateTransition
 from apps.audit.service import log_audit
 
 
+def _can_act_on_ts(user, ts):
+    """Check if user can perform contractor-level actions on a timesheet."""
+    if user.is_admin:
+        return True
+    if user.is_broker and has_broker_access_to_client(user, ts.placement.client_id):
+        return True
+    if user.is_contractor and ts.placement.contractor_id == user.id:
+        return True
+    return False
+
+
 def _ts_snapshot(ts):
     entries = list(ts.entries.order_by("date", "task_name").values("date", "hours", "task_name"))
     return {
@@ -148,10 +159,7 @@ class TimesheetViewSet(viewsets.ModelViewSet):
         ts = Timesheet.objects.select_related("placement").get(pk=pk)
         if ts.status != Timesheet.Status.DRAFT:
             raise ConflictError("Can only delete DRAFT timesheets")
-        user = request.user
-        if user.is_contractor and ts.placement.contractor_id != user.id:
-            raise PermissionDenied()
-        if not (user.is_admin or user.is_contractor):
+        if not _can_act_on_ts(request.user, ts):
             raise PermissionDenied()
         ts.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -162,7 +170,7 @@ class TimesheetViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def submit(self, request, pk=None, **kwargs):
         ts = Timesheet.objects.select_related("placement").get(pk=pk)
-        if not request.user.is_contractor or ts.placement.contractor_id != request.user.id:
+        if not _can_act_on_ts(request.user, ts):
             raise PermissionDenied()
         ser = SubmitSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
@@ -175,7 +183,7 @@ class TimesheetViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def withdraw(self, request, pk=None, **kwargs):
         ts = Timesheet.objects.select_related("placement").get(pk=pk)
-        if not request.user.is_contractor or ts.placement.contractor_id != request.user.id:
+        if not _can_act_on_ts(request.user, ts):
             raise PermissionDenied()
         snap_before = _ts_snapshot(ts)
         ts.withdraw()
@@ -323,7 +331,11 @@ class TimesheetEntryViewSet(viewsets.ViewSet):
     def bulk_upsert(self, request, timesheet_pk=None):
         ts = Timesheet.objects.select_related("placement").get(pk=timesheet_pk)
         user = request.user
-        if not user.is_contractor or ts.placement.contractor_id != user.id:
+        if user.is_admin or (user.is_broker and has_broker_access_to_client(user, ts.placement.client_id)):
+            pass
+        elif user.is_contractor and ts.placement.contractor_id == user.id:
+            pass
+        else:
             raise PermissionDenied()
         if ts.status != Timesheet.Status.DRAFT:
             raise ConflictError("Timesheet is not in DRAFT status")
@@ -368,7 +380,7 @@ class TimesheetAttachmentViewSet(viewsets.ModelViewSet):
     @extend_schema(tags=["Timesheet Attachments"])
     def create(self, request, timesheet_pk=None):
         ts = Timesheet.objects.select_related("placement").get(pk=timesheet_pk)
-        if not request.user.is_contractor or ts.placement.contractor_id != request.user.id:
+        if not _can_act_on_ts(request.user, ts):
             raise PermissionDenied()
         if ts.status != Timesheet.Status.DRAFT:
             raise ConflictError("Timesheet is not in DRAFT status")
@@ -390,8 +402,8 @@ class TimesheetAttachmentViewSet(viewsets.ModelViewSet):
     @extend_schema(tags=["Timesheet Attachments"])
     def destroy(self, request, timesheet_pk=None, pk=None):
         att = self.get_object()
-        ts = att.timesheet
-        if not request.user.is_contractor or ts.placement.contractor_id != request.user.id:
+        ts = Timesheet.objects.select_related("placement").get(pk=att.timesheet_id)
+        if not _can_act_on_ts(request.user, ts):
             raise PermissionDenied()
         if ts.status != Timesheet.Status.DRAFT:
             raise ConflictError("Timesheet is not in DRAFT status")
