@@ -108,30 +108,33 @@ export default function AuditPage() {
                 <th className="px-4 py-2 text-left">Type</th>
                 <th className="px-4 py-2 text-left">Action</th>
                 <th className="px-4 py-2 text-left">Title</th>
-                <th className="px-4 py-2 text-left">Entity</th>
                 <th className="px-4 py-2 text-left">User</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {entries.map((e) => {
                 const link = entityLink(e.entity_type, e.entity_id);
+                const typeLabel = e.entity_type.replace(/_/g, " ");
                 return (
                   <tr key={e.id} className="hover:bg-gray-50">
                     <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-500">{formatDateTime(e.created_at)}</td>
                     <td className="px-4 py-2">
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{e.entity_type.replace(/_/g, " ")}</span>
+                      {link ? (
+                        <a href={link} target="_blank" rel="noopener" className="text-brand-600 hover:underline text-xs">
+                          {typeLabel}
+                        </a>
+                      ) : (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{typeLabel}</span>
+                      )}
                     </td>
                     <td className="px-4 py-2">
                       <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${ACTION_COLORS[e.action] || "bg-gray-100 text-gray-600"}`}>{e.action}</span>
                     </td>
-                    <td className="px-4 py-2 text-gray-900">{e.title}</td>
-                    <td className="px-4 py-2">
+                    <td className="px-4 py-2 text-gray-900">
                       {link ? (
-                        <a href={link} target="_blank" rel="noopener" className="text-brand-600 hover:underline text-xs font-mono">
-                          {e.entity_id.slice(0, 8)}...
-                        </a>
+                        <a href={link} target="_blank" rel="noopener" className="hover:underline">{e.title}</a>
                       ) : (
-                        <span className="text-xs text-gray-400 font-mono">{e.entity_id.slice(0, 8)}...</span>
+                        e.title
                       )}
                     </td>
                     <td className="px-4 py-2 text-gray-500 text-xs">{e.created_by?.full_name ?? "—"}</td>
@@ -139,7 +142,7 @@ export default function AuditPage() {
                 );
               })}
               {entries.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">No audit entries found.</td></tr>
+                <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">No audit entries found.</td></tr>
               )}
             </tbody>
           </table>
