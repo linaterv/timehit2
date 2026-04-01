@@ -4,6 +4,7 @@ from django.db import models
 
 class Client(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    code = models.CharField(max_length=4, unique=True, blank=True, default="")
     company_name = models.CharField(max_length=255)
     registration_number = models.CharField(max_length=100, blank=True, default="")
     vat_number = models.CharField(max_length=100, blank=True, default="")
@@ -18,6 +19,13 @@ class Client(models.Model):
 
     class Meta:
         db_table = "clients"
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            from apps.users.codegen import generate_code
+            self.code = generate_code(self.company_name, Client, exclude_id=self.pk)
+        self.code = self.code.upper()[:4]
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.company_name

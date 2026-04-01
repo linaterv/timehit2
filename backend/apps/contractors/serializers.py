@@ -12,7 +12,7 @@ class ContractorProfileListSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContractorProfile
         fields = [
-            "id", "user_id", "email", "full_name", "company_name",
+            "id", "code", "user_id", "email", "full_name", "company_name",
             "country", "default_currency", "vat_registered", "is_active",
             "placement_summary",
         ]
@@ -42,7 +42,7 @@ class ContractorProfileDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContractorProfile
         fields = [
-            "id", "user_id", "email", "full_name", "company_name",
+            "id", "code", "user_id", "email", "full_name", "company_name",
             "registration_number", "vat_registered", "vat_number", "vat_rate_percent",
             "invoice_series_prefix", "next_invoice_number", "bank_name",
             "bank_account_iban", "bank_swift_bic", "payment_terms_days",
@@ -54,12 +54,28 @@ class ContractorProfileUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContractorProfile
         fields = [
-            "company_name", "registration_number", "vat_registered", "vat_number",
+            "code", "company_name", "registration_number", "vat_registered", "vat_number",
             "vat_rate_percent", "invoice_series_prefix", "next_invoice_number",
             "bank_name", "bank_account_iban", "bank_swift_bic", "payment_terms_days",
             "billing_address", "country", "default_currency",
         ]
         extra_kwargs = {f: {"required": False} for f in fields}
+
+    def validate_code(self, value):
+        if not value:
+            return value
+        value = value.upper()[:4]
+        from apps.users.codegen import suggest_code, _is_blocked
+        if _is_blocked(value):
+            suggested = suggest_code(value, ContractorProfile, exclude_id=self.instance.pk if self.instance else None)
+            raise serializers.ValidationError(f"Code '{value}' is not allowed. Suggested: {suggested}")
+        qs = ContractorProfile.objects.filter(code=value)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            suggested = suggest_code(value, ContractorProfile, exclude_id=self.instance.pk if self.instance else None)
+            raise serializers.ValidationError(f"Code '{value}' is already taken. Suggested: {suggested}")
+        return value
 
     def validate(self, data):
         inst = self.instance

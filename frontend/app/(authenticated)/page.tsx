@@ -158,8 +158,25 @@ function ControlScreen() {
   const now = new Date();
   const lastMonth = now.getMonth(); // 0-indexed, so this is last month's 1-indexed value
   const lastMonthYear = lastMonth === 0 ? now.getFullYear() - 1 : now.getFullYear();
-  const [year, setYear] = useState(lastMonth === 0 ? lastMonthYear : now.getFullYear());
-  const [month, setMonth] = useState(lastMonth === 0 ? 12 : lastMonth);
+  const [year, setYear] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = sessionStorage.getItem("control-year");
+      if (saved) return parseInt(saved, 10);
+    }
+    return lastMonth === 0 ? lastMonthYear : now.getFullYear();
+  });
+  const [month, setMonth] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = sessionStorage.getItem("control-month");
+      if (saved) return parseInt(saved, 10);
+    }
+    return lastMonth === 0 ? 12 : lastMonth;
+  });
+
+  useEffect(() => {
+    sessionStorage.setItem("control-year", String(year));
+    sessionStorage.setItem("control-month", String(month));
+  }, [year, month]);
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState("");
   const [order, setOrder] = useState<"asc" | "desc">("asc");

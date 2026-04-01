@@ -18,7 +18,7 @@ class ClientListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Client
         fields = [
-            "id", "company_name", "registration_number", "vat_number",
+            "id", "code", "company_name", "registration_number", "vat_number",
             "billing_address", "country", "default_currency", "payment_terms_days",
             "is_active", "brokers", "placement_summary", "created_at",
         ]
@@ -52,11 +52,12 @@ class ClientCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Client
         fields = [
-            "company_name", "registration_number", "vat_number",
+            "code", "company_name", "registration_number", "vat_number",
             "billing_address", "country", "default_currency", "payment_terms_days",
             "notes", "broker_ids",
         ]
         extra_kwargs = {
+            "code": {"required": False, "allow_blank": True},
             "billing_address": {"required": False},
             "registration_number": {"required": False},
             "vat_number": {"required": False},
@@ -82,11 +83,27 @@ class ClientUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Client
         fields = [
-            "company_name", "registration_number", "vat_number",
+            "code", "company_name", "registration_number", "vat_number",
             "billing_address", "country", "default_currency", "payment_terms_days",
             "is_active", "notes",
         ]
         extra_kwargs = {f: {"required": False} for f in fields}
+
+    def validate_code(self, value):
+        if not value:
+            return value
+        value = value.upper()[:4]
+        from apps.users.codegen import suggest_code, _is_blocked
+        if _is_blocked(value):
+            suggested = suggest_code(value, Client, exclude_id=self.instance.pk if self.instance else None)
+            raise serializers.ValidationError(f"Code '{value}' is not allowed. Suggested: {suggested}")
+        qs = Client.objects.filter(code=value)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            suggested = suggest_code(value, Client, exclude_id=self.instance.pk if self.instance else None)
+            raise serializers.ValidationError(f"Code '{value}' is already taken. Suggested: {suggested}")
+        return value
 
 
 class ClientContactSerializer(serializers.ModelSerializer):

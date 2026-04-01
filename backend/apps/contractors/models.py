@@ -4,6 +4,7 @@ from django.db import models
 
 class ContractorProfile(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    code = models.CharField(max_length=4, unique=True, blank=True, default="")
     user = models.OneToOneField("users.User", on_delete=models.CASCADE, related_name="contractor_profile")
     company_name = models.CharField(max_length=255, blank=True, default="")
     registration_number = models.CharField(max_length=100, blank=True, default="")
@@ -22,6 +23,14 @@ class ContractorProfile(models.Model):
 
     class Meta:
         db_table = "contractor_profiles"
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            from apps.users.codegen import generate_code
+            name = self.user.full_name if self.user_id else "XXXX"
+            self.code = generate_code(name, ContractorProfile, exclude_id=self.pk)
+        self.code = self.code.upper()[:4]
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Profile: {self.user.full_name}"
