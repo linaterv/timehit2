@@ -298,6 +298,46 @@ class Command(BaseCommand):
             title="Infrastructure Engineer", notes="Upcoming infra project",
         )
 
+        # ── NEW: Demo client + contractor + placement for Generate button ───
+        demo_client = Client.objects.create(
+            company_name="DemoTech UAB", country="LT", default_currency="EUR",
+            billing_address="Demo St. 1, Vilnius, Lithuania",
+            vat_number="LT999000111", payment_terms_days=30,
+        )
+        BrokerClientAssignment.objects.create(broker=jonas, client=demo_client)
+        demo_contr = User.objects.create_user(
+            "demo.contr@mail.com", PWD, full_name="Demo Contractor", role="CONTRACTOR"
+        )
+        demo_prof = ContractorProfile.objects.create(
+            user=demo_contr, company_name="Demo Consulting",
+            country="LT", vat_registered=True, vat_number="LT888000222",
+            vat_rate_percent=D("21"), invoice_series_prefix="DEMO-",
+            bank_name="SEB", bank_account_iban="LT00 1111 2222 3333 4444",
+            bank_swift_bic="CBVILT2X", billing_address="Demo Address, Vilnius",
+            payment_terms_days=14,
+        )
+        InvoiceTemplate.objects.create(
+            title="Demo Contractor - Default", code="DEFAULT",
+            template_type=InvoiceTemplate.Type.CONTRACTOR, status=InvoiceTemplate.Status.ACTIVE,
+            is_default=True, contractor=demo_contr,
+            company_name=demo_prof.company_name, billing_address=demo_prof.billing_address,
+            country="LT", default_currency="EUR",
+            vat_registered=True, vat_number=demo_prof.vat_number,
+            vat_rate_percent=demo_prof.vat_rate_percent,
+            bank_name=demo_prof.bank_name, bank_account_iban=demo_prof.bank_account_iban,
+            bank_swift_bic=demo_prof.bank_swift_bic,
+            invoice_series_prefix=demo_prof.invoice_series_prefix,
+            next_invoice_number=1, payment_terms_days=14,
+        )
+        p_demo = Placement.objects.create(
+            client=demo_client, contractor=demo_contr,
+            client_rate=D("85"), contractor_rate=D("60"),
+            currency="EUR", start_date=date(2026, 2, 1),
+            status="ACTIVE", approval_flow="BROKER_ONLY",
+            client_invoice_template=client_tpl_lt,
+            title="QA Engineer", notes="Demo placement for invoice generation",
+        )
+
         # ── HELPER: create timesheet with entries ────────────────────────────
         def make_ts(placement, year, month, status, task, num_days=None, start_from=None):
             if start_from:
@@ -375,10 +415,15 @@ class Command(BaseCommand):
         ts_p7.append(make_ts(p7, 2025, 11, "APPROVED", "UAT & bug fixes"))
         ts_p7.append(make_ts(p7, 2025, 12, "APPROVED", "Deployment & handover", num_days=16))
 
+        # Demo placement timesheets
+        ts_demo = []
+        ts_demo.append(make_ts(p_demo, 2026, 2, "APPROVED", "QA testing setup"))
+        ts_demo.append(make_ts(p_demo, 2026, 3, "APPROVED", "Regression testing"))  # March — no invoice!
+
         # ── HELPER: create invoice pair ──────────────────────────────────────
         agy_counter = {"2025": 0, "2026": 0}
-        contr_counters = {alex.id: 0, mia.id: 0, oscar.id: 0, nina.id: 0, sam.id: 0}
-        profiles = {alex.id: prof_alex, mia.id: prof_mia, oscar.id: prof_oscar, nina.id: prof_nina, sam.id: prof_sam}
+        contr_counters = {alex.id: 0, mia.id: 0, oscar.id: 0, nina.id: 0, sam.id: 0, demo_contr.id: 0}
+        profiles = {alex.id: prof_alex, mia.id: prof_mia, oscar.id: prof_oscar, nina.id: prof_nina, sam.id: prof_sam, demo_contr.id: demo_prof}
 
         def make_invoices(ts, inv_status, payment_date=None):
             pl = ts.placement
@@ -459,6 +504,7 @@ class Command(BaseCommand):
         all_approved += ts_p5[:2]   # P5: Jan-Feb (2)
         all_approved += ts_p6       # P6: Mar-Aug 2025 (6)
         all_approved += ts_p7       # P7: Jun-Dec 2025 (7)
+        all_approved += ts_demo[:1] # Demo: Feb only (March left without invoice!)
 
         for ts in all_approved:
             is_2025 = ts.year == 2025
