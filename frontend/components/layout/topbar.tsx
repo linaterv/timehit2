@@ -5,13 +5,25 @@ import { useRouter } from "next/navigation";
 import { LogOut, User as UserIcon, Palette } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/lib/theme-context";
+import { useGlobalFilter } from "@/lib/global-filter-context";
+import { useApiQuery } from "@/hooks/use-api";
 import { api } from "@/lib/api";
+import type { PaginatedResponse } from "@/types/api";
 
 export function TopBar({ title }: { title?: string }) {
   const { user, logout } = useAuth();
   const { theme, setTheme, themes } = useTheme();
+  const { clientId, contractorId, setGlobalClient, setGlobalContractor } = useGlobalFilter();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const isAdminOrBroker = user?.role === "ADMIN" || user?.role === "BROKER";
+
+  const { data: clientsData } = useApiQuery<PaginatedResponse<{ id: string; company_name: string }>>(
+    ["clients-global-filter"], "/clients?per_page=200", isAdminOrBroker
+  );
+  const { data: contractorsData } = useApiQuery<PaginatedResponse<{ id: string; user_id: string; full_name: string }>>(
+    ["contractors-global-filter"], "/contractors?per_page=200", isAdminOrBroker
+  );
 
   const handleLogout = () => {
     logout();
@@ -21,6 +33,32 @@ export function TopBar({ title }: { title?: string }) {
   return (
     <header data-testid="topbar" className="h-14 bg-surface border-b flex items-center justify-between px-6">
       <h1 className="text-lg font-semibold text-gray-900">{title}</h1>
+      <div className="flex items-center gap-3">
+        {isAdminOrBroker && (
+          <>
+            <select
+              value={clientId}
+              onChange={(e) => setGlobalClient(e.target.value)}
+              className="text-xs border rounded px-2 py-1 text-gray-600 bg-transparent focus:outline-none focus:ring-1 focus:ring-brand-600 max-w-[160px]"
+            >
+              <option value="">All Clients</option>
+              {(clientsData?.data ?? []).map((c) => (
+                <option key={c.id} value={c.id}>{c.company_name}</option>
+              ))}
+            </select>
+            <select
+              value={contractorId}
+              onChange={(e) => setGlobalContractor(e.target.value)}
+              className="text-xs border rounded px-2 py-1 text-gray-600 bg-transparent focus:outline-none focus:ring-1 focus:ring-brand-600 max-w-[160px]"
+            >
+              <option value="">All Contractors</option>
+              {(contractorsData?.data ?? []).map((c) => (
+                <option key={c.id} value={c.user_id}>{c.full_name}</option>
+              ))}
+            </select>
+          </>
+        )}
+      </div>
       <div className="relative">
         <button
           data-testid="user-menu"

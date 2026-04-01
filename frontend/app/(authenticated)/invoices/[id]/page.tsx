@@ -165,8 +165,7 @@ export default function InvoiceDetailPage() {
     }
   };
 
-  const billingSnapshot = invoice.billing_snapshot ?? {};
-  const snapshotEntries = Object.entries(billingSnapshot);
+  const snap = (invoice.billing_snapshot ?? {}) as Record<string, unknown>;
 
   return (
     <div data-testid="invoice-detail" className="space-y-6">
@@ -256,26 +255,47 @@ export default function InvoiceDetailPage() {
         )}
       </div>}
 
-      {/* Billing Snapshot Card — hidden for contractor */}
-      {!isContractor && snapshotEntries.length > 0 && (
-        <div className="border rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">
-            Billing Snapshot
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-            {snapshotEntries.map(([key, value]) => (
-              <div key={key}>
-                <span className="text-gray-500">
-                  {key
-                    .replace(/_/g, " ")
-                    .replace(/\b\w/g, (c) => c.toUpperCase())}
-                </span>
-                <p className="font-medium">
-                  {value != null ? String(value) : "N/A"}
-                </p>
-              </div>
-            ))}
+      {/* Billing Snapshot + Placement link — hidden for contractor */}
+      {!isContractor && (
+        <div className="border rounded-lg p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">Billing Snapshot</h2>
+            <Link href={`/placements/${invoice.placement_id}`} className="text-sm text-brand-600 hover:underline">
+              View Placement &rarr;
+            </Link>
           </div>
+          <div className="grid grid-cols-2 gap-6 text-sm">
+            {snap["agency_billing_address"] ? (
+              <div>
+                <span className="text-xs font-semibold text-gray-500 uppercase">From (Agency)</span>
+                <div className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{String(snap["agency_billing_address"])}</div>
+              </div>
+            ) : null}
+            {snap["client_billing_address"] ? (
+              <div>
+                <span className="text-xs font-semibold text-gray-500 uppercase">Bill To (Client)</span>
+                <div className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{String(snap["client_billing_address"])}</div>
+              </div>
+            ) : null}
+            {snap["contractor_billing_address"] ? (
+              <div>
+                <span className="text-xs font-semibold text-gray-500 uppercase">From (Contractor)</span>
+                <div className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{String(snap["contractor_billing_address"])}</div>
+              </div>
+            ) : null}
+            {snap["contractor_bank_name"] ? (
+              <div>
+                <span className="text-xs font-semibold text-gray-500 uppercase">Payment Details</span>
+                <div className="mt-1 text-sm text-gray-900 whitespace-pre-wrap font-mono">{String(snap["contractor_bank_name"])}</div>
+              </div>
+            ) : null}
+          </div>
+          {snap["client_payment_terms_days"] != null ? (
+            <div className="text-sm text-gray-500 pt-2 border-t">
+              Payment terms: {String(snap["client_payment_terms_days"])} days
+              {snap["contractor_payment_terms_days"] != null ? ` (contractor: ${String(snap["contractor_payment_terms_days"])} days)` : ""}
+            </div>
+          ) : null}
         </div>
       )}
 

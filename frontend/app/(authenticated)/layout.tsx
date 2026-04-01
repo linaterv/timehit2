@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/topbar";
 import { BugReporter } from "@/components/shared/bug-reporter";
+import { GlobalFilterProvider } from "@/lib/global-filter-context";
 
 const TITLES: Record<string, string> = {
   "/": "Dashboard",
@@ -38,15 +39,17 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   const title = isDetailPage ? "" : (TITLES[pathname] || TITLES["/" + segments[0]] || "");
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <TopBar title={title} />
-        <main className="flex-1 overflow-y-auto p-6 bg-[var(--background)]">
-          <div className="max-w-7xl mx-auto">{children}</div>
-        </main>
+    <GlobalFilterProvider>
+      <div className="flex h-screen overflow-hidden">
+        <Sidebar />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <TopBar title={title} />
+          <main className="flex-1 overflow-y-auto p-6 bg-[var(--background)]">
+            <div className="max-w-7xl mx-auto">{children}</div>
+          </main>
+        </div>
+        <BugReporter />
       </div>
-      <BugReporter />
-    </div>
+    </GlobalFilterProvider>
   );
 }
