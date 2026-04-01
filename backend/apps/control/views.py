@@ -1,4 +1,5 @@
 import csv
+from datetime import date
 from io import StringIO
 from decimal import Decimal
 from collections import defaultdict
@@ -42,24 +43,31 @@ class ControlOverviewView(APIView):
             margin = hours * (pl.client_rate - pl.contractor_rate)
 
             flags = []
-            if not ts:
-                flags.append("no_timesheet")
-            elif ts.status == Timesheet.Status.DRAFT:
-                flags.append("timesheet_draft")
-            elif ts.status in (Timesheet.Status.SUBMITTED, Timesheet.Status.CLIENT_APPROVED):
-                flags.append("pending_approval")
-            if ts and ts.status == Timesheet.Status.APPROVED and not c_inv:
-                flags.append("approved_no_invoice")
-            if pl.require_timesheet_attachment and ts and not ts.attachments.exists():
-                flags.append("missing_attachment")
-            try:
-                prof = pl.contractor.contractor_profile
-                if not prof.bank_account_iban:
+            now = date.today()
+            is_current_month = year == now.year and month == now.month
+            if not is_current_month:
+                if not ts:
+                    flags.append("no_timesheet")
+                elif ts.status == Timesheet.Status.DRAFT:
+                    flags.append("timesheet_draft")
+                elif ts.status in (Timesheet.Status.SUBMITTED, Timesheet.Status.CLIENT_APPROVED):
+                    flags.append("pending_approval")
+                if ts and ts.status == Timesheet.Status.APPROVED and not c_inv:
+                    flags.append("approved_no_invoice")
+                if pl.require_timesheet_attachment and ts and not ts.attachments.exists():
+                    flags.append("missing_attachment")
+                try:
+                    prof = pl.contractor.contractor_profile
+                    if not prof.bank_account_iban:
+                        flags.append("missing_bank_details")
+                except Exception:
                     flags.append("missing_bank_details")
-            except Exception:
-                flags.append("missing_bank_details")
-            if c_inv and c_inv.status == Invoice.Status.ISSUED:
-                flags.append("invoice_unpaid")
+                if c_inv and c_inv.status == Invoice.Status.ISSUED:
+                    flags.append("invoice_unpaid")
+            else:
+                # Current month: only show approved_no_invoice (actionable)
+                if ts and ts.status == Timesheet.Status.APPROVED and not c_inv:
+                    flags.append("approved_no_invoice")
 
             if p.get("needs_attention") == "true" and not flags:
                 continue

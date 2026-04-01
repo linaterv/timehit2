@@ -14,6 +14,32 @@ from .serializers import (
 )
 from apps.users.permissions import IsAdminOrBroker, has_broker_access_to_client
 from apps.users.exceptions import ConflictError
+from apps.audit.service import log_audit
+
+
+def _pl_snapshot(p):
+    return {
+        "status": p.status,
+        "client": p.client.company_name,
+        "contractor": p.contractor.full_name,
+        "title": p.title,
+        "client_rate": str(p.client_rate),
+        "contractor_rate": str(p.contractor_rate),
+        "currency": p.currency,
+        "start_date": str(p.start_date),
+        "end_date": str(p.end_date) if p.end_date else None,
+        "approval_flow": p.approval_flow,
+    }
+
+
+def _pl_audit(p, action, title, user, snap_before, snap_after=None, text=""):
+    if snap_after is None:
+        snap_after = _pl_snapshot(p)
+    log_audit(
+        entity_type="placement", entity_id=p.id,
+        action=action, title=title, text=text, user=user,
+        data_before=snap_before, data_after=snap_after,
+    )
 
 
 class PlacementViewSet(viewsets.ModelViewSet):
@@ -67,7 +93,8 @@ class PlacementViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.is_broker and not has_broker_access_to_client(user, serializer.validated_data["client_id"]):
             raise PermissionDenied("Not assigned to this client")
-        serializer.save()
+        p = serializer.save()
+        _pl_audit(p, "CREATED", "Placement created", user, None)
 
     @extend_schema(tags=["Placements"])
     def list(self, request, *args, **kwargs):
@@ -83,7 +110,12 @@ class PlacementViewSet(viewsets.ModelViewSet):
 
     @extend_schema(tags=["Placements"])
     def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
+        obj = self.get_object()
+        snap_before = _pl_snapshot(obj)
+        resp = super().partial_update(request, *args, **kwargs)
+        obj.refresh_from_db()
+        _pl_audit(obj, "UPDATED", "Placement updated", request.user, snap_before)
+        return resp
 
     @extend_schema(tags=["Placements"])
     def destroy(self, request, *args, **kwargs):
@@ -99,14 +131,18 @@ class PlacementViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def activate(self, request, pk=None):
         p = self.get_object()
+        snap_before = _pl_snapshot(p)
         p.activate()
+        _pl_audit(p, "ACTIVATED", "Placement activated", request.user, snap_before)
         return Response(PlacementListSerializer(p, context={"request": request}).data)
 
     @extend_schema(tags=["Placements"], request=None)
     @action(detail=True, methods=["post"])
     def complete(self, request, pk=None):
         p = self.get_object()
+        snap_before = _pl_snapshot(p)
         warnings = p.complete()
+        _pl_audit(p, "COMPLETED", "Placement completed", request.user, snap_before)
         data = PlacementListSerializer(p, context={"request": request}).data
         data["warnings"] = warnings
         return Response(data)
@@ -115,7 +151,9 @@ class PlacementViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def cancel(self, request, pk=None):
         p = self.get_object()
+        snap_before = _pl_snapshot(p)
         warnings = p.cancel()
+        _pl_audit(p, "CANCELLED", "Placement cancelled", request.user, snap_before)
         data = PlacementListSerializer(p, context={"request": request}).data
         data["warnings"] = warnings
         return Response(data)
@@ -138,6 +176,7 @@ class PlacementViewSet(viewsets.ModelViewSet):
             client_can_view_invoices=src.client_can_view_invoices,
             client_can_view_documents=src.client_can_view_documents, notes=src.notes,
         )
+        _pl_audit(new, "CREATED", f"Copied from placement {src.title or str(src.id)[:8]}", request.user, None)
         return Response(PlacementListSerializer(new, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
     @extend_schema(tags=["Placements"])
