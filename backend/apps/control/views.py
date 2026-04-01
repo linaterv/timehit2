@@ -37,7 +37,15 @@ class ControlOverviewView(APIView):
         data = []
         now = date.today()
         is_current_month = year == now.year and month == now.month
+        import calendar as cal
+        month_start = date(year, month, 1)
+        month_end = date(year, month, cal.monthrange(year, month)[1])
         for pl in placements:
+            # Skip if placement doesn't overlap with this month
+            if pl.start_date > month_end:
+                continue
+            if pl.end_date and pl.end_date < month_start:
+                continue
             ts = Timesheet.objects.filter(placement=pl, year=year, month=month).first()
             c_inv = Invoice.objects.filter(placement=pl, year=year, month=month, invoice_type=Invoice.Type.CLIENT_INVOICE).exclude(status=Invoice.Status.VOIDED).first()
             co_inv = Invoice.objects.filter(placement=pl, year=year, month=month, invoice_type=Invoice.Type.CONTRACTOR_INVOICE).exclude(status=Invoice.Status.VOIDED).first()
