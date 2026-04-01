@@ -365,6 +365,7 @@ export default function ClientDetailPage() {
         <div className="flex items-start justify-between">
           <div>
             <h1 data-testid="client-company-name" className="text-2xl font-bold text-gray-900">
+              <span className="font-mono text-sm text-gray-400 mr-2">{client.code}</span>
               {client.company_name}
             </h1>
             <div className="mt-2 space-y-1 text-sm text-gray-600">

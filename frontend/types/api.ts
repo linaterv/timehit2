@@ -53,6 +53,7 @@ export interface PlacementSummary {
 
 export interface Client {
   id: string;
+  code: string;
   company_name: string;
   registration_number: string;
   vat_number: string;
@@ -82,6 +83,7 @@ export interface ClientContact {
 
 export interface ContractorProfile {
   id: string;
+  code: string;
   user_id: string;
   email: string;
   full_name: string;

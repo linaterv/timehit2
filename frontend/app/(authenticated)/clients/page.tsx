@@ -61,6 +61,7 @@ export default function ClientsPage() {
   }
 
   const columns: Column<Client>[] = [
+    { key: "code", label: "Code", render: (row) => <span className="font-mono text-xs text-gray-500">{row.code}</span> },
     { key: "company_name", label: "Company", sortable: true },
     { key: "country", label: "Country", sortable: true },
     {

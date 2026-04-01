@@ -60,6 +60,7 @@ export default function ContractorsPage() {
   );
 
   const columns: Column<ContractorProfile>[] = [
+    { key: "code", label: "Code", render: (row) => <span className="font-mono text-xs text-gray-500">{row.code}</span> },
     { key: "full_name", label: "Name", sortable: true },
     {
       key: "placement_summary" as keyof ContractorProfile,

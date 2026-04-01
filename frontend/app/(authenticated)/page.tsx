@@ -427,23 +427,36 @@ function ControlScreen() {
     setPage(1);
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     const token = getAccessToken();
-    const url = `/api/v1/control/export?year=${year}&month=${month}`;
-    if (token) {
-      fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-        .then((res) => res.blob())
-        .then((blob) => {
-          const blobUrl = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = blobUrl;
-          a.download = `control-export-${year}-${month}.csv`;
-          a.click();
-          URL.revokeObjectURL(blobUrl);
-        });
-    } else {
-      window.open(url, "_blank");
-    }
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+    try {
+      if (month === 0) {
+        // All months: fetch 12 CSVs and merge
+        const rows: string[] = [];
+        let headerLine = "";
+        for (let m = 1; m <= 12; m++) {
+          const res = await fetch(`/api/v1/control/export?year=${year}&month=${m}`, { headers });
+          if (!res.ok) continue;
+          const text = await res.text();
+          const lines = text.trim().split("\n");
+          if (!headerLine && lines.length > 0) headerLine = `Period,${lines[0]}`;
+          for (let i = 1; i < lines.length; i++) {
+            rows.push(`${year}-${String(m).padStart(2, "0")},${lines[i]}`);
+          }
+        }
+        const csv = [headerLine, ...rows].join("\n");
+        const blob = new Blob([csv], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a"); a.href = url; a.download = `control-export-${year}-all.csv`; a.click(); URL.revokeObjectURL(url);
+      } else {
+        const res = await fetch(`/api/v1/control/export?year=${year}&month=${month}`, { headers });
+        if (!res.ok) { alert("Export failed"); return; }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a"); a.href = url; a.download = `control-export-${year}-${String(month).padStart(2, "0")}.csv`; a.click(); URL.revokeObjectURL(url);
+      }
+    } catch { alert("Export failed"); }
   };
 
   // Build a selectable id from placement.id for row selection
