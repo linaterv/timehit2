@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
+import { EntityLink as EL } from "@/components/shared/entity-link";
 import { useApiQuery, useApiMutation } from "@/hooks/use-api";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
@@ -185,8 +186,8 @@ export default function InvoiceDetailPage() {
             <StatusBadge value={invoice.status} />
           </div>
           <p className="text-sm text-gray-500">
-            {invoice.client.company_name}
-            {!isContractor && <> &mdash; {invoice.contractor.full_name}</>}
+            <EL href={`/clients/${invoice.client.id}`}>{invoice.client.company_name}</EL>
+            {!isContractor && <> &mdash; <EL href={`/contractors/${invoice.contractor.id}`}>{invoice.contractor.full_name}</EL></>}
             {!isContractor && <> &mdash; {formatMonth(invoice.year, invoice.month)}</>}
           </p>
         </div>

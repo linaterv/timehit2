@@ -10,6 +10,7 @@ import { useGlobalFilter } from "@/lib/global-filter-context";
 import { api } from "@/lib/api";
 import { DataTable, type Column } from "@/components/data-table/data-table";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { EntityLink as EL } from "@/components/shared/entity-link";
 import { formatDate, formatMonth } from "@/lib/utils";
 import type { Timesheet, PaginatedResponse, TimesheetStatus } from "@/types/api";
 
@@ -202,7 +203,7 @@ export default function TimesheetsListPage() {
       label: "Placement",
       render: (row) => (
         <span>
-          {row.placement?.client.company_name ?? "—"}{" "}
+          <EL href={`/clients/${row.placement?.client.id}`}>{row.placement?.client.company_name ?? "—"}</EL>{" "}
           <span className="text-gray-400">&rarr;</span>{" "}
           {(row.placement as any)?.title || row.placement?.contractor.full_name || "—"}
         </span>
@@ -241,9 +242,9 @@ export default function TimesheetsListPage() {
       label: "Placement",
       render: (row) => (
         <span>
-          {row.placement.client.company_name}{" "}
+          <EL href={`/clients/${row.placement.client.id}`}>{row.placement.client.company_name}</EL>{" "}
           <span className="text-gray-400">&rarr;</span>{" "}
-          {(row.placement as any).title || row.placement.contractor.full_name}
+          <EL href={`/contractors/${row.placement.contractor.id}`}>{(row.placement as any).title || row.placement.contractor.full_name}</EL>
         </span>
       ),
     },

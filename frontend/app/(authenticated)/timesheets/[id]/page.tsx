@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { api, apiUpload } from "@/lib/api";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { EntityLink as EL } from "@/components/shared/entity-link";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { FileUpload } from "@/components/shared/file-upload";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
@@ -368,10 +369,12 @@ export default function TimesheetDetailPage() {
             {placement && (
               <>
                 <h1 className="text-lg font-semibold">
-                  {placement.client.company_name} &rarr; {placement.title || placement.contractor.full_name}
+                  <EL href={`/clients/${placement.client.id}`}>{placement.client.company_name}</EL>
+                  {" "}&rarr;{" "}
+                  <EL href={`/placements/${ts.placement_id}`}>{placement.title || placement.contractor.full_name}</EL>
                 </h1>
                 {placement.title && (
-                  <p className="text-sm text-gray-500">{placement.contractor.full_name}</p>
+                  <p className="text-sm text-gray-500"><EL href={`/contractors/${placement.contractor.id}`} className="text-gray-500 hover:text-brand-600">{placement.contractor.full_name}</EL></p>
                 )}
               </>
             )}

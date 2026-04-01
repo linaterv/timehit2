@@ -200,12 +200,14 @@ function ControlScreen() {
   const router = useRouter();
   const qc = useQueryClient();
 
-  const handleCreateTs = async (placementId: string) => {
+  const handleCreateTs = async (placementId: string, rowMonth?: number) => {
+    const m = rowMonth || month;
+    if (!m) { alert("Cannot create timesheet in All months view. Select a specific month."); return; }
     setCreatingTsForPlacement(placementId);
     try {
       const res = await api<{ id: string }>(`/placements/${placementId}/timesheets`, {
         method: "POST",
-        body: JSON.stringify({ year: year, month: month }),
+        body: JSON.stringify({ year: year, month: m }),
       });
       router.push(`/timesheets/${res.id}`);
     } catch (err: unknown) {
@@ -390,7 +392,7 @@ function ControlScreen() {
         if (!row.timesheet) {
           const isCreating = creatingTsForPlacement === row.placement.id;
           btns.push(
-            <button key="create" onClick={(e) => { e.stopPropagation(); setLastActedRowId(`${row.placement.id}_${(row as any).year ?? year}_${(row as any).month ?? month}`); handleCreateTs(row.placement.id); }}
+            <button key="create" onClick={(e) => { e.stopPropagation(); setLastActedRowId(`${row.placement.id}_${(row as any).year ?? year}_${(row as any).month ?? month}`); handleCreateTs(row.placement.id, (row as any).month); }}
               disabled={isCreating}
               className="px-2 py-1 rounded text-xs font-medium border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 disabled:opacity-50 whitespace-nowrap">
               {isCreating ? "Creating..." : "Create TS"}
@@ -419,7 +421,7 @@ function ControlScreen() {
         if (row.timesheet?.status === "APPROVED" && (!row.client_invoice || !row.contractor_invoice)) {
           const isGen = generatingId === row.timesheet.id;
           btns.push(
-            <button key="gen" onClick={(e) => { e.stopPropagation(); handleGenerateInline(row.timesheet!.id, `${row.placement.id}_${year}_${month}`); }}
+            <button key="gen" onClick={(e) => { e.stopPropagation(); handleGenerateInline(row.timesheet!.id, `${row.placement.id}_${(row as any).year ?? year}_${(row as any).month ?? month}`); }}
               disabled={isGen}
               className="px-2 py-1 rounded text-xs font-medium bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50 whitespace-nowrap">
               {isGen ? "Generating..." : "Generate Invoice"}
