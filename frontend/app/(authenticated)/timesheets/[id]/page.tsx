@@ -476,33 +476,47 @@ export default function TimesheetDetailPage() {
                     }`} />
                     <div className="w-px flex-1 bg-gray-200" />
                   </div>
-                  <div className="pb-3">
+                  <div className="pb-4 min-w-0">
                     <p className="font-medium text-gray-900">{entry.title}</p>
                     {entry.text && <p className="text-gray-500">{entry.text}</p>}
-                    {(entry.data_before || entry.data_after) && (
-                      <div className="mt-1 flex gap-4 text-xs">
-                        {entry.data_before && (
-                          <div className="bg-red-50 text-red-700 rounded px-2 py-1">
-                            <span className="font-medium">Before: </span>
-                            {Object.entries(entry.data_before).map(([k, v]) => (
-                              <span key={k} className="mr-2">{k}=<span className="font-mono">{String(v)}</span></span>
-                            ))}
-                          </div>
-                        )}
-                        {entry.data_after && (
-                          <div className="bg-green-50 text-green-700 rounded px-2 py-1">
-                            <span className="font-medium">After: </span>
-                            {Object.entries(entry.data_after).map(([k, v]) => (
-                              <span key={k} className="mr-2">{k}=<span className="font-mono">{String(v)}</span></span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    <p className="text-xs text-gray-400 mt-1">
-                      {formatDate(entry.created_at)}
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {new Date(entry.created_at).toLocaleString()}
                       {entry.created_by && ` · ${entry.created_by.full_name}`}
                     </p>
+                    {(entry.data_before || entry.data_after) && (
+                      <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                        {[
+                          { label: "Before", data: entry.data_before, bg: "bg-red-50 text-red-800 border-red-200" },
+                          { label: "After", data: entry.data_after, bg: "bg-green-50 text-green-800 border-green-200" },
+                        ].map(({ label, data, bg }) => data && (
+                          <div key={label} className={`${bg} border rounded p-2 overflow-hidden`}>
+                            <p className="font-semibold mb-1">{label}</p>
+                            {Object.entries(data).filter(([k]) => k !== "entries").map(([k, v]) => (
+                              <div key={k} className="flex justify-between gap-2">
+                                <span className="text-gray-500 truncate">{k}</span>
+                                <span className="font-mono truncate">{v == null ? "—" : String(v)}</span>
+                              </div>
+                            ))}
+                            {Array.isArray(data.entries) && (
+                              <details className="mt-1">
+                                <summary className="cursor-pointer text-gray-500 hover:text-gray-700">
+                                  {(data.entries as unknown[]).length} entries
+                                </summary>
+                                <div className="mt-1 space-y-0.5 max-h-40 overflow-y-auto">
+                                  {(data.entries as { date: string; hours: string; task: string }[]).map((e, i) => (
+                                    <div key={i} className="flex gap-2 font-mono">
+                                      <span>{e.date}</span>
+                                      <span>{e.hours}h</span>
+                                      {e.task && <span className="text-gray-400 truncate">{e.task}</span>}
+                                    </div>
+                                  ))}
+                                </div>
+                              </details>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

@@ -132,8 +132,7 @@ class TimesheetViewSet(viewsets.ModelViewSet):
         if Timesheet.objects.filter(placement=placement, year=year, month=month).exists():
             raise ConflictError("Timesheet already exists for this placement and month")
         ts = Timesheet.objects.create(placement=placement, year=year, month=month)
-        _audit(ts, "CREATED", f"Timesheet created for {year}-{str(month).zfill(2)}", user,
-               None, {"status": ts.status, "year": year, "month": month})
+        _audit(ts, "CREATED", f"Timesheet created for {year}-{str(month).zfill(2)}", user, None)
         return Response(TimesheetDetailSerializer(ts, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
     @extend_schema(tags=["Timesheets"])
@@ -348,14 +347,11 @@ class TimesheetEntryViewSet(viewsets.ViewSet):
         if errors:
             raise ValidationError(errors)
 
-        old_count = ts.entries.count()
-        old_hours = str(ts.total_hours)
+        snap_before = _ts_snapshot(ts)
         ts.entries.all().delete()
         TimesheetEntry.objects.bulk_create([TimesheetEntry(timesheet=ts, **e) for e in ser.validated_data["entries"]])
         ts.recalculate_hours()
-        _audit(ts, "ENTRIES_UPDATED", "Time entries updated", user,
-               {"entry_count": old_count, "total_hours": old_hours},
-               {"entry_count": len(ser.validated_data["entries"]), "total_hours": str(ts.total_hours)})
+        _audit(ts, "ENTRIES_UPDATED", "Time entries updated", user, snap_before)
         warnings = [f"{d}: total {t}h exceeds 8h typical day" for d, t in hours_by_date.items() if t > 8]
         saved = ts.entries.order_by("date", "task_name")
         return Response({"entries": TimesheetEntrySerializer(saved, many=True).data, "total_hours": str(ts.total_hours), "warnings": warnings})

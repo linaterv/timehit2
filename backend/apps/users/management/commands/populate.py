@@ -216,13 +216,17 @@ class Command(BaseCommand):
         client_tpl_lt = InvoiceTemplate.objects.create(
             title="Client LT Template", code="LT",
             template_type=InvoiceTemplate.Type.CLIENT, status=InvoiceTemplate.Status.ACTIVE,
+            billing_address="Siunt\u0117jas:\nUAB \u201eWISE INTEGRATION\u201c\n\u012emon\u0117s kodas: 302666833\nPVM mok\u0117tojo kodas: LT100006404014\nAdresas: Paneri\u0173 g. 11, LT-03209 Vilnius, Lietuva\nEl. pa\u0161tas: info@wiseintegration.com\nTinklalapis: https://hitcontract.lt",
+            company_name="UAB \u201eWISE INTEGRATION\u201c",
             country="LT", default_currency="EUR",
             vat_registered=True, vat_rate_percent=21,
             payment_terms_days=30,
         )
-        InvoiceTemplate.objects.create(
+        client_tpl_en = InvoiceTemplate.objects.create(
             title="Client EN Template", code="EN",
             template_type=InvoiceTemplate.Type.CLIENT, status=InvoiceTemplate.Status.ACTIVE,
+            billing_address="Service Provider:\nUAB \"WISE INTEGRATION\"\nCompany code: 302666833\nVAT No.: LT100006404014\nRegistered address: Paneri\u0173 g. 11, LT-03209 Vilnius, Lithuania\nEmail: info@hitcontract.com\nWebsite: https://hitcontract.lt\nPhone: +370 671 80231",
+            company_name="UAB \"WISE INTEGRATION\"",
             country="LT", default_currency="EUR",
             vat_registered=True, vat_rate_percent=21,
             payment_terms_days=30,
