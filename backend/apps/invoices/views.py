@@ -92,7 +92,9 @@ class GenerateInvoicesView(APIView):
             if ts.status != Timesheet.Status.APPROVED:
                 errors.append({"timesheet_id": str(ts_id), "error": "Timesheet not APPROVED"})
                 continue
-            if ts.invoices.exclude(status=Invoice.Status.VOIDED).exists():
+            existing_client = ts.invoices.filter(invoice_type=Invoice.Type.CLIENT_INVOICE).exclude(status=Invoice.Status.VOIDED).exists()
+            existing_contr = ts.invoices.filter(invoice_type=Invoice.Type.CONTRACTOR_INVOICE).exclude(status=Invoice.Status.VOIDED).exists()
+            if existing_client and existing_contr:
                 errors.append({"timesheet_id": str(ts_id), "error": "Non-voided invoices already exist"})
                 continue
             if request.user.is_broker and not has_broker_access_to_client(request.user, ts.placement.client_id):
@@ -115,87 +117,88 @@ class GenerateInvoicesView(APIView):
                 if cot:
                     cot = InvoiceTemplate.objects.select_for_update().get(pk=cot.pk)
 
-                # Client invoice — From=agency (parent template billing_address), Bill To=template billing_address
-                c_sub = ts.total_hours * pl.client_rate
-                # Bill To: just the billing_address textarea content, nothing else
-                bill_to = (ct.billing_address if ct and ct.billing_address else None) or pl.client.billing_address
-                # From: walk parent chain for agency billing_address
-                from_block = ""
-                if ct:
-                    p = ct.parent
-                    while p:
-                        if p.billing_address:
-                            from_block = p.billing_address
-                            break
-                        p = p.parent
-                c_snap = {
-                    "client_billing_address": bill_to,
-                    "agency_billing_address": from_block,
-                    "client_payment_terms_days": pl.payment_terms_client_days or pl.client.payment_terms_days,
-                }
-                if ct:
-                    c_snap["template_id"] = str(ct.id)
-                c_inv = Invoice.objects.create(
-                    invoice_number=_next_agency_number(), invoice_type=Invoice.Type.CLIENT_INVOICE,
-                    timesheet=ts, placement=pl, client=pl.client, contractor=pl.contractor,
-                    year=ts.year, month=ts.month, currency=pl.currency,
-                    hourly_rate=pl.client_rate, total_hours=ts.total_hours,
-                    subtotal=c_sub, total_amount=c_sub, status=inv_status,
-                    issue_date=date.today(),
-                    due_date=date.today() + timedelta(days=pl.payment_terms_client_days or pl.client.payment_terms_days or 30),
-                    billing_snapshot=c_snap,
-                    generated_by=request.user,
-                )
+                c_inv = None
+                co_inv = None
+                from .pdf import generate_invoice_pdf
 
-                # Contractor invoice
-                co_sub = ts.total_hours * pl.contractor_rate
-                co_src = cot or profile
-                vat_reg = co_src.vat_registered if co_src.vat_registered is not None else False
-                vat = co_src.vat_rate_percent if vat_reg else None
-                vat_amt = (co_sub * vat / 100) if vat else None
-                total = co_sub + (vat_amt or 0)
-                # From: just billing_address raw. Payment: just bank_name raw.
-                from_block = co_src.billing_address or co_src.company_name or ""
-                payment_block = co_src.bank_name or ""
-                # Bill To: walk parent chain for agency
-                agency_block = ""
-                if cot:
-                    p = cot.parent
-                    while p:
-                        if p.billing_address:
-                            agency_block = p.billing_address
-                            break
-                        p = p.parent
-                co_snap = {
-                    "contractor_billing_address": from_block,
-                    "contractor_bank_name": payment_block,
-                    "agency_billing_address": agency_block,
-                    "contractor_payment_terms_days": pl.payment_terms_contractor_days or co_src.payment_terms_days,
-                    "contractor_invoice_series_prefix": co_src.invoice_series_prefix,
-                }
-                if cot:
-                    co_snap["template_id"] = str(cot.id)
-                co_inv = Invoice.objects.create(
-                    invoice_number=_next_contractor_number(cot or profile), invoice_type=Invoice.Type.CONTRACTOR_INVOICE,
-                    timesheet=ts, placement=pl, client=pl.client, contractor=pl.contractor,
-                    year=ts.year, month=ts.month, currency=pl.currency,
-                    hourly_rate=pl.contractor_rate, total_hours=ts.total_hours,
-                    subtotal=co_sub, vat_rate_percent=vat, vat_amount=vat_amt,
-                    total_amount=total, status=inv_status, issue_date=date.today(),
-                    due_date=date.today() + timedelta(days=pl.payment_terms_contractor_days or co_src.payment_terms_days or 14),
-                    billing_snapshot=co_snap,
-                    generated_by=request.user,
-                )
-            # Generate PDFs
-            from .pdf import generate_invoice_pdf
-            generate_invoice_pdf(c_inv)
-            generate_invoice_pdf(co_inv)
+                # Client invoice (skip if non-voided already exists)
+                if not existing_client:
+                    c_sub = ts.total_hours * pl.client_rate
+                    bill_to = (ct.billing_address if ct and ct.billing_address else None) or pl.client.billing_address
+                    from_block = ""
+                    if ct:
+                        p = ct.parent
+                        while p:
+                            if p.billing_address:
+                                from_block = p.billing_address
+                                break
+                            p = p.parent
+                    c_snap = {
+                        "client_billing_address": bill_to,
+                        "agency_billing_address": from_block,
+                        "client_payment_terms_days": pl.payment_terms_client_days or pl.client.payment_terms_days,
+                    }
+                    if ct:
+                        c_snap["template_id"] = str(ct.id)
+                    c_inv = Invoice.objects.create(
+                        invoice_number=_next_agency_number(), invoice_type=Invoice.Type.CLIENT_INVOICE,
+                        timesheet=ts, placement=pl, client=pl.client, contractor=pl.contractor,
+                        year=ts.year, month=ts.month, currency=pl.currency,
+                        hourly_rate=pl.client_rate, total_hours=ts.total_hours,
+                        subtotal=c_sub, total_amount=c_sub, status=inv_status,
+                        issue_date=date.today(),
+                        due_date=date.today() + timedelta(days=pl.payment_terms_client_days or pl.client.payment_terms_days or 30),
+                        billing_snapshot=c_snap,
+                        generated_by=request.user,
+                    )
+                    generate_invoice_pdf(c_inv)
 
-            generated.append({
-                "timesheet_id": str(ts_id),
-                "client_invoice": {"id": str(c_inv.id), "invoice_number": c_inv.invoice_number, "total_amount": str(c_inv.total_amount), "status": c_inv.status},
-                "contractor_invoice": {"id": str(co_inv.id), "invoice_number": co_inv.invoice_number, "total_amount": str(co_inv.total_amount), "status": co_inv.status},
-            })
+                # Contractor invoice (skip if non-voided already exists)
+                if not existing_contr:
+                    co_sub = ts.total_hours * pl.contractor_rate
+                    co_src = cot or profile
+                    vat_reg = co_src.vat_registered if co_src.vat_registered is not None else False
+                    vat = co_src.vat_rate_percent if vat_reg else None
+                    vat_amt = (co_sub * vat / 100) if vat else None
+                    total = co_sub + (vat_amt or 0)
+                    co_from = co_src.billing_address or co_src.company_name or ""
+                    payment_block = co_src.bank_name or ""
+                    agency_block = ""
+                    if cot:
+                        p = cot.parent
+                        while p:
+                            if p.billing_address:
+                                agency_block = p.billing_address
+                                break
+                            p = p.parent
+                    co_snap = {
+                        "contractor_billing_address": co_from,
+                        "contractor_bank_name": payment_block,
+                        "agency_billing_address": agency_block,
+                        "contractor_payment_terms_days": pl.payment_terms_contractor_days or co_src.payment_terms_days,
+                        "contractor_invoice_series_prefix": co_src.invoice_series_prefix,
+                    }
+                    if cot:
+                        co_snap["template_id"] = str(cot.id)
+                    co_inv = Invoice.objects.create(
+                        invoice_number=_next_contractor_number(cot or profile), invoice_type=Invoice.Type.CONTRACTOR_INVOICE,
+                        timesheet=ts, placement=pl, client=pl.client, contractor=pl.contractor,
+                        year=ts.year, month=ts.month, currency=pl.currency,
+                        hourly_rate=pl.contractor_rate, total_hours=ts.total_hours,
+                        subtotal=co_sub, vat_rate_percent=vat, vat_amount=vat_amt,
+                        total_amount=total, status=inv_status, issue_date=date.today(),
+                        due_date=date.today() + timedelta(days=pl.payment_terms_contractor_days or co_src.payment_terms_days or 14),
+                        billing_snapshot=co_snap,
+                        generated_by=request.user,
+                    )
+                    generate_invoice_pdf(co_inv)
+
+            result = {"timesheet_id": str(ts_id)}
+            if c_inv:
+                result["client_invoice"] = {"id": str(c_inv.id), "invoice_number": c_inv.invoice_number, "total_amount": str(c_inv.total_amount), "status": c_inv.status}
+            if co_inv:
+                result["contractor_invoice"] = {"id": str(co_inv.id), "invoice_number": co_inv.invoice_number, "total_amount": str(co_inv.total_amount), "status": co_inv.status}
+            generated.append(result)
         return Response({"generated": generated, "errors": errors}, status=status.HTTP_201_CREATED)
 
 

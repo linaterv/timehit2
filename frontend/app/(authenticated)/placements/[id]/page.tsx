@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useApiQuery, useApiMutation } from "@/hooks/use-api";
 import { useAuth } from "@/hooks/use-auth";
 import { apiUpload, api } from "@/lib/api";
@@ -11,7 +11,7 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { SearchableSelect } from "@/components/shared/searchable-select";
 import { CircleAlert } from "lucide-react";
 import { FileUpload } from "@/components/shared/file-upload";
-import { formatCurrency, formatDate, formatMonth } from "@/lib/utils";
+import { formatCurrency, formatDate, formatDateTime, formatMonth } from "@/lib/utils";
 import type {
   Placement,
   PlacementDocument,
@@ -20,7 +20,7 @@ import type {
   ApprovalFlow,
 } from "@/types/api";
 
-type Tab = "timesheets" | "documents" | "settings";
+type Tab = "timesheets" | "documents" | "settings" | "history";
 
 interface EditForm {
   title: string;
@@ -103,6 +103,14 @@ export default function PlacementDetailPage() {
     `/placements/${id}/documents`,
     tab === "documents"
   );
+
+  const auditQuery = useQuery<{ data: { id: string; action: string; title: string; text: string; data_before: Record<string, unknown> | null; data_after: Record<string, unknown> | null; created_by: { id: string; full_name: string } | null; created_at: string }[] }>({
+    queryKey: ["placement-audit", id],
+    queryFn: () => api(`/placements/${id}/audit-log`),
+    enabled: tab === "history",
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
 
   const placement = placementQ.data;
 
@@ -322,6 +330,7 @@ export default function PlacementDetailPage() {
     { key: "timesheets", label: "Timesheets", show: true },
     { key: "documents", label: "Documents", show: true },
     { key: "settings", label: "Settings", show: canEditSettings },
+    { key: "history", label: "History", show: isAdminOrBroker },
   ];
 
   return (
@@ -827,6 +836,60 @@ export default function PlacementDetailPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* History Tab */}
+      {tab === "history" && (
+        <div className="border rounded-lg p-6">
+          {auditQuery.isLoading && <p className="text-sm text-gray-400 text-center py-4">Loading...</p>}
+          {!auditQuery.isLoading && (auditQuery.data?.data?.length ?? 0) === 0 && (
+            <p className="text-sm text-gray-400 text-center py-4">No history yet.</p>
+          )}
+          {(auditQuery.data?.data?.length ?? 0) > 0 && (
+            <div className="space-y-3">
+              {auditQuery.data!.data.map((entry) => (
+                <div key={entry.id} className="flex gap-3 text-sm">
+                  <div className="flex flex-col items-center">
+                    <div className={`w-2 h-2 rounded-full mt-1.5 ${
+                      entry.action === "ACTIVATED" ? "bg-green-500"
+                      : entry.action === "COMPLETED" ? "bg-gray-500"
+                      : entry.action === "CANCELLED" ? "bg-red-500"
+                      : entry.action === "CREATED" ? "bg-blue-500"
+                      : "bg-amber-500"
+                    }`} />
+                    <div className="w-px flex-1 bg-gray-200" />
+                  </div>
+                  <div className="pb-4 min-w-0">
+                    <p className="font-medium text-gray-900">{entry.title}</p>
+                    {entry.text && <p className="text-gray-500">{entry.text}</p>}
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {formatDateTime(entry.created_at)}
+                      {entry.created_by && ` · ${entry.created_by.full_name}`}
+                    </p>
+                    {(entry.data_before || entry.data_after) && (
+                      <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                        {[
+                          { label: "Before", data: entry.data_before, bg: "bg-red-50 text-red-800 border-red-200" },
+                          { label: "After", data: entry.data_after, bg: "bg-green-50 text-green-800 border-green-200" },
+                        ].map(({ label, data, bg }) => data && (
+                          <div key={label} className={`${bg} border rounded p-2 overflow-hidden`}>
+                            <p className="font-semibold mb-1">{label}</p>
+                            {Object.entries(data).map(([k, v]) => (
+                              <div key={k} className="flex justify-between gap-2">
+                                <span className="text-gray-500 truncate">{k}</span>
+                                <span className="font-mono truncate">{v == null ? "—" : String(v)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
