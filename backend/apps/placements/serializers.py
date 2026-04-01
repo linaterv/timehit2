@@ -28,7 +28,7 @@ class PlacementListSerializer(serializers.ModelSerializer):
         ]
 
     def get_client(self, obj):
-        return {"id": str(obj.client_id), "company_name": obj.client.company_name}
+        return {"id": str(obj.client_id), "company_name": obj.client.company_name, "country": obj.client.country}
 
     def get_contractor(self, obj):
         return {"id": str(obj.contractor_id), "full_name": obj.contractor.full_name}

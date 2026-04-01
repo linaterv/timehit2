@@ -72,13 +72,26 @@ export default function TimesheetDetailPage() {
   const ts = tsQuery.data;
   const placementId = ts?.placement_id ?? "";
 
-  const placementQuery = useQuery<{ start_date: string; end_date: string | null }>({
+  const placementQuery = useQuery<{ start_date: string; end_date: string | null; client?: { id: string; company_name: string; country?: string } }>({
     queryKey: ["placement-for-ts", placementId],
     queryFn: () => api(`/placements/${placementId}`),
     enabled: !!placementId,
     staleTime: 0,
     refetchOnMount: "always",
   });
+
+  // Holidays for calendar highlighting
+  const clientCountry = placementQuery.data?.client?.country || "LT";
+  const holidaysQuery = useQuery<{ holidays: { date: string; name: string }[] }>({
+    queryKey: ["holidays", clientCountry, ts?.year],
+    queryFn: () => api(`/holidays?country=${clientCountry}&year=${ts?.year}`),
+    enabled: !!ts?.year,
+  });
+  const holidayMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const h of holidaysQuery.data?.holidays ?? []) m.set(h.date, h.name);
+    return m;
+  }, [holidaysQuery.data]);
 
   // Sibling timesheets for month navigation
   const siblingsQuery = useQuery<{ data: { id: string; year: number; month: number }[] }>({
@@ -490,6 +503,8 @@ export default function TimesheetDetailPage() {
                 const dt = new Date(ts.year, ts.month - 1, d);
                 const iso = `${ts.year}-${String(ts.month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
                 const isWeekend = dt.getDay() === 0 || dt.getDay() === 6;
+                const isHoliday = holidayMap.has(iso);
+                const holidayName = holidayMap.get(iso);
                 const outOfRange = (pStart && dt < pStart) || (pEnd && dt > pEnd);
                 const hours = hoursByDate[iso] || 0;
                 const entryCount = countByDate[iso] || 0;
@@ -503,12 +518,13 @@ export default function TimesheetDetailPage() {
                     className={`h-18 border p-1.5 flex flex-col ${
                       outOfRange ? "border-gray-100 bg-gray-100 opacity-40"
                       : isMulti && cellEditable ? "border-dashed border-amber-300 bg-amber-50/30"
+                      : isHoliday ? "border-red-200 bg-red-50"
                       : isWeekend ? "border-gray-100 bg-gray-50"
                       : "border-gray-100 bg-surface"
                     }`}
-                    title={isMulti && cellEditable ? "Multiple entries — use Detailed View to edit" : ""}
+                    title={isHoliday ? (holidayName ?? "Public holiday") : isMulti && cellEditable ? "Multiple entries — use Detailed View to edit" : ""}
                   >
-                    <span className={`text-xs ${isWeekend ? "text-gray-400" : "text-gray-500"}`}>{d}</span>
+                    <span className={`text-xs ${isHoliday ? "text-red-500 font-medium" : isWeekend ? "text-gray-400" : "text-gray-500"}`}>{d}</span>
                     {cellEditable && !isMulti ? (
                       <input
                         type="number"
