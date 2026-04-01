@@ -256,6 +256,8 @@ export interface InvoiceTemplate {
 }
 
 export interface ControlRow {
+  year?: number;
+  month?: number;
   placement: {
     id: string;
     title: string;

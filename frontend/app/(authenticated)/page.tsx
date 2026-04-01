@@ -212,7 +212,7 @@ function ControlScreen() {
   const overviewParams = useMemo(() => {
     const p = new URLSearchParams();
     p.set("year", String(year));
-    p.set("month", String(month));
+    if (month) p.set("month", String(month));
     p.set("page", String(page));
     p.set("per_page", "25");
     if (sort) {
@@ -246,6 +246,11 @@ function ControlScreen() {
   const overviewRows = overviewData?.data ?? [];
 
   const columns: Column<ControlRow>[] = [
+    ...(month === 0 ? [{
+      key: "period" as keyof ControlRow,
+      label: "Period",
+      render: (row: ControlRow) => row.year && row.month ? formatMonth(row.year, row.month) : "—",
+    }] : []),
     {
       key: "placement",
       label: "Placement",
@@ -395,7 +400,7 @@ function ControlScreen() {
   // Build a selectable id from placement.id for row selection
   const rowsWithId = overviewRows.map((row) => ({
     ...row,
-    id: `${row.placement.id}_${year}_${month}`,
+    id: `${row.placement.id}_${(row as any).year ?? year}_${(row as any).month ?? month}`,
   }));
 
   return (
@@ -455,6 +460,9 @@ function ControlScreen() {
         >
           {(() => {
             const opts: { value: string; label: string }[] = [];
+            // "All months" option for current year
+            opts.push({ value: `${now.getFullYear()}-00`, label: `All ${now.getFullYear()}` });
+            if (now.getFullYear() > 2025) opts.push({ value: `${now.getFullYear() - 1}-00`, label: `All ${now.getFullYear() - 1}` });
             const d = new Date(now.getFullYear(), now.getMonth(), 1);
             for (let i = 0; i < 18; i++) {
               const y = d.getFullYear();
