@@ -347,6 +347,7 @@ class Command(BaseCommand):
             currency="EUR", start_date=date(2026, 2, 1),
             status="ACTIVE", approval_flow="BROKER_ONLY",
             client_invoice_template=client_tpl_lt,
+            payment_terms_client_days=31, payment_terms_contractor_days=36,
             title="QA Engineer", notes="Demo placement for invoice generation",
         )
 
@@ -381,6 +382,7 @@ class Command(BaseCommand):
             currency="EUR", start_date=date(2026, 2, 1),
             status="ACTIVE", approval_flow="BROKER_ONLY",
             client_invoice_template=client_tpl_lt,
+            payment_terms_client_days=31, payment_terms_contractor_days=36,
             title="DevOps Engineer", notes="Demo DevOps placement",
         )
 
@@ -414,6 +416,7 @@ class Command(BaseCommand):
             currency="EUR", start_date=date(2026, 2, 1),
             status="ACTIVE", approval_flow="BROKER_ONLY",
             client_invoice_template=client_tpl_lt,
+            payment_terms_client_days=31, payment_terms_contractor_days=36,
             title="UI/UX Designer", notes="Demo design placement",
         )
 

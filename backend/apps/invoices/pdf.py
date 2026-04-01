@@ -205,19 +205,11 @@ def generate_invoice_pdf(invoice):
     is_client = inv.invoice_type == "CLIENT_INVOICE"
 
     if is_client:
-        from_block = snap.get("agency_billing_address") or snap.get("agency_company_name") or "TimeHit Agency"
-        to_block = "\n".join(filter(None, [
-            snap.get("client_company_name", ""),
-            snap.get("client_billing_address", ""),
-            f"VAT: {snap['client_vat_number']}" if snap.get("client_vat_number") else "",
-        ]))
+        from_block = snap.get("agency_billing_address") or "TimeHit Agency"
+        to_block = snap.get("client_billing_address") or ""
     else:
-        from_block = "\n".join(filter(None, [
-            snap.get("contractor_company_name", inv.contractor.full_name),
-            snap.get("contractor_billing_address", ""),
-            f"VAT: {snap['contractor_vat_number']}" if snap.get("contractor_vat_number") else "",
-        ]))
-        to_block = snap.get("agency_billing_address") or snap.get("agency_company_name") or "TimeHit Agency"
+        from_block = snap.get("contractor_billing_address") or inv.contractor.full_name
+        to_block = snap.get("agency_billing_address") or "TimeHit Agency"
 
     data = {
         "invoice_number": inv.invoice_number,
@@ -239,11 +231,7 @@ def generate_invoice_pdf(invoice):
     }
 
     if not is_client:
-        data["payment_block"] = "\n".join(filter(None, [
-            f"Bank: {snap.get('contractor_bank_name', '')}",
-            f"IBAN: {snap.get('contractor_bank_iban', '')}",
-            f"SWIFT: {snap.get('contractor_bank_swift', '')}",
-        ]))
+        data["payment_block"] = snap.get("contractor_bank_name") or ""
 
     pdf_bytes = generate_pdf(data)
     filename = f"{inv.invoice_number}.pdf"
