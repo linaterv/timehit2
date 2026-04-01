@@ -225,10 +225,13 @@ export default function ContractorDetailPage() {
   return (
     <div data-testid="contractor-detail" className={`space-y-6 ${tplShowEditor ? "" : "max-w-3xl"}`}>
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-gray-900">
-          <span className="font-mono text-sm text-gray-400 mr-2">{contractor.code}</span>
-          {contractor.full_name}
-        </h2>
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">
+            <span className="font-mono text-sm text-gray-400 mr-2">{contractor.code}</span>
+            {contractor.full_name}
+          </h2>
+          <p className="text-sm text-gray-500">{contractor.email}</p>
+        </div>
         <div className="flex gap-2">
           {isAdmin && !editing && (
             <button
@@ -347,9 +350,8 @@ export default function ContractorDetailPage() {
         </div>
       )}
 
-      {/* Company Info */}
-      <section data-testid="section-company-info" className="bg-surface border rounded-lg p-5 space-y-4">
-        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Company Info</h3>
+      <section data-testid="section-contractor-info" className="bg-surface border rounded-lg p-5 space-y-4">
+        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Contractor Info</h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Code</label>
@@ -364,183 +366,8 @@ export default function ContractorDetailPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
-            <input
-              data-testid="field-company_name"
-              type="text"
-              value={form.company_name}
-              onChange={(e) => updateField("company_name", e.target.value)}
-              disabled={disabled}
-              className="w-full border rounded-md px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-600"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Registration Number</label>
-            <input
-              data-testid="field-registration_number"
-              type="text"
-              value={form.registration_number}
-              onChange={(e) => updateField("registration_number", e.target.value)}
-              disabled={disabled}
-              className="w-full border rounded-md px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-600"
-            />
-          </div>
-          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
             <CountrySelect value={form.country} onChange={(v) => updateField("country", v)} disabled={disabled} testId="field-country" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Default Currency</label>
-            <input
-              data-testid="field-default_currency"
-              type="text"
-              value={form.default_currency}
-              onChange={(e) => updateField("default_currency", e.target.value)}
-              disabled={disabled}
-              className="w-full border rounded-md px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-600"
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* VAT */}
-      <section data-testid="section-vat" className="bg-surface border rounded-lg p-5 space-y-4">
-        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">VAT</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="col-span-2 flex items-center gap-3">
-            <label className="text-sm font-medium text-gray-700">VAT Registered</label>
-            <button
-              data-testid="field-vat_registered"
-              type="button"
-              role="switch"
-              aria-checked={form.vat_registered}
-              onClick={() => !disabled && updateField("vat_registered", !form.vat_registered)}
-              disabled={disabled}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                form.vat_registered ? "bg-brand-600" : "bg-gray-300"
-              } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  form.vat_registered ? "translate-x-6" : "translate-x-1"
-                }`}
-              />
-            </button>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">VAT Number</label>
-            <input
-              data-testid="field-vat_number"
-              type="text"
-              value={form.vat_number}
-              onChange={(e) => updateField("vat_number", e.target.value)}
-              disabled={disabled}
-              className="w-full border rounded-md px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-600"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">VAT Rate (%)</label>
-            <input
-              data-testid="field-vat_rate_percent"
-              type="text"
-              value={form.vat_rate_percent}
-              onChange={(e) => updateField("vat_rate_percent", e.target.value)}
-              disabled={disabled}
-              className="w-full border rounded-md px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-600"
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Bank */}
-      <section data-testid="section-bank" className="bg-surface border rounded-lg p-5 space-y-4">
-        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Bank</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Bank Name</label>
-            <input
-              data-testid="field-bank_name"
-              type="text"
-              value={form.bank_name}
-              onChange={(e) => updateField("bank_name", e.target.value)}
-              disabled={disabled}
-              className="w-full border rounded-md px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-600"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">IBAN</label>
-            <input
-              data-testid="field-bank_account_iban"
-              type="text"
-              value={form.bank_account_iban}
-              onChange={(e) => updateField("bank_account_iban", e.target.value)}
-              disabled={disabled}
-              className="w-full border rounded-md px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-600"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">SWIFT / BIC</label>
-            <input
-              data-testid="field-bank_swift_bic"
-              type="text"
-              value={form.bank_swift_bic}
-              onChange={(e) => updateField("bank_swift_bic", e.target.value)}
-              disabled={disabled}
-              className="w-full border rounded-md px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-600"
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Invoice Settings */}
-      <section data-testid="section-invoice-settings" className="bg-surface border rounded-lg p-5 space-y-4">
-        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Invoice Settings</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Series Prefix</label>
-            <input
-              data-testid="field-invoice_series_prefix"
-              type="text"
-              value={form.invoice_series_prefix}
-              onChange={(e) => updateField("invoice_series_prefix", e.target.value)}
-              disabled={disabled}
-              className="w-full border rounded-md px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-600"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Next Invoice Number</label>
-            <input
-              data-testid="field-next_invoice_number"
-              type="number"
-              value={form.next_invoice_number}
-              onChange={(e) => updateField("next_invoice_number", parseInt(e.target.value, 10) || 1)}
-              disabled={disabled}
-              className="w-full border rounded-md px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-600"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Payment Terms (days)</label>
-            <input
-              data-testid="field-payment_terms_days"
-              type="number"
-              value={form.payment_terms_days ?? ""}
-              onChange={(e) =>
-                updateField("payment_terms_days", e.target.value ? parseInt(e.target.value, 10) : null)
-              }
-              disabled={disabled}
-              className="w-full border rounded-md px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-600"
-            />
-          </div>
-          <div className="col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Billing Address</label>
-            <textarea
-              data-testid="field-billing_address"
-              value={form.billing_address}
-              onChange={(e) => updateField("billing_address", e.target.value)}
-              disabled={disabled}
-              rows={3}
-              className="w-full border rounded-md px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-600"
-            />
           </div>
         </div>
       </section>

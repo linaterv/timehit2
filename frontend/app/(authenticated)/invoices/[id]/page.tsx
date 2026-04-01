@@ -290,11 +290,13 @@ export default function InvoiceDetailPage() {
               </div>
             ) : null}
           </div>
-          {(snap["client_payment_terms_days"] != null || snap["contractor_payment_terms_days"] != null) ? (
-            <div className="text-sm text-gray-500 pt-2 border-t">
-              Payment terms: {String(snap["client_payment_terms_days"] ?? snap["contractor_payment_terms_days"])} days
-            </div>
-          ) : null}
+          <div className="text-sm text-gray-500 pt-2 border-t flex flex-wrap gap-4">
+            {invoice.issue_date && <span>Issue date: <strong>{formatDate(invoice.issue_date)}</strong></span>}
+            {invoice.due_date && <span>Due date: <strong>{formatDate(invoice.due_date)}</strong></span>}
+            {(snap["client_payment_terms_days"] != null || snap["contractor_payment_terms_days"] != null) && (
+              <span>Payment terms: <strong>{String(snap["client_payment_terms_days"] ?? snap["contractor_payment_terms_days"])} days</strong></span>
+            )}
+          </div>
         </div>
       )}
 
