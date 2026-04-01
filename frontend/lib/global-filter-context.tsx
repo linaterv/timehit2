@@ -37,9 +37,18 @@ export function GlobalFilterProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ clientId, contractorId }));
   }, [clientId, contractorId]);
 
-  const setGlobalClient = (id: string) => setClientId(id);
-  const setGlobalContractor = (id: string) => setContractorId(id);
-  const clearFilters = () => { setClientId(""); setContractorId(""); };
+  const setGlobalClient = (id: string) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ clientId: id, contractorId }));
+    window.location.reload();
+  };
+  const setGlobalContractor = (id: string) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ clientId, contractorId: id }));
+    window.location.reload();
+  };
+  const clearFilters = () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ clientId: "", contractorId: "" }));
+    window.location.reload();
+  };
 
   return (
     <GlobalFilterContext.Provider value={{ clientId, contractorId, setGlobalClient, setGlobalContractor, clearFilters }}>

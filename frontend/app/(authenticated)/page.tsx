@@ -349,8 +349,8 @@ function ControlScreen() {
             </button>
           );
         }
-        // Approved without invoice → Generate
-        if (row.timesheet?.status === "APPROVED" && !row.client_invoice) {
+        // Approved without invoice (either or both missing) → Generate
+        if (row.timesheet?.status === "APPROVED" && (!row.client_invoice || !row.contractor_invoice)) {
           const isGen = generatingId === row.timesheet.id;
           btns.push(
             <button key="gen" onClick={(e) => { e.stopPropagation(); handleGenerateInline(row.timesheet!.id); }}

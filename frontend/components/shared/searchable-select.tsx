@@ -13,9 +13,10 @@ interface Props {
   onChange: (value: string) => void;
   placeholder?: string;
   testId?: string;
+  compact?: boolean;
 }
 
-export function SearchableSelect({ options, value, onChange, placeholder = "Select...", testId }: Props) {
+export function SearchableSelect({ options, value, onChange, placeholder = "Select...", testId, compact }: Props) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
@@ -47,17 +48,17 @@ export function SearchableSelect({ options, value, onChange, placeholder = "Sele
       <button
         type="button"
         onClick={() => { setOpen(!open); setSearch(""); }}
-        className="w-full border rounded-md px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-brand-600 flex items-center justify-between"
+        className={`w-full border rounded-md text-left focus:outline-none focus:ring-2 focus:ring-brand-600 flex items-center justify-between ${compact ? "px-2 py-1 text-xs" : "px-3 py-2 text-sm"}`}
       >
-        <span className={selected ? "text-gray-900" : "text-gray-400"}>
-          {selected ? selected.label : placeholder}
+        <span className={`truncate ${selected && selected.value ? "text-gray-900" : "text-gray-400"}`}>
+          {selected && selected.value ? selected.label : placeholder}
         </span>
-        <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className={`text-gray-400 shrink-0 ${compact ? "w-3 h-3" : "w-4 h-4"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
       {open && (
-        <div className="absolute z-50 mt-1 w-full bg-white border rounded-md shadow-lg max-h-60 flex flex-col">
+        <div className={`absolute z-50 mt-1 bg-white border rounded-md shadow-lg max-h-60 flex flex-col ${compact ? "w-52" : "w-full"}`}>
           <div className="p-2 border-b">
             <input
               ref={inputRef}
@@ -73,19 +74,19 @@ export function SearchableSelect({ options, value, onChange, placeholder = "Sele
                 }
               }}
               placeholder="Type to search..."
-              className="w-full px-2 py-1.5 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-brand-600"
+              className={`w-full px-2 border rounded focus:outline-none focus:ring-1 focus:ring-brand-600 ${compact ? "py-1 text-xs" : "py-1.5 text-sm"}`}
             />
           </div>
           <div className="overflow-y-auto">
             {filtered.length === 0 && (
-              <div className="px-3 py-2 text-sm text-gray-400">No results</div>
+              <div className={`px-3 py-2 text-gray-400 ${compact ? "text-xs" : "text-sm"}`}>No results</div>
             )}
             {filtered.map((o) => (
               <button
                 key={o.value}
                 type="button"
                 onClick={() => { onChange(o.value); setOpen(false); setSearch(""); }}
-                className={`w-full text-left px-3 py-2 text-sm hover:bg-brand-50 ${o.value === value ? "bg-brand-50 text-brand-700 font-medium" : "text-gray-700"}`}
+                className={`w-full text-left hover:bg-brand-50 ${compact ? "px-2 py-1.5 text-xs" : "px-3 py-2 text-sm"} ${o.value === value ? "bg-brand-50 text-brand-700 font-medium" : "text-gray-700"}`}
               >
                 {o.label}
               </button>

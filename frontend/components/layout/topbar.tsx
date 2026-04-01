@@ -8,6 +8,7 @@ import { useTheme } from "@/lib/theme-context";
 import { useGlobalFilter } from "@/lib/global-filter-context";
 import { useApiQuery } from "@/hooks/use-api";
 import { api } from "@/lib/api";
+import { SearchableSelect } from "@/components/shared/searchable-select";
 import type { PaginatedResponse } from "@/types/api";
 
 export function TopBar({ title }: { title?: string }) {
@@ -36,26 +37,24 @@ export function TopBar({ title }: { title?: string }) {
       <div className="flex items-center gap-3">
         {isAdminOrBroker && (
           <>
-            <select
-              value={clientId}
-              onChange={(e) => setGlobalClient(e.target.value)}
-              className="text-xs border rounded px-2 py-1 text-gray-600 bg-transparent focus:outline-none focus:ring-1 focus:ring-brand-600 max-w-[160px]"
-            >
-              <option value="">All Clients</option>
-              {(clientsData?.data ?? []).map((c) => (
-                <option key={c.id} value={c.id}>{c.company_name}</option>
-              ))}
-            </select>
-            <select
-              value={contractorId}
-              onChange={(e) => setGlobalContractor(e.target.value)}
-              className="text-xs border rounded px-2 py-1 text-gray-600 bg-transparent focus:outline-none focus:ring-1 focus:ring-brand-600 max-w-[160px]"
-            >
-              <option value="">All Contractors</option>
-              {(contractorsData?.data ?? []).map((c) => (
-                <option key={c.id} value={c.user_id}>{c.full_name}</option>
-              ))}
-            </select>
+            <div className="w-40">
+              <SearchableSelect
+                value={clientId}
+                onChange={setGlobalClient}
+                placeholder="All Clients"
+                compact
+                options={[{ value: "", label: "All Clients" }, ...(clientsData?.data ?? []).map((c) => ({ value: c.id, label: c.company_name }))]}
+              />
+            </div>
+            <div className="w-40">
+              <SearchableSelect
+                value={contractorId}
+                onChange={setGlobalContractor}
+                placeholder="All Contractors"
+                compact
+                options={[{ value: "", label: "All Contractors" }, ...(contractorsData?.data ?? []).map((c) => ({ value: c.user_id, label: c.full_name }))]}
+              />
+            </div>
           </>
         )}
       </div>
