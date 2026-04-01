@@ -6,6 +6,12 @@ import { useApiQuery } from "@/hooks/use-api";
 import { formatDateTime } from "@/lib/utils";
 import type { PaginatedResponse } from "@/types/api";
 
+interface RelatedEntity {
+  type: string;
+  id: string;
+  name: string;
+}
+
 interface AuditEntry {
   id: string;
   entity_type: string;
@@ -17,6 +23,7 @@ interface AuditEntry {
   data_after: Record<string, unknown> | null;
   created_by: { id: string; full_name: string } | null;
   created_at: string;
+  related: RelatedEntity[];
 }
 
 const ENTITY_TYPES = ["timesheet", "placement", "invoice", "invoice_template", "client", "contractor", "user", "document"];
@@ -108,6 +115,7 @@ export default function AuditPage() {
                 <th className="px-4 py-2 text-left">Type</th>
                 <th className="px-4 py-2 text-left">Name</th>
                 <th className="px-4 py-2 text-left">Action</th>
+                <th className="px-4 py-2 text-left">Related</th>
                 <th className="px-4 py-2 text-left">User</th>
               </tr>
             </thead>
@@ -131,12 +139,27 @@ export default function AuditPage() {
                     <td className="px-4 py-2">
                       <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${ACTION_COLORS[e.action] || "bg-gray-100 text-gray-600"}`}>{e.action}</span>
                     </td>
+                    <td className="px-4 py-2 text-xs">
+                      {(e.related ?? []).map((r, i) => {
+                        const rLink = entityLink(r.type, r.id);
+                        return (
+                          <span key={i}>
+                            {i > 0 && <span className="text-gray-300">, </span>}
+                            {rLink ? (
+                              <a href={rLink} target="_blank" rel="noopener" className="text-brand-600 hover:underline">{r.name}</a>
+                            ) : (
+                              <span className="text-gray-500">{r.name}</span>
+                            )}
+                          </span>
+                        );
+                      })}
+                    </td>
                     <td className="px-4 py-2 text-gray-500 text-xs">{e.created_by?.full_name ?? "—"}</td>
                   </tr>
                 );
               })}
               {entries.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">No audit entries found.</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">No audit entries found.</td></tr>
               )}
             </tbody>
           </table>
