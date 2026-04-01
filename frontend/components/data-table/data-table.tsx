@@ -82,7 +82,7 @@ export function DataTable<T extends Record<string, any>>({
                   "hover:bg-gray-50 transition-colors",
                   onRowClick && "cursor-pointer",
                   i % 2 === 1 && "bg-gray-50/40",
-                  highlightId && String(row[idKey]) === highlightId && "ring-2 ring-brand-600 bg-brand-50/30",
+                  highlightId && String(row[idKey]) === highlightId && "ring-2 ring-brand-600 bg-brand-100/50 border-l-4 border-l-brand-600 animate-pulse",
                 )}
               >
                 {showSelect && (

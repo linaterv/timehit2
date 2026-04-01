@@ -16,7 +16,6 @@ const COUNTRIES = [
   { code: "HR", name: "Croatia" },
   { code: "CY", name: "Cyprus" },
   { code: "CZ", name: "Czech Republic" },
-  { code: "DK", name: "Denmark" },
   { code: "FI", name: "Finland" },
   { code: "FR", name: "France" },
   { code: "GR", name: "Greece" },
