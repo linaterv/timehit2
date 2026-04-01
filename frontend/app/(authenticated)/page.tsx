@@ -393,7 +393,7 @@ function ControlScreen() {
   // Build a selectable id from placement.id for row selection
   const rowsWithId = overviewRows.map((row) => ({
     ...row,
-    id: row.timesheet?.id ?? row.placement.id,
+    id: `${row.placement.id}_${year}_${month}`,
   }));
 
   return (
