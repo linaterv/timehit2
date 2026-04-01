@@ -141,7 +141,11 @@ The primary operational view. Maps to `GET /control/overview` + `GET /control/su
   - No timesheet → "Create TS" (amber, creates timesheet for the selected month and navigates to it)
   - DRAFT → "Edit TS" (amber, navigates to timesheet)
   - SUBMITTED/CLIENT_APPROVED → "View TS" (gray, navigates)
-  - APPROVED without invoice → "Generate Invoice" (blue brand, inline generation)
+  - APPROVED without invoice (either or both missing/voided) → "Generate Invoice" (blue brand, inline generation — only regenerates the missing type)
+- **Row highlight**: after any action (generate, create TS), the acted-on row gets a brand-colored ring highlight (`ring-2 ring-brand-600 bg-brand-50/30`) so the user doesn't lose focus. Works across all themes via CSS variable.
+- **Row ID**: composite `placement_id + year + month` (unique per row).
+- **Current month**: no warning flags shown (except approved_no_invoice which is actionable).
+- **Invoice column**: shows clickable links to both client + contractor invoices with number + status badge.
 - Bulk action bar (visible when rows selected): "Generate Invoices" button, "Export CSV" button
 - data-testid: `control-table`, `control-row-{id}`, `bulk-generate`, `bulk-export`
 
@@ -228,6 +232,7 @@ Reusable component used by Settings, contractor detail Templates tab, and profil
 - Locked fields shown but grayed out when ACTIVE
 - **Contractor view**: placement is read-only. No action buttons, no Settings tab, no document upload. Only Timesheets tab (with Create Timesheet) and Documents tab (download only). Detail fields: "End Client" (not "Client"), Position, Start/End dates. Hidden: Contractor field, Approval Flow, Rates. Placements list: single "Placement" column as "Client → Position" instead of separate columns.
 - **Create Placement button** on placements list: **admin/broker only, hidden for contractors**
+  - **History** — audit timeline (admin/broker only). Shows all placement events (create, update, activate, complete, cancel, copy) with before/after data snapshots. Fetched from `GET /placements/:id/audit-log`. Color-coded dots: blue=created, green=activated, gray=completed, red=cancelled, amber=updated.
 - data-testid: `placement-detail`, `placement-activate-btn`, `placement-complete-btn`, `placement-cancel-btn`, `placement-copy-btn`, `placement-tab-timesheets`, `placement-tab-documents`, `placement-tab-settings`
 
 ### 8. Timesheets (`/timesheets`)
@@ -423,7 +428,7 @@ frontend/
 
 ## Global Filter
 
-Admin/Broker see two compact dropdowns in the TopBar: **Client** and **Contractor** (default "All"). Selecting a value persists to localStorage and seeds local filters on all filtered pages (Dashboard, Placements, Timesheets, Invoices, Documents). Local page filters can override the global selection. Implemented via `GlobalFilterContext` in `lib/global-filter-context.tsx`.
+Admin/Broker see two compact **searchable** dropdowns in the TopBar (using `SearchableSelect` with `compact` mode): **Client** and **Contractor** (default "All"). Type-to-search filters through 200+ items. Selecting a value persists to localStorage and triggers page reload so all filters re-initialize. Seeds local filters on all filtered pages (Dashboard, Placements, Timesheets, Invoices, Documents). "All Clients"/"All Contractors" option clears the filter. Local page filters can still override per page. Implemented via `GlobalFilterContext` in `lib/global-filter-context.tsx`.
 
 ---
 

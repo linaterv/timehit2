@@ -1,5 +1,6 @@
 import uuid
 from django.db import models
+from django.utils import timezone
 from apps.users.exceptions import InvalidStateTransition
 
 
@@ -39,6 +40,7 @@ class Invoice(models.Model):
     billing_snapshot = models.JSONField(default=dict)
     generated_by = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="generated_invoices")
     pdf_file = models.FileField(upload_to="invoices/", null=True, blank=True)
+    issued_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -52,6 +54,7 @@ class Invoice(models.Model):
         if self.status != self.Status.DRAFT:
             raise InvalidStateTransition("Can only issue from DRAFT status")
         self.status = self.Status.ISSUED
+        self.issued_at = timezone.now()
         self.save()
 
     def mark_paid(self, payment_date, payment_reference=""):

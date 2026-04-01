@@ -24,11 +24,12 @@ interface Props<T> {
   selectedIds?: Set<string>;
   onSelect?: (ids: Set<string>) => void;
   idKey?: string;
+  highlightId?: string | null;
 }
 
 export function DataTable<T extends Record<string, any>>({
   testId, columns, data, meta, onPageChange, onSort, onRowClick, sort, order,
-  selectedIds, onSelect, idKey = "id",
+  selectedIds, onSelect, idKey = "id", highlightId,
 }: Props<T>) {
   const showSelect = !!onSelect;
 
@@ -77,7 +78,12 @@ export function DataTable<T extends Record<string, any>>({
                 key={String(row[idKey]) || i}
                 data-testid={`${testId}-row-${row[idKey]}`}
                 onClick={() => onRowClick?.(row)}
-                className={cn("hover:bg-gray-50 transition-colors", onRowClick && "cursor-pointer", i % 2 === 1 && "bg-gray-50/40")}
+                className={cn(
+                  "hover:bg-gray-50 transition-colors",
+                  onRowClick && "cursor-pointer",
+                  i % 2 === 1 && "bg-gray-50/40",
+                  highlightId && String(row[idKey]) === highlightId && "ring-2 ring-brand-600 bg-brand-50/30",
+                )}
               >
                 {showSelect && (
                   <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>

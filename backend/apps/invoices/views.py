@@ -18,6 +18,30 @@ from .serializers import (
 from apps.timesheets.models import Timesheet
 from apps.contractors.models import ContractorProfile
 from apps.users.permissions import IsAdminOrBroker, has_broker_access_to_client
+from apps.audit.service import log_audit
+
+
+def _inv_snapshot(inv):
+    return {
+        "status": inv.status,
+        "invoice_number": inv.invoice_number,
+        "invoice_type": inv.invoice_type,
+        "total_amount": str(inv.total_amount),
+        "currency": inv.currency,
+        "issue_date": str(inv.issue_date) if inv.issue_date else None,
+        "issued_at": inv.issued_at.isoformat() if inv.issued_at else None,
+        "payment_date": str(inv.payment_date) if inv.payment_date else None,
+    }
+
+
+def _inv_audit(inv, action, title, user, snap_before, snap_after=None, text=""):
+    if snap_after is None:
+        snap_after = _inv_snapshot(inv)
+    log_audit(
+        entity_type="invoice", entity_id=inv.id,
+        action=action, title=title, text=text, user=user,
+        data_before=snap_before, data_after=snap_after,
+    )
 
 
 def _next_agency_number():
@@ -193,6 +217,10 @@ class GenerateInvoicesView(APIView):
                     )
                     generate_invoice_pdf(co_inv)
 
+            if c_inv:
+                _inv_audit(c_inv, "CREATED", f"Invoice {c_inv.invoice_number} generated", request.user, None)
+            if co_inv:
+                _inv_audit(co_inv, "CREATED", f"Invoice {co_inv.invoice_number} generated", request.user, None)
             result = {"timesheet_id": str(ts_id)}
             if c_inv:
                 result["client_invoice"] = {"id": str(c_inv.id), "invoice_number": c_inv.invoice_number, "total_amount": str(c_inv.total_amount), "status": c_inv.status}
@@ -267,7 +295,9 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         if not (request.user.is_admin or request.user.is_broker):
             raise PermissionDenied()
         inv = self.get_object()
+        snap = _inv_snapshot(inv)
         inv.issue()
+        _inv_audit(inv, "ISSUED", f"Invoice {inv.invoice_number} issued", request.user, snap)
         return Response(InvoiceDetailSerializer(inv).data)
 
     @extend_schema(tags=["Invoices"], request=MarkPaidSerializer)
@@ -278,7 +308,9 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         ser = MarkPaidSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         inv = self.get_object()
+        snap = _inv_snapshot(inv)
         inv.mark_paid(ser.validated_data["payment_date"], ser.validated_data.get("payment_reference", ""))
+        _inv_audit(inv, "PAID", f"Invoice {inv.invoice_number} marked paid", request.user, snap)
         return Response(InvoiceDetailSerializer(inv).data)
 
     @extend_schema(tags=["Invoices"], request=VoidSerializer)
@@ -287,7 +319,9 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         if not (request.user.is_admin or request.user.is_broker):
             raise PermissionDenied()
         inv = self.get_object()
+        snap = _inv_snapshot(inv)
         inv.void()
+        _inv_audit(inv, "VOIDED", f"Invoice {inv.invoice_number} voided", request.user, snap)
         return Response(InvoiceDetailSerializer(inv).data)
 
     @extend_schema(tags=["Invoices"], request=CorrectSerializer)
@@ -298,8 +332,10 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         ser = CorrectSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         inv = self.get_object()
+        snap = _inv_snapshot(inv)
         d = ser.validated_data
         inv.mark_corrected()
+        _inv_audit(inv, "CORRECTED", f"Invoice {inv.invoice_number} corrected", request.user, snap)
         hr = d.get("hourly_rate", inv.hourly_rate)
         th = d.get("total_hours", inv.total_hours)
         sub = hr * th

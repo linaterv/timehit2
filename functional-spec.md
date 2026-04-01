@@ -301,7 +301,7 @@ Generic audit trail for tracking who did what to any entity. Entity-agnostic via
 | visible_to_contractor | boolean | default true |
 | visible_to_client | boolean | default true |
 
-Currently attached to Timesheets. Events logged: submit, withdraw, approve, client_approve, reject, entries updated. Displayed in a History tab on the timesheet detail page.
+Attached to **Timesheets** and **Placements**. Timesheet events: create, submit, withdraw, approve, client_approve, reject, entries updated. Placement events: create, update, activate, complete, cancel, copy. Each stores full before/after snapshot. Displayed in a History tab on both timesheet and placement detail pages.
 
 ---
 

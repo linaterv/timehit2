@@ -693,6 +693,30 @@ Only DRAFT placements with no timesheets.
 // 409 — has timesheets or not in DRAFT status
 ```
 
+### `GET /placements/:id/audit-log`
+
+Returns audit history for a placement. Same role-based filtering as timesheet audit-log.
+
+```json
+// 200
+{
+  "data": [
+    {
+      "id": "uuid",
+      "entity_type": "placement",
+      "entity_id": "uuid",
+      "action": "ACTIVATED",
+      "title": "Placement activated",
+      "text": "",
+      "data_before": { "status": "DRAFT", "client": "TechVibe GmbH", ... },
+      "data_after": { "status": "ACTIVE", ... },
+      "created_by": { "id": "uuid", "full_name": "Jonas Broker" },
+      "created_at": "2026-04-01T10:00:00Z"
+    }
+  ]
+}
+```
+
 ---
 
 ## 8. Placement Documents
@@ -1482,6 +1506,7 @@ Query params: `year` (required), `month` (required), `client_id`, `contractor_id
 - `"pending_approval"` — timesheet awaiting approval
 - `"approved_no_invoice"` — approved but invoices not generated
 - `"missing_bank_details"` — contractor profile missing bank info
+- `"invoice_not_sent"` — invoice generated but not yet issued (broker needs to review and issue)
 - `"invoice_unpaid"` — invoice issued but not marked paid
 
 ### `GET /control/summary`

@@ -171,6 +171,7 @@ function ControlScreen() {
   const [generateOpen, setGenerateOpen] = useState(false);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [creatingTsForPlacement, setCreatingTsForPlacement] = useState<string | null>(null);
+  const [lastActedRowId, setLastActedRowId] = useState<string | null>(null);
   const router = useRouter();
   const qc = useQueryClient();
 
@@ -189,8 +190,9 @@ function ControlScreen() {
     }
   };
 
-  const handleGenerateInline = async (tsId: string) => {
+  const handleGenerateInline = async (tsId: string, rowId: string) => {
     setGeneratingId(tsId);
+    setLastActedRowId(rowId);
     try {
       await api("/invoices/generate", { method: "POST", body: JSON.stringify({ timesheet_ids: [tsId] }) });
       qc.invalidateQueries({ queryKey: ["control-overview"] });
@@ -353,7 +355,7 @@ function ControlScreen() {
         if (row.timesheet?.status === "APPROVED" && (!row.client_invoice || !row.contractor_invoice)) {
           const isGen = generatingId === row.timesheet.id;
           btns.push(
-            <button key="gen" onClick={(e) => { e.stopPropagation(); handleGenerateInline(row.timesheet!.id); }}
+            <button key="gen" onClick={(e) => { e.stopPropagation(); handleGenerateInline(row.timesheet!.id, `${row.placement.id}_${year}_${month}`); }}
               disabled={isGen}
               className="px-2 py-1 rounded text-xs font-medium bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50 whitespace-nowrap">
               {isGen ? "Generating..." : "Generate Invoice"}
@@ -554,6 +556,7 @@ function ControlScreen() {
           order={order}
           selectedIds={selectedIds}
           onSelect={setSelectedIds}
+          highlightId={lastActedRowId}
         />
       )}
 

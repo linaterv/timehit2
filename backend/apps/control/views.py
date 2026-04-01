@@ -62,8 +62,21 @@ class ControlOverviewView(APIView):
                         flags.append("missing_bank_details")
                 except Exception:
                     flags.append("missing_bank_details")
-                if c_inv and c_inv.status == Invoice.Status.ISSUED:
-                    flags.append("invoice_unpaid")
+                c_st = c_inv.status if c_inv else None
+                co_st = co_inv.status if co_inv else None
+                if c_st == co_st:
+                    # Same status — single flag
+                    if c_st == Invoice.Status.DRAFT:
+                        flags.append("invoice_not_sent")
+                    elif c_st == Invoice.Status.ISSUED:
+                        flags.append("invoice_unpaid")
+                else:
+                    # Different statuses — separate flags
+                    for label, inv in [("client_inv", c_inv), ("contr_inv", co_inv)]:
+                        if inv and inv.status == Invoice.Status.DRAFT:
+                            flags.append(f"{label}_not_sent")
+                        elif inv and inv.status == Invoice.Status.ISSUED:
+                            flags.append(f"{label}_unpaid")
             else:
                 # Current month: only show approved_no_invoice (actionable)
                 if ts and ts.status == Timesheet.Status.APPROVED and not c_inv:
