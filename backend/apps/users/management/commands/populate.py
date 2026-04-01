@@ -413,7 +413,7 @@ class Command(BaseCommand):
         p_demo3 = Placement.objects.create(
             client=demo_client, contractor=demo_contr3,
             client_rate=D("75"), contractor_rate=D("55"),
-            currency="EUR", start_date=date(2026, 2, 1),
+            currency="EUR", start_date=date(2026, 1, 1),
             status="ACTIVE", approval_flow="BROKER_ONLY",
             client_invoice_template=client_tpl_lt,
             payment_terms_client_days=31, payment_terms_contractor_days=36,
@@ -507,6 +507,7 @@ class Command(BaseCommand):
         ts_demo2.append(make_ts(p_demo2, 2026, 3, "APPROVED", "Kubernetes migration"))  # March — no invoice!
 
         ts_demo3 = []
+        ts_demo3.append(make_ts(p_demo3, 2026, 1, "APPROVED", "Research & mood boards"))
         ts_demo3.append(make_ts(p_demo3, 2026, 2, "APPROVED", "Wireframes"))
         ts_demo3.append(make_ts(p_demo3, 2026, 3, "APPROVED", "UI mockups"))  # March — no invoice!
 
@@ -596,7 +597,7 @@ class Command(BaseCommand):
         all_approved += ts_p7       # P7: Jun-Dec 2025 (7)
         all_approved += ts_demo[:1]  # Demo: Feb only (March left without invoice!)
         all_approved += ts_demo2[:1] # Demo2: Feb only
-        all_approved += ts_demo3[:1] # Demo3: Feb only
+        all_approved += ts_demo3[:2] # Demo3: Jan + Feb (March left without invoice!)
 
         for ts in all_approved:
             is_2025 = ts.year == 2025
@@ -617,6 +618,13 @@ class Command(BaseCommand):
             InvoiceTemplate.objects.filter(
                 contractor_id=uid, template_type="CONTRACTOR", is_default=True
             ).update(next_invoice_number=count + 1)
+
+        # Demo3 (Designer) Feb invoices → ISSUED on Feb 1 (simulates late payment)
+        from django.utils import timezone as tz
+        demo3_feb_invs = Invoice.objects.filter(
+            placement=p_demo3, year=2026, month=2,
+        ).exclude(status=Invoice.Status.VOIDED)
+        demo3_feb_invs.update(status=Invoice.Status.ISSUED, issued_at=tz.make_aware(tz.datetime(2026, 2, 1, 10, 0, 0)))
 
         # ── GENERATE PDFs ────────────────────────────────────────────────────
         self.stdout.write("Generating invoice PDFs...")

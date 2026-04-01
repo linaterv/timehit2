@@ -1,5 +1,5 @@
 import csv
-from datetime import date
+from datetime import date, timedelta
 from io import StringIO
 from decimal import Decimal
 from collections import defaultdict
@@ -62,21 +62,26 @@ class ControlOverviewView(APIView):
                         flags.append("missing_bank_details")
                 except Exception:
                     flags.append("missing_bank_details")
-                c_st = c_inv.status if c_inv else None
-                co_st = co_inv.status if co_inv else None
-                if c_st == co_st:
-                    # Same status — single flag
-                    if c_st == Invoice.Status.DRAFT:
-                        flags.append("invoice_not_sent")
-                    elif c_st == Invoice.Status.ISSUED:
-                        flags.append("invoice_unpaid")
-                else:
-                    # Different statuses — separate flags
-                    for label, inv in [("client_inv", c_inv), ("contr_inv", co_inv)]:
-                        if inv and inv.status == Invoice.Status.DRAFT:
-                            flags.append(f"{label}_not_sent")
-                        elif inv and inv.status == Invoice.Status.ISSUED:
-                            flags.append(f"{label}_unpaid")
+                def _inv_flags(inv, terms_days, label):
+                    if not inv:
+                        return
+                    if inv.status == Invoice.Status.DRAFT:
+                        flags.append(f"{label}_not_sent")
+                    elif inv.status == Invoice.Status.ISSUED:
+                        due = terms_days or 30
+                        if inv.issued_at and inv.issued_at.date() + timedelta(days=due) < now:
+                            overdue = (now - (inv.issued_at.date() + timedelta(days=due))).days
+                            flags.append(f"{label}_unpaid_{overdue}d")
+
+                c_terms = pl.payment_terms_client_days
+                co_terms = pl.payment_terms_contractor_days
+                _inv_flags(c_inv, c_terms, "client_inv")
+                _inv_flags(co_inv, co_terms, "contr_inv")
+                # Merge _not_sent if both same
+                if "client_inv_not_sent" in flags and "contr_inv_not_sent" in flags:
+                    flags.remove("client_inv_not_sent")
+                    flags.remove("contr_inv_not_sent")
+                    flags.append("invoice_not_sent")
             else:
                 # Current month: only show approved_no_invoice (actionable)
                 if ts and ts.status == Timesheet.Status.APPROVED and not c_inv:
