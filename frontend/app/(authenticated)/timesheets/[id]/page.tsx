@@ -479,13 +479,27 @@ export default function TimesheetDetailPage() {
                   <div className="pb-3">
                     <p className="font-medium text-gray-900">{entry.title}</p>
                     {entry.text && <p className="text-gray-500">{entry.text}</p>}
-                    {entry.data_after && (
-                      <p className="text-xs text-gray-400">
-                        {entry.data_after.total_hours != null && `${entry.data_after.total_hours}h`}
-                        {entry.data_after.entry_count != null && ` · ${entry.data_after.entry_count} entries`}
-                      </p>
+                    {(entry.data_before || entry.data_after) && (
+                      <div className="mt-1 flex gap-4 text-xs">
+                        {entry.data_before && (
+                          <div className="bg-red-50 text-red-700 rounded px-2 py-1">
+                            <span className="font-medium">Before: </span>
+                            {Object.entries(entry.data_before).map(([k, v]) => (
+                              <span key={k} className="mr-2">{k}=<span className="font-mono">{String(v)}</span></span>
+                            ))}
+                          </div>
+                        )}
+                        {entry.data_after && (
+                          <div className="bg-green-50 text-green-700 rounded px-2 py-1">
+                            <span className="font-medium">After: </span>
+                            {Object.entries(entry.data_after).map(([k, v]) => (
+                              <span key={k} className="mr-2">{k}=<span className="font-mono">{String(v)}</span></span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     )}
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="text-xs text-gray-400 mt-1">
                       {formatDate(entry.created_at)}
                       {entry.created_by && ` · ${entry.created_by.full_name}`}
                     </p>
@@ -498,7 +512,7 @@ export default function TimesheetDetailPage() {
       )}
 
       {/* Time Entries — Calendar / Detailed unified view */}
-      {activeTab === "entries" && <div data-testid="entry-grid" className="space-y-3">
+      {activeTab === "entries" && (<><div data-testid="entry-grid" className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-medium">Time Entries</h2>
           <div className="flex items-center gap-2">
@@ -762,8 +776,7 @@ export default function TimesheetDetailPage() {
           <p className="text-sm text-gray-400">No attachments</p>
         )}
       </div>
-
-      </div>}
+      </>)}
 
       {/* Confirm empty submit */}
       <ConfirmDialog open={confirmSubmitEmpty} title="Submit with 0 Hours?"

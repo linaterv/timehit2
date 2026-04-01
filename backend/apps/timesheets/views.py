@@ -22,11 +22,27 @@ from apps.users.exceptions import ConflictError, InvalidStateTransition
 from apps.audit.service import log_audit
 
 
-def _audit(ts, action, title, user, data_before, data_after, text=""):
+def _ts_snapshot(ts):
+    entries = list(ts.entries.order_by("date", "task_name").values("date", "hours", "task_name"))
+    return {
+        "status": ts.status,
+        "total_hours": str(ts.total_hours),
+        "entry_count": len(entries),
+        "submitted_at": ts.submitted_at.isoformat() if ts.submitted_at else None,
+        "approved_at": ts.approved_at.isoformat() if ts.approved_at else None,
+        "approved_by": ts.approved_by.full_name if ts.approved_by else None,
+        "rejection_reason": ts.rejection_reason or None,
+        "entries": [{"date": str(e["date"]), "hours": str(e["hours"]), "task": e["task_name"]} for e in entries],
+    }
+
+
+def _audit(ts, action, title, user, snap_before, snap_after=None, text=""):
+    if snap_after is None:
+        snap_after = _ts_snapshot(ts)
     log_audit(
         entity_type="timesheet", entity_id=ts.id,
         action=action, title=title, text=text, user=user,
-        data_before=data_before, data_after=data_after,
+        data_before=snap_before, data_after=snap_after,
     )
 
 
@@ -99,10 +115,10 @@ class TimesheetViewSet(viewsets.ModelViewSet):
     @extend_schema(tags=["Timesheets"])
     def create(self, request, placement_pk=None, **kwargs):
         user = request.user
-        if not user.is_contractor:
-            raise PermissionDenied("Only contractors can create timesheets")
         placement = Placement.objects.get(pk=placement_pk)
-        if placement.contractor_id != user.id:
+        if user.is_contractor and placement.contractor_id != user.id:
+            raise PermissionDenied()
+        if user.is_client_contact:
             raise PermissionDenied()
         ser = TimesheetCreateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
@@ -116,6 +132,8 @@ class TimesheetViewSet(viewsets.ModelViewSet):
         if Timesheet.objects.filter(placement=placement, year=year, month=month).exists():
             raise ConflictError("Timesheet already exists for this placement and month")
         ts = Timesheet.objects.create(placement=placement, year=year, month=month)
+        _audit(ts, "CREATED", f"Timesheet created for {year}-{str(month).zfill(2)}", user,
+               None, {"status": ts.status, "year": year, "month": month})
         return Response(TimesheetDetailSerializer(ts, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
     @extend_schema(tags=["Timesheets"])
@@ -149,9 +167,9 @@ class TimesheetViewSet(viewsets.ModelViewSet):
             raise PermissionDenied()
         ser = SubmitSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
-        old_status = ts.status
+        snap_before = _ts_snapshot(ts)
         ts.submit(confirm_zero=ser.validated_data.get("confirm_zero", False))
-        _audit(ts, "SUBMITTED", "Timesheet submitted", request.user, {"status": old_status}, {"status": ts.status, "total_hours": str(ts.total_hours)})
+        _audit(ts, "SUBMITTED", "Timesheet submitted", request.user, snap_before)
         return Response(TimesheetDetailSerializer(ts, context={"request": request}).data)
 
     @extend_schema(tags=["Timesheets"], request=None)
@@ -160,9 +178,9 @@ class TimesheetViewSet(viewsets.ModelViewSet):
         ts = Timesheet.objects.select_related("placement").get(pk=pk)
         if not request.user.is_contractor or ts.placement.contractor_id != request.user.id:
             raise PermissionDenied()
-        old_status = ts.status
+        snap_before = _ts_snapshot(ts)
         ts.withdraw()
-        _audit(ts, "WITHDRAWN", "Timesheet withdrawn", request.user, {"status": old_status}, {"status": ts.status})
+        _audit(ts, "WITHDRAWN", "Timesheet withdrawn", request.user, snap_before)
         return Response(TimesheetDetailSerializer(ts, context={"request": request}).data)
 
     @extend_schema(tags=["Timesheets"], request=None)
@@ -174,9 +192,9 @@ class TimesheetViewSet(viewsets.ModelViewSet):
             raise PermissionDenied()
         if user.is_broker and not has_broker_access_to_client(user, ts.placement.client_id):
             raise PermissionDenied()
-        old_status = ts.status
+        snap_before = _ts_snapshot(ts)
         ts.approve(user)
-        _audit(ts, "APPROVED", f"Approved by {user.full_name}", user, {"status": old_status}, {"status": ts.status})
+        _audit(ts, "APPROVED", f"Approved by {user.full_name}", user, snap_before)
         return Response(TimesheetDetailSerializer(ts, context={"request": request}).data)
 
     @extend_schema(tags=["Timesheets"], request=None)
@@ -191,9 +209,9 @@ class TimesheetViewSet(viewsets.ModelViewSet):
                 raise PermissionDenied()
         except Exception:
             raise PermissionDenied()
-        old_status = ts.status
+        snap_before = _ts_snapshot(ts)
         ts.client_approve(user)
-        _audit(ts, "CLIENT_APPROVED", f"Client approved by {user.full_name}", user, {"status": old_status}, {"status": ts.status})
+        _audit(ts, "CLIENT_APPROVED", f"Client approved by {user.full_name}", user, snap_before)
         return Response(TimesheetDetailSerializer(ts, context={"request": request}).data)
 
     @extend_schema(tags=["Timesheets"], request=RejectSerializer)
@@ -212,10 +230,10 @@ class TimesheetViewSet(viewsets.ModelViewSet):
                 raise InvalidStateTransition("Client can only reject from SUBMITTED")
         else:
             raise PermissionDenied()
-        old_status = ts.status
+        snap_before = _ts_snapshot(ts)
         reason = ser.validated_data["reason"]
         ts.reject(user, reason)
-        _audit(ts, "REJECTED", f"Rejected by {user.full_name}", user, {"status": old_status}, {"status": ts.status, "rejection_reason": reason}, text=reason)
+        _audit(ts, "REJECTED", f"Rejected by {user.full_name}", user, snap_before, text=reason)
         return Response(TimesheetDetailSerializer(ts, context={"request": request}).data)
 
 
