@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useApiQuery, useApiMutation } from "@/hooks/use-api";
 import { useAuth } from "@/hooks/use-auth";
@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { SearchableSelect } from "@/components/shared/searchable-select";
 import { CircleAlert } from "lucide-react";
 import { FileUpload } from "@/components/shared/file-upload";
+import { EntityLink as EL } from "@/components/shared/entity-link";
 import { formatCurrency, formatDate, formatDateTime, formatMonth } from "@/lib/utils";
 import type {
   Placement,
@@ -53,7 +54,8 @@ export default function PlacementDetailPage() {
   const qc = useQueryClient();
   const { user } = useAuth();
 
-  const [tab, setTab] = useState<Tab>("timesheets");
+  const searchParams = useSearchParams();
+  const [tab, setTab] = useState<Tab>((searchParams.get("tab") as Tab) || "timesheets");
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [docDialogOpen, setDocDialogOpen] = useState(false);
@@ -341,12 +343,12 @@ export default function PlacementDetailPage() {
           <div>
             <div className="flex items-center gap-3 mb-1">
               <h1 className="text-xl font-semibold">
-                {placement.client.company_name} &rarr; {placement.title || placement.contractor.full_name}
+                <EL href={`/clients/${placement.client.id}`}>{placement.client.company_name}</EL> &rarr; {placement.title || <EL href={`/contractors/${placement.contractor.id}`}>{placement.contractor.full_name}</EL>}
               </h1>
               <StatusBadge value={placement.status} />
             </div>
             {placement.title && (
-              <p className="text-sm text-gray-500">{placement.contractor.full_name}</p>
+              <p className="text-sm text-gray-500"><EL href={`/contractors/${placement.contractor.id}`}>{placement.contractor.full_name}</EL></p>
             )}
           </div>
           <div className="flex gap-2">

@@ -10,6 +10,7 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { formatCurrency, formatDate, formatMonth } from "@/lib/utils";
 import { FileDown } from "lucide-react";
 import { getAccessToken } from "@/lib/api";
+import { AuditTimeline } from "@/components/shared/audit-timeline";
 import type { Invoice, UserRef } from "@/types/api";
 
 interface InvoiceNotification {
@@ -39,6 +40,10 @@ export default function InvoiceDetailPage() {
   const { data: notificationsData } = useApiQuery<{ data: InvoiceNotification[] }>(
     ["invoice-notifications", invoiceId],
     `/invoices/${invoiceId}/notifications`
+  );
+
+  const auditQ = useApiQuery<{ data: { id: string; action: string; title: string; text: string; data_before: Record<string, unknown> | null; data_after: Record<string, unknown> | null; created_by: { id: string; full_name: string } | null; created_at: string; entity_type: string; entity_id: string }[] }>(
+    ["invoice-audit", invoiceId], `/invoices/${invoiceId}/audit-log`
   );
 
   // Action mutations
@@ -503,6 +508,14 @@ export default function InvoiceDetailPage() {
         confirmLabel="Void Invoice"
         destructive
       />
+
+      {/* Audit History */}
+      {!isContractor && (
+        <div className="border rounded-lg p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Audit History</h2>
+          <AuditTimeline entries={auditQ.data?.data ?? []} loading={auditQ.isLoading} />
+        </div>
+      )}
 
       {/* Notification History */}
       {(notificationsData?.data?.length ?? 0) > 0 && (

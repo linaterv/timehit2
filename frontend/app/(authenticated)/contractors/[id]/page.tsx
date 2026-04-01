@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useApiQuery, useApiMutation } from "@/hooks/use-api";
 import { useAuth } from "@/hooks/use-auth";
@@ -9,7 +9,9 @@ import { api } from "@/lib/api";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { CountrySelect } from "@/components/shared/country-select";
+import { EntityLink as EL } from "@/components/shared/entity-link";
 import { formatDate } from "@/lib/utils";
+import { AuditTimeline } from "@/components/shared/audit-timeline";
 import {
   InvoiceTemplateA4, TplForm, emptyTplForm, tplToForm,
   STATUS_COLORS, TYPE_LABELS,
@@ -48,7 +50,8 @@ export default function ContractorDetailPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
 
-  const [tab, setTab] = useState<"placements" | "profile" | "templates">("placements");
+  const searchParams = useSearchParams();
+  const [tab, setTab] = useState<"placements" | "profile" | "templates" | "history">((searchParams.get("tab") as "placements" | "profile" | "templates" | "history") || "placements");
   const [placementStatus, setPlacementStatus] = useState<string>("");
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<ContractorFormData>(emptyForm());
@@ -83,6 +86,10 @@ export default function ContractorDetailPage() {
     user?.role === "ADMIN"
   );
   const globalTemplates = (globalTplQ.data?.data ?? []).filter((t) => !t.contractor && !t.client);
+
+  const auditQ = useApiQuery<{ data: { id: string; action: string; title: string; text: string; data_before: Record<string, unknown> | null; data_after: Record<string, unknown> | null; created_by: { id: string; full_name: string } | null; created_at: string; entity_type: string; entity_id: string }[] }>(
+    ["contractor-audit", contractorId], `/contractors/${contractorId}/audit-log`, tab === "history"
+  );
 
   const placementsUrl = `/placements?contractor_id=${contractor?.user_id}&per_page=50&sort=start_date&order=desc${placementStatus ? `&status=${placementStatus}` : ""}`;
   const placementsQ = useApiQuery<PaginatedResponse<Placement>>(
@@ -270,6 +277,12 @@ export default function ContractorDetailPage() {
             Templates
           </button>
         )}
+        {isAdmin && (
+          <button onClick={() => setTab("history")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === "history" ? "border-brand-600 text-brand-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+            History
+          </button>
+        )}
       </div>
 
       {/* ── PLACEMENTS TAB ── */}
@@ -307,7 +320,7 @@ export default function ContractorDetailPage() {
                   <tr key={p.id}
                     onClick={() => router.push(`/placements/${p.id}`)}
                     className="border-b hover:bg-gray-50 cursor-pointer">
-                    <td className="py-2 pr-4">{p.client.company_name}</td>
+                    <td className="py-2 pr-4"><EL href={`/clients/${p.client.id}`}>{p.client.company_name}</EL></td>
                     <td className="py-2 pr-4">{p.title || "—"}</td>
                     <td className="py-2 pr-4"><StatusBadge value={p.status} /></td>
                     <td className="py-2 pr-4">{formatDate(p.start_date)}</td>
@@ -422,6 +435,14 @@ export default function ContractorDetailPage() {
           contractorOwnEdit
           parentTemplate={globalTemplates.find((g) => g.id === (tplForm.parent_id ?? tplEditing?.parent_id)) ?? null}
         />
+      )}
+
+      {/* ── HISTORY TAB ── */}
+      {tab === "history" && (
+        <div className="border rounded-lg p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">History</h2>
+          <AuditTimeline entries={auditQ.data?.data ?? []} loading={auditQ.isLoading} />
+        </div>
       )}
 
       {deleteMsg && (

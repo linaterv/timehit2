@@ -7,6 +7,7 @@ import { useApiQuery, useApiMutation } from "@/hooks/use-api";
 import { DataTable, type Column } from "@/components/data-table/data-table";
 import { SlideOver } from "@/components/forms/slide-over";
 import { CountrySelect } from "@/components/shared/country-select";
+import { EntityLink as EL } from "@/components/shared/entity-link";
 import type { Client, PaginatedResponse } from "@/types/api";
 
 export default function ClientsPage() {
@@ -90,9 +91,9 @@ export default function ClientsPage() {
                 ))}
               </div>
             )}
-            <span className="text-xs text-gray-400">
+            <EL href={`/clients/${row.id}?tab=placements`} className="text-xs text-gray-400 hover:text-brand-600">
               {s.active_count} active{s.inactive_count > 0 ? ` / ${s.inactive_count} inactive` : ""}
-            </span>
+            </EL>
           </div>
         );
       },

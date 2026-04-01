@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { useApiQuery, useApiMutation } from "@/hooks/use-api";
 import { DataTable, type Column } from "@/components/data-table/data-table";
@@ -9,8 +9,10 @@ import { SlideOver } from "@/components/forms/slide-over";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { CountrySelect } from "@/components/shared/country-select";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { EntityLink as EL } from "@/components/shared/entity-link";
 import { formatDate } from "@/lib/utils";
 import { api } from "@/lib/api";
+import { AuditTimeline } from "@/components/shared/audit-timeline";
 import {
   InvoiceTemplateA4, TplForm, emptyTplForm, tplToForm, STATUS_COLORS,
 } from "@/components/shared/invoice-template-editor";
@@ -23,14 +25,15 @@ import type {
   InvoiceTemplate,
 } from "@/types/api";
 
-type Tab = "contacts" | "brokers" | "placements" | "templates";
+type Tab = "contacts" | "brokers" | "placements" | "templates" | "history";
 
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<Tab>("contacts");
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<Tab>((searchParams.get("tab") as Tab) || "contacts");
   const [editSlideOpen, setEditSlideOpen] = useState(false);
   const [contactSlideOpen, setContactSlideOpen] = useState(false);
   const [brokerSlideOpen, setBrokerSlideOpen] = useState(false);
@@ -109,6 +112,10 @@ export default function ClientDetailPage() {
     allowed
   );
   const globalTemplates = (globalTplQ.data?.data ?? []).filter((t) => !t.contractor && !t.client);
+
+  const auditQ = useApiQuery<{ data: { id: string; action: string; title: string; text: string; data_before: Record<string, unknown> | null; data_after: Record<string, unknown> | null; created_by: { id: string; full_name: string } | null; created_at: string; entity_type: string; entity_id: string }[] }>(
+    ["client-audit", id], `/clients/${id}/audit-log`, allowed && activeTab === "history"
+  );
 
   // ----- Mutations -----
 
@@ -291,7 +298,7 @@ export default function ClientDetailPage() {
     {
       key: "contractor",
       label: "Contractor",
-      render: (row) => <span>{row.contractor.full_name}</span>,
+      render: (row) => <EL href={`/contractors/${row.contractor.id}`}>{row.contractor.full_name}</EL>,
     },
     { key: "currency", label: "Currency" },
     { key: "client_rate", label: "Client Rate" },
@@ -359,6 +366,7 @@ export default function ClientDetailPage() {
     { key: "brokers", label: "Brokers" },
     { key: "placements", label: "Placements" },
     { key: "templates", label: "Billing Templates" },
+    { key: "history", label: "History" },
   ];
 
   return (
@@ -535,6 +543,7 @@ export default function ClientDetailPage() {
                 columns={placementColumns}
                 data={placementsData?.data ?? []}
                 meta={placementsData?.meta}
+                onRowClick={(row) => router.push(`/placements/${row.id}`)}
               />
             )}
           </div>
@@ -578,6 +587,13 @@ export default function ClientDetailPage() {
             contractorOwnEdit
             parentTemplate={globalTemplates.find((g) => g.id === (tplForm.parent_id ?? tplEditing?.parent_id)) ?? null}
           />
+        )}
+        {/* History tab */}
+        {activeTab === "history" && (
+          <div data-testid="history-tab-content" className="border rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">History</h2>
+            <AuditTimeline entries={auditQ.data?.data ?? []} loading={auditQ.isLoading} />
+          </div>
         )}
       </div>
 

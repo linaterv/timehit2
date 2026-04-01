@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   LayoutDashboard, Users, Building2, HardHat, Briefcase, Clock,
-  FileText, FolderOpen, UserCog, Settings, PanelLeftClose, PanelLeft,
+  FileText, FolderOpen, UserCog, Settings, ScrollText, PanelLeftClose, PanelLeft,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,7 @@ const NAV: Record<Role, NavItem[]> = {
     { label: "Timesheets", icon: Clock, href: "/timesheets" },
     { label: "Invoices", icon: FileText, href: "/invoices" },
     { label: "Documents", icon: FolderOpen, href: "/documents" },
+    { label: "Audit", icon: ScrollText, href: "/audit" },
     { label: "Settings", icon: Settings, href: "/settings" },
   ],
   BROKER: [

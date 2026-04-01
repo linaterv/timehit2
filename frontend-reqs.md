@@ -374,6 +374,16 @@ Subtabs within the settings page:
 | `ConfirmDialog` | Destructive action confirmation | `confirm-dialog`, `confirm-yes`, `confirm-no` |
 | `MonthPicker` | Year-month selector | `month-selector` |
 | `FileUpload` | Drag-and-drop upload area | `file-upload` |
+| `EntityLink` | Clickable `<a href>` to entity detail page. Supports right-click/middle-click open in new tab. | — |
+| `RelationshipSummary` | Shows 2 most recent related items as clickable links + "N total" link that opens parent detail with `?tab=` param | — |
+
+### Cross-Entity Linking Rules
+
+Every entity reference displayed in the UI must be a clickable link (`<a href>`) to its detail page. This applies to:
+- **List tables**: client name → `/clients/:id`, contractor name → `/contractors/:id`, placement → `/placements/:id`
+- **Detail page headers**: all referenced entities are clickable
+- **One-to-many columns**: show 2 most recent as individual links + "N total" that opens the parent's detail page with the relationship tab auto-selected via `?tab=` query param (e.g. `/clients/123?tab=placements`)
+- **Detail pages support `?tab=` deep linking**: reading `tab` from URL search params on mount to auto-open the specified tab
 
 ---
 

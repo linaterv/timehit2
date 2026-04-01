@@ -8,6 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useApiQuery } from "@/hooks/use-api";
 import { DataTable, type Column } from "@/components/data-table/data-table";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { EntityLink as EL } from "@/components/shared/entity-link";
 
 import { GenerateInvoicesModal } from "@/components/shared/generate-invoices-modal";
 import { formatCurrency, formatMonth } from "@/lib/utils";
@@ -313,10 +314,10 @@ function ControlScreen() {
       label: "Placement",
       render: (row) => (
         <div>
-          <span className="font-medium">{row.client.company_name}</span>
+          <EL href={`/clients/${row.client.id}`} className="font-medium">{row.client.company_name}</EL>
           <span className="text-gray-400 mx-1">&rarr;</span>
-          <span>{row.placement.title || row.contractor.full_name}</span>
-          {row.placement.title && <div className="text-xs text-gray-400">{row.contractor.full_name}</div>}
+          <EL href={`/placements/${row.placement.id}`}>{row.placement.title || row.contractor.full_name}</EL>
+          {row.placement.title && <div className="text-xs"><EL href={`/contractors/${row.contractor.id}`} className="text-gray-400 hover:text-brand-600">{row.contractor.full_name}</EL></div>}
         </div>
       ),
     },

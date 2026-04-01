@@ -12,6 +12,7 @@ import { useApiQuery, useApiMutation } from "@/hooks/use-api";
 import { useGlobalFilter } from "@/lib/global-filter-context";
 import { useAuth } from "@/hooks/use-auth";
 import { api } from "@/lib/api";
+import { EntityLink as EL } from "@/components/shared/entity-link";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Timesheet } from "@/types/api";
 import type {
@@ -227,13 +228,13 @@ export default function PlacementsPage() {
         key: "client",
         label: "Client",
         sortable: false,
-        render: (row: Placement) => row.client.company_name,
+        render: (row: Placement) => <EL href={`/clients/${row.client.id}`}>{row.client.company_name}</EL>,
       } as Column<Placement>,
       {
         key: "contractor",
         label: "Contractor",
         sortable: false,
-        render: (row: Placement) => row.contractor.full_name,
+        render: (row: Placement) => <EL href={`/contractors/${row.contractor.id}`}>{row.contractor.full_name}</EL>,
       } as Column<Placement>,
       {
         key: "title",

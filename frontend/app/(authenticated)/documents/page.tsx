@@ -6,6 +6,7 @@ import { useGlobalFilter } from "@/lib/global-filter-context";
 import { useApiQuery, useApiMutation } from "@/hooks/use-api";
 import { DataTable, type Column } from "@/components/data-table/data-table";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { EntityLink as EL } from "@/components/shared/entity-link";
 import { formatDate } from "@/lib/utils";
 import { Download, Trash2 } from "lucide-react";
 import { getAccessToken } from "@/lib/api";
@@ -106,14 +107,14 @@ export default function DocumentsPage() {
       key: "client",
       label: "Client",
       render: (row) => (
-        <span>{row.placement?.client.company_name ?? "—"}</span>
+        row.placement ? <EL href={`/clients/${row.placement.client.id}`}>{row.placement.client.company_name}</EL> : <span>—</span>
       ),
     },
     {
       key: "contractor",
       label: "Contractor",
       render: (row) => (
-        <span>{row.placement?.contractor.full_name ?? "—"}</span>
+        row.placement ? <EL href={`/contractors/${row.placement.contractor.id}`}>{row.placement.contractor.full_name}</EL> : <span>—</span>
       ),
     },
     {

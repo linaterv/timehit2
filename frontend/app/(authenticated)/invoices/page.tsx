@@ -10,6 +10,7 @@ import { api } from "@/lib/api";
 import { DataTable, type Column } from "@/components/data-table/data-table";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { GenerateInvoicesModal } from "@/components/shared/generate-invoices-modal";
+import { EntityLink as EL } from "@/components/shared/entity-link";
 import { formatCurrency, formatDate, formatMonth } from "@/lib/utils";
 import type {
   Invoice,
@@ -148,12 +149,12 @@ export default function InvoicesPage() {
       {
         key: "client",
         label: "Client",
-        render: (row: Invoice) => <span>{row.client.company_name}</span>,
+        render: (row: Invoice) => <EL href={`/clients/${row.client.id}`}>{row.client.company_name}</EL>,
       } as Column<Invoice>,
       {
         key: "contractor",
         label: "Contractor",
-        render: (row: Invoice) => <span>{row.contractor.full_name}</span>,
+        render: (row: Invoice) => <EL href={`/contractors/${row.contractor.id}`}>{row.contractor.full_name}</EL>,
       } as Column<Invoice>,
       {
         key: "placement_title",
