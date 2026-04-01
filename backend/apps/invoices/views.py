@@ -168,6 +168,11 @@ class GenerateInvoicesView(APIView):
                     billing_snapshot=co_snap,
                     generated_by=request.user,
                 )
+            # Generate PDFs
+            from .pdf import generate_invoice_pdf
+            generate_invoice_pdf(c_inv)
+            generate_invoice_pdf(co_inv)
+
             generated.append({
                 "timesheet_id": str(ts_id),
                 "client_invoice": {"id": str(c_inv.id), "invoice_number": c_inv.invoice_number, "total_amount": str(c_inv.total_amount), "status": c_inv.status},
