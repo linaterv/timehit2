@@ -1069,6 +1069,30 @@ Transitions to REJECTED, then immediately to DRAFT (contractor can edit).
 // 409 — invalid current status
 ```
 
+### `GET /timesheets/:id/audit-log`
+
+Returns audit history for a timesheet. Admin/Broker see all. Contractor sees only `visible_to_contractor=true`. Client Contact sees only `visible_to_client=true`.
+
+```json
+// 200
+{
+  "data": [
+    {
+      "id": "uuid",
+      "entity_type": "timesheet",
+      "entity_id": "uuid",
+      "action": "SUBMITTED",
+      "title": "Timesheet submitted",
+      "text": "",
+      "data_before": { "status": "DRAFT" },
+      "data_after": { "status": "SUBMITTED", "total_hours": "160.00" },
+      "created_by": { "id": "uuid", "full_name": "Alex Turner" },
+      "created_at": "2026-03-28T10:00:00Z"
+    }
+  ]
+}
+```
+
 ---
 
 ## 13. Invoices

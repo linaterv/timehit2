@@ -155,6 +155,19 @@ export interface TimesheetAttachment {
   uploaded_at: string;
 }
 
+export interface AuditLogEntry {
+  id: string;
+  entity_type: string;
+  entity_id: string;
+  action: string;
+  title: string;
+  text: string;
+  data_before: Record<string, unknown> | null;
+  data_after: Record<string, unknown> | null;
+  created_by: UserRef | null;
+  created_at: string;
+}
+
 export interface Timesheet {
   id: string;
   placement_id: string;

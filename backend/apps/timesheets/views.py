@@ -19,6 +19,15 @@ from .serializers import (
 from apps.placements.models import Placement
 from apps.users.permissions import has_broker_access_to_client
 from apps.users.exceptions import ConflictError, InvalidStateTransition
+from apps.audit.service import log_audit
+
+
+def _audit(ts, action, title, user, data_before, data_after, text=""):
+    log_audit(
+        entity_type="timesheet", entity_id=ts.id,
+        action=action, title=title, text=text, user=user,
+        data_before=data_before, data_after=data_after,
+    )
 
 
 def _check_ts_read(user, ts):
@@ -140,7 +149,9 @@ class TimesheetViewSet(viewsets.ModelViewSet):
             raise PermissionDenied()
         ser = SubmitSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
+        old_status = ts.status
         ts.submit(confirm_zero=ser.validated_data.get("confirm_zero", False))
+        _audit(ts, "SUBMITTED", "Timesheet submitted", request.user, {"status": old_status}, {"status": ts.status, "total_hours": str(ts.total_hours)})
         return Response(TimesheetDetailSerializer(ts, context={"request": request}).data)
 
     @extend_schema(tags=["Timesheets"], request=None)
@@ -149,7 +160,9 @@ class TimesheetViewSet(viewsets.ModelViewSet):
         ts = Timesheet.objects.select_related("placement").get(pk=pk)
         if not request.user.is_contractor or ts.placement.contractor_id != request.user.id:
             raise PermissionDenied()
+        old_status = ts.status
         ts.withdraw()
+        _audit(ts, "WITHDRAWN", "Timesheet withdrawn", request.user, {"status": old_status}, {"status": ts.status})
         return Response(TimesheetDetailSerializer(ts, context={"request": request}).data)
 
     @extend_schema(tags=["Timesheets"], request=None)
@@ -161,7 +174,9 @@ class TimesheetViewSet(viewsets.ModelViewSet):
             raise PermissionDenied()
         if user.is_broker and not has_broker_access_to_client(user, ts.placement.client_id):
             raise PermissionDenied()
+        old_status = ts.status
         ts.approve(user)
+        _audit(ts, "APPROVED", f"Approved by {user.full_name}", user, {"status": old_status}, {"status": ts.status})
         return Response(TimesheetDetailSerializer(ts, context={"request": request}).data)
 
     @extend_schema(tags=["Timesheets"], request=None)
@@ -176,7 +191,9 @@ class TimesheetViewSet(viewsets.ModelViewSet):
                 raise PermissionDenied()
         except Exception:
             raise PermissionDenied()
+        old_status = ts.status
         ts.client_approve(user)
+        _audit(ts, "CLIENT_APPROVED", f"Client approved by {user.full_name}", user, {"status": old_status}, {"status": ts.status})
         return Response(TimesheetDetailSerializer(ts, context={"request": request}).data)
 
     @extend_schema(tags=["Timesheets"], request=RejectSerializer)
@@ -195,7 +212,10 @@ class TimesheetViewSet(viewsets.ModelViewSet):
                 raise InvalidStateTransition("Client can only reject from SUBMITTED")
         else:
             raise PermissionDenied()
-        ts.reject(user, ser.validated_data["reason"])
+        old_status = ts.status
+        reason = ser.validated_data["reason"]
+        ts.reject(user, reason)
+        _audit(ts, "REJECTED", f"Rejected by {user.full_name}", user, {"status": old_status}, {"status": ts.status, "rejection_reason": reason}, text=reason)
         return Response(TimesheetDetailSerializer(ts, context={"request": request}).data)
 
 
@@ -310,9 +330,14 @@ class TimesheetEntryViewSet(viewsets.ViewSet):
         if errors:
             raise ValidationError(errors)
 
+        old_count = ts.entries.count()
+        old_hours = str(ts.total_hours)
         ts.entries.all().delete()
         TimesheetEntry.objects.bulk_create([TimesheetEntry(timesheet=ts, **e) for e in ser.validated_data["entries"]])
         ts.recalculate_hours()
+        _audit(ts, "ENTRIES_UPDATED", "Time entries updated", user,
+               {"entry_count": old_count, "total_hours": old_hours},
+               {"entry_count": len(ser.validated_data["entries"]), "total_hours": str(ts.total_hours)})
         warnings = [f"{d}: total {t}h exceeds 8h typical day" for d, t in hours_by_date.items() if t > 8]
         saved = ts.entries.order_by("date", "task_name")
         return Response({"entries": TimesheetEntrySerializer(saved, many=True).data, "total_hours": str(ts.total_hours), "warnings": warnings})

@@ -197,14 +197,14 @@ class Command(BaseCommand):
             )
 
         # Global Contractor→Agency templates (LT and EN)
-        InvoiceTemplate.objects.create(
+        global_contr_lt = InvoiceTemplate.objects.create(
             title="LT Template", code="LT",
             template_type=InvoiceTemplate.Type.CONTRACTOR, status=InvoiceTemplate.Status.ACTIVE,
             billing_address="Klientas:\nUAB \u201eWISE INTEGRATION\u201c\n\u012emon\u0117s kodas: 302666833\nPVM mok\u0117tojo kodas: LT100006404014\nAdresas: Paneri\u0173 g. 11, LT-03209 Vilnius, Lietuva\nEl. pa\u0161tas: info@wiseintegration.com\nTinklalapis: https://hitcontract.lt",
             bank_name="Beneficiary Bank\nSEB Bank AB\nVilnius Lithuania\nSwift: CBVILT2X\nIBAN: LT06 7044 0600 0817 7672\nAccount Name: MB \u201eMidija\u201c\nCompany Code: 304612656",
             company_name="UAB \u201eWISE INTEGRATION\u201c", country="LT", default_currency="EUR",
         )
-        InvoiceTemplate.objects.create(
+        global_contr_en = InvoiceTemplate.objects.create(
             title="EN Template", code="EN",
             template_type=InvoiceTemplate.Type.CONTRACTOR, status=InvoiceTemplate.Status.ACTIVE,
             billing_address="Client:\nUAB \"WISE INTEGRATION\"\nCompany code: 302666833\nVAT No.: LT100006404014\nRegistered address: Paneri\u0173 g. 11, LT-03209 Vilnius, Lithuania\nEmail: info@hitcontract.com\nWebsite: https://hitcontract.lt\nPhone: +370 671 80231",
@@ -305,6 +305,14 @@ class Command(BaseCommand):
             vat_number="LT999000111", payment_terms_days=30,
         )
         BrokerClientAssignment.objects.create(broker=jonas, client=demo_client)
+        InvoiceTemplate.objects.create(
+            title="DemoTech UAB - Default", code="DEFAULT",
+            template_type=InvoiceTemplate.Type.CLIENT, status=InvoiceTemplate.Status.ACTIVE,
+            is_default=True, client=demo_client, parent=client_tpl_lt,
+            company_name=demo_client.company_name, billing_address=demo_client.billing_address,
+            country=demo_client.country, default_currency=demo_client.default_currency,
+            vat_number=demo_client.vat_number, payment_terms_days=demo_client.payment_terms_days,
+        )
         demo_contr = User.objects.create_user(
             "demo.contr@mail.com", PWD, full_name="Demo Contractor", role="CONTRACTOR"
         )
@@ -319,7 +327,7 @@ class Command(BaseCommand):
         InvoiceTemplate.objects.create(
             title="Demo Contractor - Default", code="DEFAULT",
             template_type=InvoiceTemplate.Type.CONTRACTOR, status=InvoiceTemplate.Status.ACTIVE,
-            is_default=True, contractor=demo_contr,
+            is_default=True, contractor=demo_contr, parent=global_contr_lt,
             company_name=demo_prof.company_name, billing_address=demo_prof.billing_address,
             country="LT", default_currency="EUR",
             vat_registered=True, vat_number=demo_prof.vat_number,
@@ -353,7 +361,7 @@ class Command(BaseCommand):
         InvoiceTemplate.objects.create(
             title="DevOps Pro - Default", code="DEFAULT",
             template_type=InvoiceTemplate.Type.CONTRACTOR, status=InvoiceTemplate.Status.ACTIVE,
-            is_default=True, contractor=demo_contr2,
+            is_default=True, contractor=demo_contr2, parent=global_contr_lt,
             company_name=demo_prof2.company_name, billing_address=demo_prof2.billing_address,
             country="LT", default_currency="EUR",
             vat_registered=True, vat_number=demo_prof2.vat_number,
@@ -387,7 +395,7 @@ class Command(BaseCommand):
         InvoiceTemplate.objects.create(
             title="Design Studio - Default", code="DEFAULT",
             template_type=InvoiceTemplate.Type.CONTRACTOR, status=InvoiceTemplate.Status.ACTIVE,
-            is_default=True, contractor=demo_contr3,
+            is_default=True, contractor=demo_contr3, parent=global_contr_lt,
             company_name=demo_prof3.company_name, billing_address=demo_prof3.billing_address,
             country="LT", default_currency="EUR",
             vat_registered=False,

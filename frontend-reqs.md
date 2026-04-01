@@ -267,7 +267,10 @@ Reusable component used by Settings, contractor detail Templates tab, and profil
   - data-testid: `ts-calendar`, `ts-calendar-day-{date}`, `ts-calendar-save`
 - **"Detailed" toggle button**: switches from calendar view to full entry list showing all entries (date, task name, hours, notes) in a table — the expanded view for managing multiple entries per day, task names, and notes. Button toggles back to calendar.
   - data-testid: `ts-toggle-detailed`
-- **Attachments section** (below grid):
+- **Tabs**: "Entries" (default) and "History"
+  - **Entries tab**: calendar/detailed view + attachments (existing content)
+  - **History tab**: audit timeline fetched from `GET /timesheets/:id/audit-log`. Shows vertical timeline with color-coded dots (blue=submitted, green=approved, red=rejected, amber=withdrawn, gray=other). Each entry: title, text, data summary (hours/entries), timestamp + user name. Lazy-loaded on tab switch.
+- **Attachments section** (below grid, inside Entries tab):
   - Upload dropzone (contractor, DRAFT only)
   - File list with download/delete
   - data-testid: `attachment-upload`, `attachment-list`

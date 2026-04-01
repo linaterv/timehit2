@@ -61,6 +61,7 @@ export default function TimesheetDetailPage() {
   const [confirmFutureSubmit, setConfirmFutureSubmit] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showDetailed, setShowDetailed] = useState(false);
+  const [activeTab, setActiveTab] = useState<"entries" | "history">("entries");
 
   const tsQuery = useQuery<Timesheet>({
     queryKey: ["timesheet", id],
@@ -92,6 +93,15 @@ export default function TimesheetDetailPage() {
     for (const h of holidaysQuery.data?.holidays ?? []) m.set(h.date, h.name);
     return m;
   }, [holidaysQuery.data]);
+
+  // Audit log for history tab
+  const auditQuery = useQuery<{ data: { id: string; action: string; title: string; text: string; data_before: Record<string, unknown> | null; data_after: Record<string, unknown> | null; created_by: { id: string; full_name: string } | null; created_at: string }[] }>({
+    queryKey: ["timesheet-audit", id],
+    queryFn: () => api(`/timesheets/${id}/audit-log`),
+    enabled: activeTab === "history",
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
 
   // Sibling timesheets for month navigation
   const siblingsQuery = useQuery<{ data: { id: string; year: number; month: number }[] }>({
@@ -206,7 +216,7 @@ export default function TimesheetDetailPage() {
       setSaveError("");
       setEntries(data.entries.map((e) => ({ _key: makeKey(), id: e.id, date: e.date, task_name: e.task_name, hours: e.hours, notes: e.notes })));
       setDirty(false);
-      qc.invalidateQueries({ queryKey: ["timesheet", id] });
+      qc.invalidateQueries({ queryKey: ["timesheet", id] }); qc.invalidateQueries({ queryKey: ["timesheet-audit", id] });
     },
     onError: (err) => {
       const e = err as { message?: string; details?: { field: string; message: string }[] };
@@ -218,30 +228,30 @@ export default function TimesheetDetailPage() {
   const submitMut = useMutation({
     mutationFn: (body: { confirm_zero?: boolean }) =>
       api(`/timesheets/${id}/submit`, { method: "POST", body: JSON.stringify(body) }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["timesheet", id] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["timesheet", id] }); qc.invalidateQueries({ queryKey: ["timesheet-audit", id] }); },
   });
 
   const clientApproveMut = useMutation({
     mutationFn: () => api(`/timesheets/${id}/client-approve`, { method: "POST" }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["timesheet", id] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["timesheet", id] }); qc.invalidateQueries({ queryKey: ["timesheet-audit", id] }); },
   });
 
   const approveMut = useMutation({
     mutationFn: () => api(`/timesheets/${id}/approve`, { method: "POST" }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["timesheet", id] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["timesheet", id] }); qc.invalidateQueries({ queryKey: ["timesheet-audit", id] }); },
   });
 
   const rejectMut = useMutation({
     mutationFn: (body: { reason: string }) =>
       api(`/timesheets/${id}/reject`, { method: "POST", body: JSON.stringify(body) }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["timesheet", id] }); setRejectModalOpen(false); setRejectReason(""); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["timesheet", id] }); qc.invalidateQueries({ queryKey: ["timesheet-audit", id] }); setRejectModalOpen(false); setRejectReason(""); },
   });
 
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const withdrawMut = useMutation({
     mutationFn: () => api(`/timesheets/${id}/withdraw`, { method: "POST" }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["timesheet", id] });
+      qc.invalidateQueries({ queryKey: ["timesheet", id] }); qc.invalidateQueries({ queryKey: ["timesheet-audit", id] });
       qc.invalidateQueries({ queryKey: ["timesheets"] });
       qc.invalidateQueries({ queryKey: ["timesheets-pending"] });
       qc.invalidateQueries({ queryKey: ["timesheets-pending-placements"] });
@@ -306,11 +316,11 @@ export default function TimesheetDetailPage() {
   const handleAttachUpload = async (file: File) => {
     const fd = new FormData(); fd.append("file", file);
     await apiUpload(`/timesheets/${id}/attachments`, fd);
-    qc.invalidateQueries({ queryKey: ["timesheet", id] });
+    qc.invalidateQueries({ queryKey: ["timesheet", id] }); qc.invalidateQueries({ queryKey: ["timesheet-audit", id] });
   };
   const handleAttachDelete = async (attId: string) => {
     await api(`/timesheets/${id}/attachments/${attId}`, { method: "DELETE" });
-    qc.invalidateQueries({ queryKey: ["timesheet", id] });
+    qc.invalidateQueries({ queryKey: ["timesheet", id] }); qc.invalidateQueries({ queryKey: ["timesheet-audit", id] });
   };
 
   // ---- Render ----
@@ -433,8 +443,62 @@ export default function TimesheetDetailPage() {
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-1 border-b">
+        <button onClick={() => setActiveTab("entries")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${activeTab === "entries" ? "border-brand-600 text-brand-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+          Entries
+        </button>
+        <button onClick={() => setActiveTab("history")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${activeTab === "history" ? "border-brand-600 text-brand-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+          History
+        </button>
+      </div>
+
+      {/* History Tab */}
+      {activeTab === "history" && (
+        <div className="border rounded-lg p-6">
+          {auditQuery.isLoading && <p className="text-sm text-gray-400 text-center py-4">Loading...</p>}
+          {!auditQuery.isLoading && (auditQuery.data?.data?.length ?? 0) === 0 && (
+            <p className="text-sm text-gray-400 text-center py-4">No history yet.</p>
+          )}
+          {(auditQuery.data?.data?.length ?? 0) > 0 && (
+            <div className="space-y-3">
+              {auditQuery.data!.data.map((entry) => (
+                <div key={entry.id} className="flex gap-3 text-sm">
+                  <div className="flex flex-col items-center">
+                    <div className={`w-2 h-2 rounded-full mt-1.5 ${
+                      entry.action === "REJECTED" ? "bg-red-500"
+                      : entry.action === "APPROVED" ? "bg-green-500"
+                      : entry.action === "SUBMITTED" ? "bg-blue-500"
+                      : entry.action === "WITHDRAWN" ? "bg-amber-500"
+                      : "bg-gray-400"
+                    }`} />
+                    <div className="w-px flex-1 bg-gray-200" />
+                  </div>
+                  <div className="pb-3">
+                    <p className="font-medium text-gray-900">{entry.title}</p>
+                    {entry.text && <p className="text-gray-500">{entry.text}</p>}
+                    {entry.data_after && (
+                      <p className="text-xs text-gray-400">
+                        {entry.data_after.total_hours != null && `${entry.data_after.total_hours}h`}
+                        {entry.data_after.entry_count != null && ` · ${entry.data_after.entry_count} entries`}
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {formatDate(entry.created_at)}
+                      {entry.created_by && ` · ${entry.created_by.full_name}`}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Time Entries — Calendar / Detailed unified view */}
-      <div data-testid="entry-grid" className="space-y-3">
+      {activeTab === "entries" && <div data-testid="entry-grid" className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-medium">Time Entries</h2>
           <div className="flex items-center gap-2">
@@ -699,7 +763,7 @@ export default function TimesheetDetailPage() {
         )}
       </div>
 
-      {/* Action buttons moved to header */}
+      </div>}
 
       {/* Confirm empty submit */}
       <ConfirmDialog open={confirmSubmitEmpty} title="Submit with 0 Hours?"

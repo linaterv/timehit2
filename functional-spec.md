@@ -282,6 +282,27 @@ Singleton model storing agency-wide defaults. Admin only.
 | default_payment_terms_contractor_days | integer | default 35, applied to new placements |
 | default_client_invoice_template | FK -> InvoiceTemplate | nullable, default CLIENT template for new placements |
 
+### 2.16 Audit Log
+
+Generic audit trail for tracking who did what to any entity. Entity-agnostic via `entity_type` + `entity_id`.
+
+| Field | Type | Notes |
+|---|---|---|
+| id | UUID | |
+| entity_type | string | "timesheet", "placement", "invoice" — extensible, no enum |
+| entity_id | UUID | references any entity |
+| action | string | SUBMITTED, APPROVED, REJECTED, WITHDRAWN, ENTRIES_UPDATED, etc |
+| title | string | human-readable summary |
+| text | text | optional detail (e.g. rejection reason) |
+| data_before | JSON | nullable, state snapshot before change |
+| data_after | JSON | nullable, state snapshot after change |
+| created_by | FK -> User | who performed the action |
+| created_at | timestamp | when |
+| visible_to_contractor | boolean | default true |
+| visible_to_client | boolean | default true |
+
+Currently attached to Timesheets. Events logged: submit, withdraw, approve, client_approve, reject, entries updated. Displayed in a History tab on the timesheet detail page.
+
 ---
 
 ## 3. State Machines
