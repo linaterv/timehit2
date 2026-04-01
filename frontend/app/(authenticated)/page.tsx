@@ -264,8 +264,9 @@ function ControlScreen() {
     if (clientFilter) base.set("client_id", clientFilter);
     if (contractorFilter) base.set("contractor_id", contractorFilter);
     if (needsAttention) base.set("needs_attention", "true");
+    const maxMonth = year === now.getFullYear() ? now.getMonth() + 1 : 12;
     Promise.all(
-      Array.from({ length: 12 }, (_, i) => {
+      Array.from({ length: maxMonth }, (_, i) => {
         const p = new URLSearchParams(base);
         p.set("month", String(i + 1));
         return api<PaginatedResponse<ControlRow>>(`/control/overview?${p.toString()}`)

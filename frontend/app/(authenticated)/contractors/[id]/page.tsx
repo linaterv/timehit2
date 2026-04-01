@@ -16,6 +16,7 @@ import {
 import type { ContractorProfile, InvoiceTemplate, Placement, PaginatedResponse } from "@/types/api";
 
 interface ContractorFormData {
+  code: string;
   company_name: string;
   registration_number: string;
   country: string;
@@ -34,6 +35,7 @@ interface ContractorFormData {
 
 function emptyForm(): ContractorFormData {
   return {
+    code: "",
     company_name: "",
     registration_number: "",
     country: "",
@@ -53,6 +55,7 @@ function emptyForm(): ContractorFormData {
 
 function profileToForm(p: ContractorProfile): ContractorFormData {
   return {
+    code: p.code ?? "",
     company_name: p.company_name ?? "",
     registration_number: p.registration_number ?? "",
     country: p.country ?? "",
@@ -348,6 +351,18 @@ export default function ContractorDetailPage() {
       <section data-testid="section-company-info" className="bg-surface border rounded-lg p-5 space-y-4">
         <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Company Info</h3>
         <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Code</label>
+            <input
+              data-testid="field-code"
+              type="text"
+              maxLength={4}
+              value={form.code}
+              onChange={(e) => updateField("code", e.target.value.toUpperCase())}
+              disabled={disabled}
+              className="w-20 border rounded-md px-3 py-2 text-sm font-mono uppercase disabled:bg-gray-50 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-600"
+            />
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
             <input

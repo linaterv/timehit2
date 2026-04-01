@@ -42,6 +42,7 @@ export default function ClientDetailPage() {
   const [tplSaving, setTplSaving] = useState(false);
 
   // Edit client form state
+  const [editCode, setEditCode] = useState("");
   const [editCompanyName, setEditCompanyName] = useState("");
   const [editRegNumber, setEditRegNumber] = useState("");
   const [editCountry, setEditCountry] = useState("");
@@ -168,6 +169,7 @@ export default function ClientDetailPage() {
   // ----- Edit client handlers -----
 
   const openEditSlide = () => {
+    setEditCode(client.code ?? "");
     setEditCompanyName(client.company_name);
     setEditRegNumber(client.registration_number ?? "");
     setEditCountry(client.country);
@@ -177,6 +179,7 @@ export default function ClientDetailPage() {
 
   const handleEditSave = () => {
     const body: Record<string, unknown> = {
+      code: editCode,
       company_name: editCompanyName,
       registration_number: editRegNumber,
       country: editCountry,
@@ -588,6 +591,12 @@ export default function ClientDetailPage() {
         testId="edit-client-slideover"
       >
         <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Code</label>
+            <input type="text" value={editCode} maxLength={4}
+              onChange={(e) => setEditCode(e.target.value.toUpperCase())}
+              className="w-20 px-3 py-2 border rounded text-sm font-mono uppercase" />
+          </div>
           <div>
             <label data-testid="edit-company-name-label" className="block text-sm font-medium text-gray-700 mb-1">
               Company Name
