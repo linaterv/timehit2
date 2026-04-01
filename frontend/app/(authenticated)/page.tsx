@@ -230,9 +230,41 @@ function ControlScreen() {
     `/control/summary?${summaryParams}`
   );
 
-  const { data: overviewData, isLoading } = useApiQuery<
-    PaginatedResponse<ControlRow>
-  >(["control-overview", overviewParams], `/control/overview?${overviewParams}`);
+  // Single month: one call. All months (month=0): 12 parallel calls merged.
+  const singleMonthQ = useApiQuery<PaginatedResponse<ControlRow>>(
+    ["control-overview", overviewParams],
+    `/control/overview?${overviewParams}`,
+    month !== 0,
+  );
+
+  const [allMonthsData, setAllMonthsData] = useState<ControlRow[] | null>(null);
+  const [allMonthsLoading, setAllMonthsLoading] = useState(false);
+  useEffect(() => {
+    if (month !== 0) { setAllMonthsData(null); return; }
+    setAllMonthsLoading(true);
+    const base = new URLSearchParams();
+    base.set("year", String(year));
+    if (clientFilter) base.set("client_id", clientFilter);
+    if (contractorFilter) base.set("contractor_id", contractorFilter);
+    if (needsAttention) base.set("needs_attention", "true");
+    Promise.all(
+      Array.from({ length: 12 }, (_, i) => {
+        const p = new URLSearchParams(base);
+        p.set("month", String(i + 1));
+        return api<PaginatedResponse<ControlRow>>(`/control/overview?${p.toString()}`)
+          .then((r) => r.data.map((row) => ({ ...row, year, month: i + 1 })))
+          .catch(() => [] as ControlRow[]);
+      })
+    ).then((results) => {
+      setAllMonthsData(results.flat());
+      setAllMonthsLoading(false);
+    });
+  }, [month, year, clientFilter, contractorFilter, needsAttention]);
+
+  const overviewData = month === 0
+    ? (allMonthsData ? { data: allMonthsData, meta: { total: allMonthsData.length, page: 1, per_page: 999, total_pages: 1 } } : null)
+    : singleMonthQ.data;
+  const isLoading = month === 0 ? allMonthsLoading : singleMonthQ.isLoading;
 
   const { data: clientsData } = useApiQuery<PaginatedResponse<Client>>(
     ["clients-for-select"],

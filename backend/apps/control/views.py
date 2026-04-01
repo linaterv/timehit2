@@ -21,10 +21,8 @@ class ControlOverviewView(APIView):
     def get(self, request):
         year = int(request.query_params.get("year", 0))
         month = int(request.query_params.get("month", 0))
-        if not year:
-            return Response({"error": {"code": "VALIDATION_ERROR", "message": "year required", "details": []}}, status=400)
-
-        months = [month] if month else list(range(1, 13))
+        if not year or not month:
+            return Response({"error": {"code": "VALIDATION_ERROR", "message": "year and month required", "details": []}}, status=400)
 
         placements = Placement.objects.filter(status=Placement.Status.ACTIVE).select_related("client", "contractor")
         user = request.user
@@ -38,83 +36,80 @@ class ControlOverviewView(APIView):
 
         data = []
         now = date.today()
-        for m in months:
-            is_current_month = year == now.year and m == now.month
-            for pl in placements:
-                ts = Timesheet.objects.filter(placement=pl, year=year, month=m).first()
-                c_inv = Invoice.objects.filter(placement=pl, year=year, month=m, invoice_type=Invoice.Type.CLIENT_INVOICE).exclude(status=Invoice.Status.VOIDED).first()
-                co_inv = Invoice.objects.filter(placement=pl, year=year, month=m, invoice_type=Invoice.Type.CONTRACTOR_INVOICE).exclude(status=Invoice.Status.VOIDED).first()
-                hours = ts.total_hours if ts else Decimal("0")
-                margin = hours * (pl.client_rate - pl.contractor_rate)
+        is_current_month = year == now.year and month == now.month
+        for pl in placements:
+            ts = Timesheet.objects.filter(placement=pl, year=year, month=month).first()
+            c_inv = Invoice.objects.filter(placement=pl, year=year, month=month, invoice_type=Invoice.Type.CLIENT_INVOICE).exclude(status=Invoice.Status.VOIDED).first()
+            co_inv = Invoice.objects.filter(placement=pl, year=year, month=month, invoice_type=Invoice.Type.CONTRACTOR_INVOICE).exclude(status=Invoice.Status.VOIDED).first()
+            hours = ts.total_hours if ts else Decimal("0")
+            margin = hours * (pl.client_rate - pl.contractor_rate)
 
-                flags = []
-                if not is_current_month:
-                    if not ts:
-                        flags.append("no_timesheet")
-                    elif ts.status == Timesheet.Status.DRAFT:
-                        flags.append("timesheet_draft")
-                    elif ts.status in (Timesheet.Status.SUBMITTED, Timesheet.Status.CLIENT_APPROVED):
-                        flags.append("pending_approval")
-                    if ts and ts.status == Timesheet.Status.APPROVED and not c_inv:
-                        flags.append("approved_no_invoice")
-                    if pl.require_timesheet_attachment and ts and not ts.attachments.exists():
-                        flags.append("missing_attachment")
-                    try:
-                        prof = pl.contractor.contractor_profile
-                        if not prof.bank_account_iban:
-                            flags.append("missing_bank_details")
-                    except Exception:
+            flags = []
+            if not is_current_month:
+                if not ts:
+                    flags.append("no_timesheet")
+                elif ts.status == Timesheet.Status.DRAFT:
+                    flags.append("timesheet_draft")
+                elif ts.status in (Timesheet.Status.SUBMITTED, Timesheet.Status.CLIENT_APPROVED):
+                    flags.append("pending_approval")
+                if ts and ts.status == Timesheet.Status.APPROVED and not c_inv:
+                    flags.append("approved_no_invoice")
+                if pl.require_timesheet_attachment and ts and not ts.attachments.exists():
+                    flags.append("missing_attachment")
+                try:
+                    prof = pl.contractor.contractor_profile
+                    if not prof.bank_account_iban:
                         flags.append("missing_bank_details")
+                except Exception:
+                    flags.append("missing_bank_details")
 
-                    def _inv_flags(inv, terms_days, label, _flags=flags):
-                        if not inv:
-                            return
-                        if inv.status == Invoice.Status.DRAFT:
-                            _flags.append(f"{label}_not_sent")
-                        elif inv.status == Invoice.Status.ISSUED:
-                            due = terms_days or 30
-                            if inv.issued_at and inv.issued_at.date() + timedelta(days=due) < now:
-                                overdue = (now - (inv.issued_at.date() + timedelta(days=due))).days
-                                _flags.append(f"{label}_unpaid_{overdue}d")
+                def _inv_flags(inv, terms_days, label, _flags=flags):
+                    if not inv:
+                        return
+                    if inv.status == Invoice.Status.DRAFT:
+                        _flags.append(f"{label}_not_sent")
+                    elif inv.status == Invoice.Status.ISSUED:
+                        due = terms_days or 30
+                        if inv.issued_at and inv.issued_at.date() + timedelta(days=due) < now:
+                            overdue = (now - (inv.issued_at.date() + timedelta(days=due))).days
+                            _flags.append(f"{label}_unpaid_{overdue}d")
 
-                    _inv_flags(c_inv, pl.payment_terms_client_days, "client_inv")
-                    _inv_flags(co_inv, pl.payment_terms_contractor_days, "contr_inv")
-                    if "client_inv_not_sent" in flags and "contr_inv_not_sent" in flags:
-                        flags.remove("client_inv_not_sent")
-                        flags.remove("contr_inv_not_sent")
-                        flags.append("invoice_not_sent")
-                else:
-                    if ts and ts.status == Timesheet.Status.APPROVED and not c_inv:
-                        flags.append("approved_no_invoice")
+                _inv_flags(c_inv, pl.payment_terms_client_days, "client_inv")
+                _inv_flags(co_inv, pl.payment_terms_contractor_days, "contr_inv")
+                if "client_inv_not_sent" in flags and "contr_inv_not_sent" in flags:
+                    flags.remove("client_inv_not_sent")
+                    flags.remove("contr_inv_not_sent")
+                    flags.append("invoice_not_sent")
+            else:
+                if ts and ts.status == Timesheet.Status.APPROVED and not c_inv:
+                    flags.append("approved_no_invoice")
 
-                if p.get("needs_attention") == "true" and not flags:
+            if p.get("needs_attention") == "true" and not flags:
+                continue
+            if p.get("timesheet_status") and (not ts or ts.status not in p["timesheet_status"].split(",")):
+                continue
+            if p.get("invoice_status"):
+                inv_statuses = p["invoice_status"].split(",")
+                if not c_inv and "NOT_GENERATED" not in inv_statuses:
                     continue
-                if p.get("timesheet_status") and (not ts or ts.status not in p["timesheet_status"].split(",")):
+                if c_inv and c_inv.status not in inv_statuses:
                     continue
-                if p.get("invoice_status"):
-                    inv_statuses = p["invoice_status"].split(",")
-                    if not c_inv and "NOT_GENERATED" not in inv_statuses:
-                        continue
-                    if c_inv and c_inv.status not in inv_statuses:
-                        continue
 
-                data.append({
-                    "placement": {
-                        "id": str(pl.id), "title": pl.title, "start_date": str(pl.start_date), "end_date": str(pl.end_date) if pl.end_date else None,
-                        "client_rate": str(pl.client_rate), "contractor_rate": str(pl.contractor_rate),
-                        "currency": pl.currency, "approval_flow": pl.approval_flow,
-                        "require_timesheet_attachment": pl.require_timesheet_attachment,
-                    },
-                    "year": year,
-                    "month": m,
-                    "client": {"id": str(pl.client_id), "company_name": pl.client.company_name},
-                    "contractor": {"id": str(pl.contractor_id), "full_name": pl.contractor.full_name},
-                    "timesheet": {"id": str(ts.id), "status": ts.status, "total_hours": str(ts.total_hours), "submitted_at": ts.submitted_at, "approved_at": ts.approved_at} if ts else None,
-                    "client_invoice": {"id": str(c_inv.id), "invoice_number": c_inv.invoice_number, "status": c_inv.status, "total_amount": str(c_inv.total_amount)} if c_inv else None,
-                    "contractor_invoice": {"id": str(co_inv.id), "invoice_number": co_inv.invoice_number, "status": co_inv.status, "total_amount": str(co_inv.total_amount)} if co_inv else None,
-                    "margin": str(margin),
-                    "flags": flags,
-                })
+            data.append({
+                "placement": {
+                    "id": str(pl.id), "title": pl.title, "start_date": str(pl.start_date), "end_date": str(pl.end_date) if pl.end_date else None,
+                    "client_rate": str(pl.client_rate), "contractor_rate": str(pl.contractor_rate),
+                    "currency": pl.currency, "approval_flow": pl.approval_flow,
+                    "require_timesheet_attachment": pl.require_timesheet_attachment,
+                },
+                "client": {"id": str(pl.client_id), "company_name": pl.client.company_name},
+                "contractor": {"id": str(pl.contractor_id), "full_name": pl.contractor.full_name},
+                "timesheet": {"id": str(ts.id), "status": ts.status, "total_hours": str(ts.total_hours), "submitted_at": ts.submitted_at, "approved_at": ts.approved_at} if ts else None,
+                "client_invoice": {"id": str(c_inv.id), "invoice_number": c_inv.invoice_number, "status": c_inv.status, "total_amount": str(c_inv.total_amount)} if c_inv else None,
+                "contractor_invoice": {"id": str(co_inv.id), "invoice_number": co_inv.invoice_number, "status": co_inv.status, "total_amount": str(co_inv.total_amount)} if co_inv else None,
+                "margin": str(margin),
+                "flags": flags,
+            })
         return Response({"data": data, "meta": {"total": len(data)}})
 
 
