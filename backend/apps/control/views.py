@@ -175,7 +175,24 @@ class ControlSummaryView(APIView):
         awaiting, no_inv, unpaid, issues = 0, 0, 0, 0
         total_hours, currency_data = Decimal("0"), defaultdict(lambda: {"revenue": Decimal("0"), "cost": Decimal("0"), "margin": Decimal("0")})
 
+        import calendar as cal
+        month_start = date(year, month, 1)
+        month_end = date(year, month, cal.monthrange(year, month)[1])
+
+        # Get flags from the overview endpoint to count issues consistently
+        overview = ControlOverviewView()
+        overview.request = request
+        overview_resp = overview.get(request)
+        for row in overview_resp.data.get("data", []):
+            issues += len(row.get("flags", []))
+
         for pl in placements:
+            # Skip if placement doesn't overlap with this month
+            if pl.start_date > month_end:
+                continue
+            if pl.end_date and pl.end_date < month_start:
+                continue
+
             ts = Timesheet.objects.filter(placement=pl, year=year, month=month).first()
             if ts:
                 if ts.status in (Timesheet.Status.SUBMITTED, Timesheet.Status.CLIENT_APPROVED):
@@ -191,9 +208,6 @@ class ControlSummaryView(APIView):
                     currency_data[pl.currency]["margin"] += rev - cost
             invs = Invoice.objects.filter(placement=pl, year=year, month=month, status=Invoice.Status.ISSUED)
             unpaid += invs.count()
-            has_issue = (not ts) or (pl.require_timesheet_attachment and ts and not ts.attachments.exists())
-            if has_issue:
-                issues += 1
 
         total_rev = sum(d["revenue"] for d in currency_data.values())
         total_cost = sum(d["cost"] for d in currency_data.values())

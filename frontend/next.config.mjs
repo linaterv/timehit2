@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  allowedDevOrigins: ['v1ln.l.dedikuoti.lt'],
   async rewrites() {
     return [
       {
