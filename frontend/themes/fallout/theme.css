@@ -61,4 +61,38 @@
 
   /* Pip-Boy terminal font */
   --font-sans: var(--font-fira-code), "Courier New", monospace;
+
+  /* Fallout background image */
+  --fallout-bg: url("/themes/fallout/bg.png");
+  --fallout-pipboy: url("/themes/fallout/pipboy.png");
+}
+
+/* Fallout theme: wasteland background on main content area */
+[data-theme="fallout"] main {
+  background-image: var(--fallout-bg) !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-attachment: fixed !important;
+}
+
+/* Semi-transparent overlay on content so text is readable */
+[data-theme="fallout"] main > div {
+  background: rgba(16, 17, 13, 0.85);
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+/* Pip Boy in bottom-left corner */
+[data-theme="fallout"] aside::after {
+  content: "";
+  display: block;
+  width: 80px;
+  height: 100px;
+  background-image: var(--fallout-pipboy);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  margin: auto 0 0.5rem;
+  padding: 0 0.5rem;
+  flex-shrink: 0;
 }
