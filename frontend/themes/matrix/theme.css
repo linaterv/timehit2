@@ -60,4 +60,30 @@
 
   /* Monospace terminal font */
   --font-sans: var(--font-fira-code), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --matrix-bg: url("/themes/matrix/bg.png");
+}
+
+[data-theme="matrix"] main {
+  background-image: var(--matrix-bg) !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-attachment: fixed !important;
+}
+
+[data-theme="matrix"] main > div {
+  background: rgba(0, 0, 0, 0.88);
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+[data-theme="matrix"] aside::after {
+  content: "";
+  display: block;
+  flex: 1;
+  width: 100%;
+  background-image: url("/themes/matrix/person.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: bottom center;
 }
