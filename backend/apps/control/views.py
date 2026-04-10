@@ -176,7 +176,7 @@ class ControlSummaryView(APIView):
         if request.query_params.get("contractor_id"):
             placements = placements.filter(contractor_id=request.query_params["contractor_id"])
 
-        awaiting, no_inv, unpaid, issues = 0, 0, 0, 0
+        awaiting, no_inv, unpaid, not_sent, issues = 0, 0, 0, 0, 0
         total_hours, currency_data = Decimal("0"), defaultdict(lambda: {"revenue": Decimal("0"), "cost": Decimal("0"), "margin": Decimal("0")})
 
         import calendar as cal
@@ -212,12 +212,14 @@ class ControlSummaryView(APIView):
                     currency_data[pl.currency]["margin"] += rev - cost
             invs = Invoice.objects.filter(placement=pl, year=year, month=month, status=Invoice.Status.ISSUED)
             unpaid += invs.count()
+            draft_invs = Invoice.objects.filter(placement=pl, year=year, month=month, status=Invoice.Status.DRAFT)
+            not_sent += draft_invs.count()
 
         total_rev = sum(d["revenue"] for d in currency_data.values())
         total_cost = sum(d["cost"] for d in currency_data.values())
         return Response({
             "timesheets_awaiting_approval": awaiting, "approved_without_invoices": no_inv,
-            "invoices_awaiting_payment": unpaid, "placements_with_issues": issues,
+            "invoices_awaiting_payment": unpaid, "invoices_not_sent": not_sent, "placements_with_issues": issues,
             "total_active_placements": placements.count(), "total_hours": str(total_hours),
             "total_client_revenue": str(total_rev), "total_contractor_cost": str(total_cost),
             "total_margin": str(total_rev - total_cost),

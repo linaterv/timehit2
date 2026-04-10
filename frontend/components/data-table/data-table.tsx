@@ -9,6 +9,7 @@ export interface Column<T> {
   label: string;
   sortable?: boolean;
   render?: (row: T) => React.ReactNode;
+  wrap?: boolean;
 }
 
 interface Props<T> {
@@ -92,7 +93,8 @@ export function DataTable<T extends Record<string, any>>({
                 )}
                 {columns.map((col, ci) => (
                   <td key={col.key} className={cn(
-                    "px-4 py-3 text-sm text-gray-700 whitespace-nowrap",
+                    "px-4 py-3 text-sm text-gray-700",
+                    col.wrap ? "whitespace-normal" : "whitespace-nowrap",
                     ci === columns.length - 1 && col.key === "action" && "sticky right-0 bg-surface",
                   )}>
                     {col.render ? col.render(row) : String(row[col.key] ?? "—")}

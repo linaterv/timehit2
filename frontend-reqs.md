@@ -122,18 +122,25 @@ Consistent colored badges throughout:
 ### 2. Dashboard / Control Screen (`/`) — ADMIN, BROKER
 The primary operational view. Maps to `GET /control/overview` + `GET /control/summary`.
 
-**Summary cards** (top row, 4 cards, each with distinct background color and Lucide icon):
-- Awaiting Approval — amber/orange bg, `Clock` icon (count)
-- Approved, No Invoice — blue bg, `FileX` icon (count)
-- Unpaid Invoices — purple bg, `CreditCard` icon (count)
+**Summary cards** (top row, 5 cards, each with distinct background color and Lucide icon, clickable to preset flag filters):
+- Awaiting Approval — amber bg, `Clock` icon (count of SUBMITTED/CLIENT_APPROVED timesheets)
+- Approved, No Invoice — blue bg, `FileX` icon (count of APPROVED timesheets without invoices)
+- Unpaid Invoices — purple bg, `CreditCard` icon (count of ISSUED invoices)
+- Not Sent — orange bg, `MailX` icon (count of DRAFT invoices that haven't been issued yet)
 - Issues — red bg, `AlertTriangle` icon (count = total flags from overview)
-- data-testid: `summary-awaiting`, `summary-no-invoice`, `summary-unpaid`, `summary-issues`
+- data-testid: `summary-awaiting`, `summary-no-invoice`, `summary-unpaid`, `summary-not-sent`, `summary-issues`
 
 **Month selector** (center top): `< March 2026 >` arrows + dropdown
 - data-testid: `month-selector`, `month-prev`, `month-next`
 
-**Filters bar**: client, contractor, broker (admin only), timesheet status, invoice status, needs attention toggle
-- data-testid: `filter-client`, `filter-contractor`, `filter-status`, `filter-attention`
+**Filters bar**: client, contractor, broker (admin only), timesheet status, invoice status, flags dropdown (multi-select checkboxes), needs attention toggle
+- **Flags dropdown**: multi-select with checkboxes. Known flags: no_timesheet, timesheet_draft, pending_approval, approved_no_invoice, missing_attachment, missing_bank_details, invoice_not_sent, unpaid, suspicious. Client-side filtering on overview rows.
+- **Summary card click**: clicking a card presets the flags filter to the relevant flags for that card:
+  - Awaiting Approval → `pending_approval`
+  - No Invoice → `approved_no_invoice`
+  - Unpaid Invoices → `unpaid` (matches any `*_unpaid_*` flag)
+  - Issues → enables "Needs attention" (all flagged rows)
+- data-testid: `filter-client`, `filter-contractor`, `filter-status`, `filter-attention`, `filter-flags`
 
 **Table columns**: Placement (Client → Position, contractor subtitle), Hours, TS Status (badge), Invoice Status (badge), Flags (icon chips), Action
 - **Month filter**: dropdown showing last 18 months, defaults to last month (replaces arrow-based MonthPicker)

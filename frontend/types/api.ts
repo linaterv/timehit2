@@ -284,6 +284,7 @@ export interface ControlSummary {
   timesheets_awaiting_approval: number;
   approved_without_invoices: number;
   invoices_awaiting_payment: number;
+  invoices_not_sent: number;
   placements_with_issues: number;
   total_active_placements: number;
   total_hours: string;

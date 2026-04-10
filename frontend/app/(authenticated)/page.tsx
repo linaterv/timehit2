@@ -11,7 +11,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { EntityLink as EL } from "@/components/shared/entity-link";
 
 import { GenerateInvoicesModal } from "@/components/shared/generate-invoices-modal";
-import { Clock, FileX, CreditCard, AlertTriangle } from "lucide-react";
+import { Clock, FileX, CreditCard, MailX, AlertTriangle } from "lucide-react";
 import { formatCurrency, formatMonth } from "@/lib/utils";
 import { api, getAccessToken } from "@/lib/api";
 import type {
@@ -186,6 +186,8 @@ function ControlScreen() {
   const [clientFilter, setClientFilter] = useState(globalClient);
   const [contractorFilter, setContractorFilter] = useState(globalContractor);
   const [needsAttention, setNeedsAttention] = useState(false);
+  const [flagFilter, setFlagFilter] = useState<Set<string>>(new Set());
+  const [flagDropdownOpen, setFlagDropdownOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [generateOpen, setGenerateOpen] = useState(false);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
@@ -422,13 +424,14 @@ function ControlScreen() {
     {
       key: "flags",
       label: "Flags",
+      wrap: true,
       render: (row) =>
         row.flags.length > 0 ? (
           <div className="flex flex-wrap gap-1">
             {row.flags.map((flag) => (
               <span
                 key={flag}
-                className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700"
+                className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 break-all max-w-[220px]"
               >
                 {flag}
               </span>
@@ -476,8 +479,32 @@ function ControlScreen() {
     } catch { alert("Export failed"); }
   };
 
+  // Client-side flag filtering
+  const FLAG_LABELS: Record<string, string> = {
+    no_timesheet: "No Timesheet",
+    timesheet_draft: "Timesheet Draft",
+    pending_approval: "Pending Approval",
+    approved_no_invoice: "Approved, No Invoice",
+    missing_attachment: "Missing Attachment",
+    missing_bank_details: "Missing Bank Details",
+    invoice_not_sent: "Invoice Not Sent",
+    unpaid: "Unpaid",
+    suspicious: "Suspicious",
+  };
+
+  const filteredRows = flagFilter.size === 0
+    ? overviewRows
+    : overviewRows.filter((row) =>
+        row.flags.some((f) =>
+          flagFilter.has(f) ||
+          (flagFilter.has("unpaid") && f.includes("unpaid")) ||
+          (flagFilter.has("suspicious") && f.startsWith("suspicious:")) ||
+          (flagFilter.has("invoice_not_sent") && (f === "invoice_not_sent" || f === "client_inv_not_sent" || f === "contr_inv_not_sent"))
+        )
+      );
+
   // Build a selectable id from placement.id for row selection
-  const rowsWithId = overviewRows.map((row) => ({
+  const rowsWithId = filteredRows.map((row) => ({
     ...row,
     id: `${row.placement.id}_${(row as any).year ?? year}_${(row as any).month ?? month}`,
   }));
@@ -487,10 +514,11 @@ function ControlScreen() {
       <h1 className="text-2xl font-bold text-gray-900">Control Screen</h1>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div
           data-testid="summary-awaiting"
-          className="rounded-lg p-4 bg-amber-50 border border-amber-200"
+          onClick={() => { setFlagFilter(new Set(["pending_approval"])); setNeedsAttention(false); setPage(1); }}
+          className="rounded-lg p-4 bg-amber-50 border border-amber-200 cursor-pointer hover:shadow-md transition-shadow"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -506,7 +534,8 @@ function ControlScreen() {
         </div>
         <div
           data-testid="summary-no-invoice"
-          className="rounded-lg p-4 bg-blue-50 border border-blue-200"
+          onClick={() => { setFlagFilter(new Set(["approved_no_invoice"])); setNeedsAttention(false); setPage(1); }}
+          className="rounded-lg p-4 bg-blue-50 border border-blue-200 cursor-pointer hover:shadow-md transition-shadow"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -522,7 +551,8 @@ function ControlScreen() {
         </div>
         <div
           data-testid="summary-unpaid"
-          className="rounded-lg p-4 bg-purple-50 border border-purple-200"
+          onClick={() => { setFlagFilter(new Set(["unpaid"])); setNeedsAttention(false); setPage(1); }}
+          className="rounded-lg p-4 bg-purple-50 border border-purple-200 cursor-pointer hover:shadow-md transition-shadow"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -537,8 +567,26 @@ function ControlScreen() {
           </div>
         </div>
         <div
+          data-testid="summary-not-sent"
+          onClick={() => { setFlagFilter(new Set(["invoice_not_sent"])); setNeedsAttention(false); setPage(1); }}
+          className="rounded-lg p-4 bg-orange-50 border border-orange-200 cursor-pointer hover:shadow-md transition-shadow"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-orange-700">Invoice Not Sent</p>
+              <p className="text-3xl font-bold text-orange-900 mt-1">
+                {summary?.invoices_not_sent ?? "—"}
+              </p>
+            </div>
+            <div className="rounded-full bg-orange-100 p-3">
+              <MailX className="h-6 w-6 text-orange-600" />
+            </div>
+          </div>
+        </div>
+        <div
           data-testid="summary-issues"
-          className="rounded-lg p-4 bg-red-50 border border-red-200"
+          onClick={() => { setFlagFilter(new Set()); setNeedsAttention(true); setPage(1); }}
+          className="rounded-lg p-4 bg-red-50 border border-red-200 cursor-pointer hover:shadow-md transition-shadow"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -631,6 +679,49 @@ function ControlScreen() {
           />
           Needs attention
         </label>
+
+        {/* Flags multi-select dropdown */}
+        <div className="relative">
+          <button
+            data-testid="filter-flags"
+            onClick={() => setFlagDropdownOpen(!flagDropdownOpen)}
+            className={`px-3 py-2 border rounded text-sm flex items-center gap-1 ${flagFilter.size > 0 ? "border-brand-500 bg-brand-50 text-brand-700 font-medium" : ""}`}
+          >
+            Flags{flagFilter.size > 0 ? ` (${flagFilter.size})` : ""}
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+          </button>
+          {flagDropdownOpen && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setFlagDropdownOpen(false)} />
+              <div className="absolute z-20 mt-1 bg-white border rounded-lg shadow-lg py-1 min-w-[220px]">
+                {flagFilter.size > 0 && (
+                  <button
+                    onClick={() => { setFlagFilter(new Set()); setPage(1); }}
+                    className="w-full px-3 py-1.5 text-left text-xs text-red-600 hover:bg-gray-50 border-b"
+                  >
+                    Clear all
+                  </button>
+                )}
+                {Object.entries(FLAG_LABELS).map(([key, label]) => (
+                  <label key={key} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-sm">
+                    <input
+                      type="checkbox"
+                      checked={flagFilter.has(key)}
+                      onChange={() => {
+                        const next = new Set(flagFilter);
+                        if (next.has(key)) next.delete(key); else next.add(key);
+                        setFlagFilter(next);
+                        setPage(1);
+                      }}
+                      className="rounded"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Bulk Actions */}
