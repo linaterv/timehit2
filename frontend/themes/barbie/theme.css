@@ -59,4 +59,34 @@
 
   /* Rounded, playful font */
   --font-sans: var(--font-comfortaa), "Nunito", system-ui, sans-serif;
+
+  /* Barbie background image */
+  --barbie-bg: url("/themes/barbie/bg.png");
+}
+
+/* Barbie theme: pink dream background */
+[data-theme="barbie"] main {
+  background-image: var(--barbie-bg) !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-attachment: fixed !important;
+}
+
+[data-theme="barbie"] main > div {
+  background: rgba(253, 242, 248, 0.88);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+/* Princess in bottom-left of sidebar */
+[data-theme="barbie"] aside::after {
+  content: "";
+  display: block;
+
+  flex: 1;
+  width: 100%;
+  background-image: url("/themes/barbie/princess.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: bottom center;
 }

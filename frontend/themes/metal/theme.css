@@ -61,4 +61,34 @@
 
   /* Blackletter / gothic font */
   --font-sans: var(--font-gothic), Georgia, "Times New Roman", serif;
+
+  /* Metal background image */
+  --metal-bg: url("/themes/metal/bg.png");
+}
+
+/* Metal theme: dark background */
+[data-theme="metal"] main {
+  background-image: var(--metal-bg) !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-attachment: fixed !important;
+}
+
+[data-theme="metal"] main > div {
+  background: rgba(10, 5, 5, 0.88);
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+/* Metal person in bottom-left of sidebar */
+[data-theme="metal"] aside::after {
+  content: "";
+  display: block;
+
+  flex: 1;
+  width: 100%;
+  background-image: url("/themes/metal/person.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: bottom center;
 }
