@@ -232,10 +232,14 @@ function ControlScreen() {
     }
   };
 
-  const summaryParams = useMemo(
-    () => `year=${year}&month=${month}`,
-    [year, month]
-  );
+  const summaryParams = useMemo(() => {
+    const p = new URLSearchParams();
+    p.set("year", String(year));
+    p.set("month", String(month));
+    if (clientFilter) p.set("client_id", clientFilter);
+    if (contractorFilter) p.set("contractor_id", contractorFilter);
+    return p.toString();
+  }, [year, month, clientFilter, contractorFilter]);
 
   const overviewParams = useMemo(() => {
     const p = new URLSearchParams();

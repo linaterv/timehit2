@@ -171,6 +171,10 @@ class ControlSummaryView(APIView):
         placements = Placement.objects.filter(status=Placement.Status.ACTIVE).select_related("client")
         if request.user.is_broker:
             placements = placements.filter(client__broker_assignments__broker=request.user)
+        if request.query_params.get("client_id"):
+            placements = placements.filter(client_id=request.query_params["client_id"])
+        if request.query_params.get("contractor_id"):
+            placements = placements.filter(contractor_id=request.query_params["contractor_id"])
 
         awaiting, no_inv, unpaid, issues = 0, 0, 0, 0
         total_hours, currency_data = Decimal("0"), defaultdict(lambda: {"revenue": Decimal("0"), "cost": Decimal("0"), "margin": Decimal("0")})
