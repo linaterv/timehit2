@@ -43,8 +43,8 @@ def validate_template(template: str) -> list[str]:
         if padding and int(padding) > 10:
             errors.append(f"Padding too large: {{{var_name}:{padding}}} (max 10)")
 
-    if not found_vars & COUNTER_VARS:
-        errors.append("Template must contain at least one counter variable (COUNT, COUNT_YEAR, COUNT_MONTH, COUNT_QUARTER)")
+    # Counter vars are optional for client templates (duplicates auto-suffixed),
+    # but recommended for contractor templates
 
     # Check literal parts
     literals = VARIABLE_PATTERN.sub("", template)

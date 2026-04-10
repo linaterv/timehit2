@@ -57,6 +57,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     clearTokens();
+    localStorage.removeItem("timehit_global_filter");
+    sessionStorage.removeItem("control-year");
+    sessionStorage.removeItem("control-month");
+    sessionStorage.removeItem("control-highlight");
     setUser(null);
   };
 

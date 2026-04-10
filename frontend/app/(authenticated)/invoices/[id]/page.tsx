@@ -153,22 +153,18 @@ export default function InvoiceDetailPage() {
   const handleDownloadPdf = () => {
     const token = getAccessToken();
     const url = `/api/v1/invoices/${invoiceId}/pdf`;
-    const link = document.createElement("a");
-    link.href = url;
-    link.target = "_blank";
-    if (token) {
-      // Open in new tab with auth — use a fetch + blob approach
-      fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => res.blob())
-        .then((blob) => {
-          const blobUrl = URL.createObjectURL(blob);
-          window.open(blobUrl, "_blank");
-        });
-    } else {
-      window.open(url, "_blank");
-    }
+    fetch(url, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+      .then((res) => res.blob())
+      .then((blob) => {
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = `${invoice?.invoice_number || "invoice"}.pdf`;
+        a.click();
+        URL.revokeObjectURL(blobUrl);
+      });
   };
 
   const snap = (invoice.billing_snapshot ?? {}) as Record<string, unknown>;
@@ -301,6 +297,35 @@ export default function InvoiceDetailPage() {
             {invoice.due_date && <span>Due date: <strong>{formatDate(invoice.due_date)}</strong></span>}
             {(snap["client_payment_terms_days"] != null || snap["contractor_payment_terms_days"] != null) && (
               <span>Payment terms: <strong>{String(snap["client_payment_terms_days"] ?? snap["contractor_payment_terms_days"])} days</strong></span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Related Entities — admin/broker only */}
+      {!isContractor && (
+        <div className="border rounded-lg p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Related Entities</h2>
+          <div className="flex flex-wrap gap-3">
+            <EL href={`/clients/${invoice.client.id}`} className="inline-flex items-center gap-2 px-3 py-2 bg-gray-50 border rounded-lg text-sm hover:bg-brand-50 hover:border-brand-200">
+              <span className="text-xs font-mono text-gray-400">Client</span>
+              <span className="font-medium">{invoice.client.company_name}</span>
+            </EL>
+            <EL href={`/contractors/${invoice.contractor.id}`} className="inline-flex items-center gap-2 px-3 py-2 bg-gray-50 border rounded-lg text-sm hover:bg-brand-50 hover:border-brand-200">
+              <span className="text-xs font-mono text-gray-400">Contractor</span>
+              <span className="font-medium">{invoice.contractor.full_name}</span>
+            </EL>
+            {invoice.placement_id && (
+              <EL href={`/placements/${invoice.placement_id}`} className="inline-flex items-center gap-2 px-3 py-2 bg-gray-50 border rounded-lg text-sm hover:bg-brand-50 hover:border-brand-200">
+                <span className="text-xs font-mono text-gray-400">Placement</span>
+                <span className="font-medium">{(invoice as any).placement_title || "View"}</span>
+              </EL>
+            )}
+            {invoice.timesheet_id && (
+              <EL href={`/timesheets/${invoice.timesheet_id}`} className="inline-flex items-center gap-2 px-3 py-2 bg-gray-50 border rounded-lg text-sm hover:bg-brand-50 hover:border-brand-200">
+                <span className="text-xs font-mono text-gray-400">Timesheet</span>
+                <span className="font-medium">{formatMonth(invoice.year, invoice.month)}</span>
+              </EL>
             )}
           </div>
         </div>

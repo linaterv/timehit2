@@ -168,38 +168,12 @@ class Command(BaseCommand):
 
         # ── INVOICE TEMPLATES ────────────────────────────────────────────────
         self.stdout.write("Creating invoice templates...")
-        for prof in [prof_alex, prof_mia, prof_oscar, prof_nina, prof_sam]:
-            InvoiceTemplate.objects.create(
-                title=f"{prof.company_name or prof.user.full_name} - Default",
-                code="DEFAULT",
-                template_type=InvoiceTemplate.Type.CONTRACTOR, status=InvoiceTemplate.Status.ACTIVE,
-                is_default=True, contractor=prof.user,
-                company_name=prof.company_name, registration_number=prof.registration_number,
-                billing_address=prof.billing_address, country=prof.country,
-                default_currency=prof.default_currency,
-                vat_registered=prof.vat_registered, vat_number=prof.vat_number,
-                vat_rate_percent=prof.vat_rate_percent,
-                bank_name=prof.bank_name, bank_account_iban=prof.bank_account_iban,
-                bank_swift_bic=prof.bank_swift_bic,
-                invoice_series_prefix=prof.invoice_series_prefix, next_invoice_number=prof.next_invoice_number,
-                payment_terms_days=prof.payment_terms_days,
-            )
-        for cl in [techvibe, cloudbase, nordsoft, medicorp]:
-            InvoiceTemplate.objects.create(
-                title=f"{cl.company_name} - Default",
-                code="DEFAULT",
-                template_type=InvoiceTemplate.Type.CLIENT, status=InvoiceTemplate.Status.ACTIVE,
-                is_default=True, client=cl,
-                company_name=cl.company_name, registration_number=cl.registration_number,
-                billing_address=cl.billing_address, country=cl.country,
-                default_currency=cl.default_currency,
-                vat_number=cl.vat_number, payment_terms_days=cl.payment_terms_days,
-            )
 
-        # Global Contractor→Agency templates (LT and EN)
+        # Global Contractor→Agency templates (LT and EN) — created first so per-contractor can reference
         global_contr_lt = InvoiceTemplate.objects.create(
             title="LT Template", code="LT",
             template_type=InvoiceTemplate.Type.CONTRACTOR, status=InvoiceTemplate.Status.ACTIVE,
+            invoice_series_prefix="INV-{CONTRACTOR}{CLIENT}{YY}{MM}{DD}",
             billing_address="Klientas:\nUAB \u201eWISE INTEGRATION\u201c\n\u012emon\u0117s kodas: 302666833\nPVM mok\u0117tojo kodas: LT100006404014\nAdresas: Paneri\u0173 g. 11, LT-03209 Vilnius, Lietuva\nEl. pa\u0161tas: info@wiseintegration.com\nTinklalapis: https://hitcontract.lt",
             bank_name="Beneficiary Bank\nSEB Bank AB\nVilnius Lithuania\nSwift: CBVILT2X\nIBAN: LT06 7044 0600 0817 7672\nAccount Name: MB \u201eMidija\u201c\nCompany Code: 304612656",
             company_name="UAB \u201eWISE INTEGRATION\u201c", country="LT", default_currency="EUR",
@@ -207,15 +181,37 @@ class Command(BaseCommand):
         global_contr_en = InvoiceTemplate.objects.create(
             title="EN Template", code="EN",
             template_type=InvoiceTemplate.Type.CONTRACTOR, status=InvoiceTemplate.Status.ACTIVE,
+            invoice_series_prefix="INV-{CONTRACTOR}{CLIENT}{YY}{MM}{DD}",
             billing_address="Client:\nUAB \"WISE INTEGRATION\"\nCompany code: 302666833\nVAT No.: LT100006404014\nRegistered address: Paneri\u0173 g. 11, LT-03209 Vilnius, Lithuania\nEmail: info@hitcontract.com\nWebsite: https://hitcontract.lt\nPhone: +370 671 80231",
             bank_name="Beneficiary Bank\nSEB Bank AB\nVilnius Lithuania\nSwift: CBVILT2X\nIBAN: LT06 7044 0600 0817 7672\nAccount Name: MB \u201eMidija\u201c\nCompany Code: 304612656",
             company_name="UAB \"WISE INTEGRATION\"", country="LT", default_currency="EUR",
         )
 
+        # Per-contractor templates — inherit series from global, parent=global_contr_lt
+        for prof in [prof_alex, prof_mia, prof_oscar, prof_nina, prof_sam]:
+            InvoiceTemplate.objects.create(
+                title=f"{prof.company_name or prof.user.full_name} - Default",
+                code="DEFAULT",
+                template_type=InvoiceTemplate.Type.CONTRACTOR, status=InvoiceTemplate.Status.ACTIVE,
+                is_default=True, contractor=prof.user, parent=global_contr_lt,
+                company_name=prof.company_name, registration_number=prof.registration_number,
+                billing_address=prof.billing_address, country=prof.country,
+                default_currency=prof.default_currency,
+                vat_registered=prof.vat_registered, vat_number=prof.vat_number,
+                vat_rate_percent=prof.vat_rate_percent,
+                bank_name=prof.bank_name, bank_account_iban=prof.bank_account_iban,
+                bank_swift_bic=prof.bank_swift_bic,
+                invoice_series_prefix=global_contr_lt.invoice_series_prefix,
+                next_invoice_number=prof.next_invoice_number,
+                payment_terms_days=prof.payment_terms_days,
+            )
+
         # Global Client templates (LT and EN) — used as base for per-client billing templates
+        # Series prefix lives here; per-client templates inherit it via parent FK
         client_tpl_lt = InvoiceTemplate.objects.create(
             title="Client LT Template", code="LT",
             template_type=InvoiceTemplate.Type.CLIENT, status=InvoiceTemplate.Status.ACTIVE,
+            invoice_series_prefix="WISE-{CLIENT}{CONTRACTOR}{YY}{MM}{DD}",
             billing_address="Siunt\u0117jas:\nUAB \u201eWISE INTEGRATION\u201c\n\u012emon\u0117s kodas: 302666833\nPVM mok\u0117tojo kodas: LT100006404014\nAdresas: Paneri\u0173 g. 11, LT-03209 Vilnius, Lietuva\nEl. pa\u0161tas: info@wiseintegration.com\nTinklalapis: https://hitcontract.lt",
             company_name="UAB \u201eWISE INTEGRATION\u201c",
             country="LT", default_currency="EUR",
@@ -225,12 +221,26 @@ class Command(BaseCommand):
         client_tpl_en = InvoiceTemplate.objects.create(
             title="Client EN Template", code="EN",
             template_type=InvoiceTemplate.Type.CLIENT, status=InvoiceTemplate.Status.ACTIVE,
+            invoice_series_prefix="WISE-{CLIENT}{CONTRACTOR}{YY}{MM}{DD}",
             billing_address="Service Provider:\nUAB \"WISE INTEGRATION\"\nCompany code: 302666833\nVAT No.: LT100006404014\nRegistered address: Paneri\u0173 g. 11, LT-03209 Vilnius, Lithuania\nEmail: info@hitcontract.com\nWebsite: https://hitcontract.lt\nPhone: +370 671 80231",
             company_name="UAB \"WISE INTEGRATION\"",
             country="LT", default_currency="EUR",
             vat_registered=True, vat_rate_percent=21,
             payment_terms_days=30,
         )
+
+        # Per-client templates — inherit series from global parent
+        for cl in [techvibe, cloudbase, nordsoft, medicorp]:
+            InvoiceTemplate.objects.create(
+                title=f"{cl.company_name} - Default",
+                code="DEFAULT",
+                template_type=InvoiceTemplate.Type.CLIENT, status=InvoiceTemplate.Status.ACTIVE,
+                is_default=True, client=cl, parent=client_tpl_lt,
+                company_name=cl.company_name, registration_number=cl.registration_number,
+                billing_address=cl.billing_address, country=cl.country,
+                default_currency=cl.default_currency,
+                vat_number=cl.vat_number, payment_terms_days=cl.payment_terms_days,
+            )
 
         # ── AGENCY SETTINGS ──────────────────────────────────────────────────
         AgencySettings.objects.create(
@@ -338,7 +348,7 @@ class Command(BaseCommand):
             vat_rate_percent=demo_prof.vat_rate_percent,
             bank_name=demo_prof.bank_name, bank_account_iban=demo_prof.bank_account_iban,
             bank_swift_bic=demo_prof.bank_swift_bic,
-            invoice_series_prefix=demo_prof.invoice_series_prefix,
+            invoice_series_prefix=global_contr_lt.invoice_series_prefix,
             next_invoice_number=1, payment_terms_days=14,
         )
         p_demo = Placement.objects.create(
@@ -373,7 +383,7 @@ class Command(BaseCommand):
             vat_rate_percent=demo_prof2.vat_rate_percent,
             bank_name=demo_prof2.bank_name, bank_account_iban=demo_prof2.bank_account_iban,
             bank_swift_bic=demo_prof2.bank_swift_bic,
-            invoice_series_prefix=demo_prof2.invoice_series_prefix,
+            invoice_series_prefix=global_contr_lt.invoice_series_prefix,
             next_invoice_number=1, payment_terms_days=21,
         )
         p_demo2 = Placement.objects.create(
@@ -407,7 +417,7 @@ class Command(BaseCommand):
             vat_registered=False,
             bank_name=demo_prof3.bank_name, bank_account_iban=demo_prof3.bank_account_iban,
             bank_swift_bic=demo_prof3.bank_swift_bic,
-            invoice_series_prefix=demo_prof3.invoice_series_prefix,
+            invoice_series_prefix=global_contr_lt.invoice_series_prefix,
             next_invoice_number=1, payment_terms_days=30,
         )
         p_demo3 = Placement.objects.create(
@@ -513,6 +523,9 @@ class Command(BaseCommand):
 
         # ── HELPER: create invoice pair ──────────────────────────────────────
         agy_counter = {"2025": 0, "2026": 0}
+        agy_total = 0
+        agy_used = {}  # tracks duplicate base numbers
+        contr_used = {}  # tracks duplicate contractor base numbers
         contr_counters = {alex.id: 0, mia.id: 0, oscar.id: 0, nina.id: 0, sam.id: 0, demo_contr.id: 0, demo_contr2.id: 0, demo_contr3.id: 0}
         profiles = {alex.id: prof_alex, mia.id: prof_mia, oscar.id: prof_oscar, nina.id: prof_nina, sam.id: prof_sam, demo_contr.id: demo_prof, demo_contr2.id: demo_prof2, demo_contr3.id: demo_prof3}
 
@@ -524,14 +537,32 @@ class Command(BaseCommand):
                 agy_counter[year_key] = 0
             agy_counter[year_key] += 1
             contr_counters[pl.contractor_id] += 1
-
-            agy_num = f"AGY-{ts.year}-{agy_counter[year_key]:04d}"
-            contr_num = f"{profile.invoice_series_prefix}{contr_counters[pl.contractor_id]:04d}"
+            nonlocal agy_total
+            agy_total += 1
 
             issue_dt = date(ts.year, ts.month, 1) + timedelta(days=31)
             issue_dt = date(issue_dt.year, issue_dt.month, 1)
             due_dt = issue_dt + timedelta(days=pl.client.payment_terms_days or 30)
             contr_due = issue_dt + timedelta(days=profile.payment_terms_days or 14)
+
+            cl_code = pl.client.code
+            co_code = profile.code
+            yy = str(issue_dt.year)[-2:]
+            mm = f"{issue_dt.month:02d}"
+            dd = f"{issue_dt.day:02d}"
+            agy_base = f"WISE-{cl_code}{co_code}{yy}{mm}{dd}"
+            # Auto-suffix duplicates: BLA, BLA1, BLA2…
+            if agy_base not in agy_used:
+                agy_num = agy_base
+            else:
+                agy_num = f"{agy_base}{agy_used[agy_base]}"
+            agy_used[agy_base] = agy_used.get(agy_base, 0) + 1
+            contr_base = f"INV-{co_code}{cl_code}{yy}{mm}{dd}"
+            if contr_base not in contr_used:
+                contr_num = contr_base
+            else:
+                contr_num = f"{contr_base}{contr_used[contr_base]}"
+            contr_used[contr_base] = contr_used.get(contr_base, 0) + 1
 
             c_sub = ts.total_hours * pl.client_rate
             co_sub = ts.total_hours * pl.contractor_rate
@@ -612,12 +643,17 @@ class Command(BaseCommand):
             else:
                 make_invoices(ts, "ISSUED")
 
-        # Update contractor next_invoice_numbers (both profile and template)
+        # Sync contractor counters (profile + template)
         for uid, count in contr_counters.items():
-            ContractorProfile.objects.filter(user_id=uid).update(next_invoice_number=count + 1)
+            contr_year_counts = {}
+            for inv in Invoice.objects.filter(contractor_id=uid, invoice_type="CONTRACTOR_INVOICE"):
+                yk = f"year_{inv.year}"
+                contr_year_counts[yk] = contr_year_counts.get(yk, 0) + 1
+            ContractorProfile.objects.filter(user_id=uid).update(
+                next_invoice_number=count + 1, counters=contr_year_counts)
             InvoiceTemplate.objects.filter(
                 contractor_id=uid, template_type="CONTRACTOR", is_default=True
-            ).update(next_invoice_number=count + 1)
+            ).update(next_invoice_number=count + 1, counters=contr_year_counts)
 
         # Demo3 (Designer) Feb invoices → ISSUED on Feb 1 (simulates late payment)
         from django.utils import timezone as tz
@@ -628,12 +664,12 @@ class Command(BaseCommand):
 
         # ── GENERATE PDFs ────────────────────────────────────────────────────
         self.stdout.write("Generating invoice PDFs...")
-        for inv in Invoice.objects.select_related("client", "contractor").exclude(invoice_number__startswith="AGY-TEST"):
+        for inv in Invoice.objects.select_related("client", "contractor__contractor_profile", "placement", "timesheet", "generated_by").exclude(invoice_number__startswith="AGY-TEST"):
             generate_invoice_pdf(inv)
 
         # ── INVOICE NOTIFICATIONS ─────────────────────────────────────────────
         self.stdout.write("Creating invoice notifications...")
-        for inv in Invoice.objects.select_related("client", "contractor").exclude(invoice_number__startswith="AGY-TEST"):
+        for inv in Invoice.objects.select_related("client", "contractor__contractor_profile", "placement", "timesheet", "generated_by").exclude(invoice_number__startswith="AGY-TEST"):
             # Created notification
             InvoiceNotification.objects.create(
                 invoice=inv, created_by=jonas, title="Invoice Created",

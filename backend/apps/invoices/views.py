@@ -53,26 +53,69 @@ def _next_number(source, client_code="", contractor_code="", default_template=""
     """
     Generate next invoice number using the series template engine.
     source: InvoiceTemplate or ContractorProfile (has invoice_series_prefix + counters).
-    Falls back to default_template if source has no template.
-    Legacy prefixes (no {VAR}) get {COUNT_YEAR:4} appended automatically.
+    For CLIENT templates: walks parent chain to find series prefix + uses parent's counters.
+    If template has no counter vars, duplicates get auto-suffixed (BLA → BLA, BLA1, BLA2…).
+    If template has counter vars, keeps incrementing until unique.
     """
-    from .series_engine import resolve_series, VARIABLE_PATTERN
-    template = source.invoice_series_prefix or default_template
+    from .series_engine import resolve_series, VARIABLE_PATTERN, COUNTER_VARS
+
+    # For InvoiceTemplate: walk parent chain to find series owner (prefix + counters)
+    counter_source = source
+    if isinstance(source, InvoiceTemplate):
+        node = source
+        while node:
+            if node.invoice_series_prefix:
+                counter_source = node
+                break
+            if node.parent_id:
+                node = InvoiceTemplate.objects.get(pk=node.parent_id)
+            else:
+                break
+
+    template = counter_source.invoice_series_prefix or default_template
     if not template:
         template = "INV-{YYYY}-{COUNT_YEAR:4}"
-    # Legacy prefix support: if no variables found, treat as prefix + counter
-    if not VARIABLE_PATTERN.search(template):
+
+    has_any_var = bool(VARIABLE_PATTERN.search(template))
+    has_counter = any(m.group(1) in COUNTER_VARS for m in VARIABLE_PATTERN.finditer(template))
+
+    # Legacy prefix (no vars at all, e.g. "AT-2026-") on ContractorProfile: auto-append counter
+    if not has_any_var and isinstance(counter_source, ContractorProfile):
         template = template + "{COUNT_YEAR:4}"
-    counters = source.counters or {}
-    result, new_counters = resolve_series(
-        template, client_code=client_code, contractor_code=contractor_code,
-        counters=counters,
-    )
-    # Atomic save of counters
-    if isinstance(source, InvoiceTemplate):
-        InvoiceTemplate.objects.filter(pk=source.pk).update(counters=new_counters)
+        has_counter = True
+
+    if has_counter:
+        # Counter-based: keep incrementing until unique
+        counters = counter_source.counters or {}
+        for _ in range(100):
+            result, new_counters = resolve_series(
+                template, client_code=client_code, contractor_code=contractor_code,
+                counters=counters,
+            )
+            if not Invoice.objects.filter(invoice_number=result).exists():
+                break
+            counters = new_counters
+        # Save updated counters
+        if isinstance(counter_source, InvoiceTemplate):
+            InvoiceTemplate.objects.filter(pk=counter_source.pk).update(counters=new_counters)
+        else:
+            ContractorProfile.objects.filter(pk=counter_source.pk).update(counters=new_counters)
     else:
-        ContractorProfile.objects.filter(pk=source.pk).update(counters=new_counters)
+        # No counter vars: resolve base, then auto-suffix duplicates (BLA → BLA1 → BLA2…)
+        base, _ = resolve_series(
+            template, client_code=client_code, contractor_code=contractor_code,
+            counters={}, dry_run=True,
+        )
+        result = base
+        if Invoice.objects.filter(invoice_number=base).exists():
+            # Count existing duplicates with this base
+            dupes = Invoice.objects.filter(invoice_number__startswith=base).count()
+            result = f"{base}{dupes}"
+            # Safety: ensure uniqueness
+            while Invoice.objects.filter(invoice_number=result).exists():
+                dupes += 1
+                result = f"{base}{dupes}"
+
     return result
 
 
@@ -210,7 +253,7 @@ class GenerateInvoicesView(APIView):
                         _cl_code = pl.client.code if hasattr(pl.client, "code") else ""
                     _co_code = profile.code if hasattr(profile, "code") else ""
                     c_inv = Invoice.objects.create(
-                        invoice_number=_next_number(ct or profile, client_code=_cl_code, contractor_code=_co_code, default_template="AGY-{YYYY}-{COUNT_YEAR:4}"),
+                        invoice_number=_next_number(ct or profile, client_code=_cl_code, contractor_code=_co_code, default_template="WISE-{CLIENT}{CONTRACTOR}{YY}{MM}{DD}"),
                         invoice_type=Invoice.Type.CLIENT_INVOICE,
                         timesheet=ts, placement=pl, client=pl.client, contractor=pl.contractor,
                         year=ts.year, month=ts.month, currency=pl.currency,
@@ -251,7 +294,7 @@ class GenerateInvoicesView(APIView):
                     if cot:
                         co_snap["template_id"] = str(cot.id)
                     co_inv = Invoice.objects.create(
-                        invoice_number=_next_number(cot or profile, client_code=_cl_code, contractor_code=_co_code, default_template="{CONTRACTOR}-{COUNT_YEAR:4}"),
+                        invoice_number=_next_number(cot or profile, client_code=_cl_code, contractor_code=_co_code, default_template="INV-{CONTRACTOR}{CLIENT}{YY}{MM}{DD}"),
                         invoice_type=Invoice.Type.CONTRACTOR_INVOICE,
                         timesheet=ts, placement=pl, client=pl.client, contractor=pl.contractor,
                         year=ts.year, month=ts.month, currency=pl.currency,
@@ -392,9 +435,9 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         _cl_code = inv.client.code if hasattr(inv.client, "code") else ""
         _co_code = inv.contractor.contractor_profile.code if hasattr(inv.contractor, "contractor_profile") and hasattr(inv.contractor.contractor_profile, "code") else ""
         if inv.invoice_type == Invoice.Type.CONTRACTOR_INVOICE:
-            num = _next_number(inv.contractor.contractor_profile, client_code=_cl_code, contractor_code=_co_code, default_template="{CONTRACTOR}-{COUNT_YEAR:4}")
+            num = _next_number(inv.contractor.contractor_profile, client_code=_cl_code, contractor_code=_co_code, default_template="INV-{CONTRACTOR}{CLIENT}{YY}{MM}{DD}")
         else:
-            num = _next_number(inv.contractor.contractor_profile, client_code=_cl_code, contractor_code=_co_code, default_template="AGY-{YYYY}-{COUNT_YEAR:4}")
+            num = _next_number(inv.contractor.contractor_profile, client_code=_cl_code, contractor_code=_co_code, default_template="WISE-{CLIENT}{CONTRACTOR}{YY}{MM}{DD}")
         corrective = Invoice.objects.create(
             invoice_number=num, invoice_type=inv.invoice_type,
             timesheet=inv.timesheet, placement=inv.placement,

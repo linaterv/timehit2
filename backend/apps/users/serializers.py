@@ -72,6 +72,11 @@ class UserCreateSerializer(serializers.ModelSerializer):
             from apps.contractors.models import ContractorProfile
             ContractorProfile.objects.create(user=user)
             from apps.invoices.models import InvoiceTemplate
+            # Find global LT contractor template to use as parent and copy series
+            global_tpl = InvoiceTemplate.objects.filter(
+                template_type=InvoiceTemplate.Type.CONTRACTOR,
+                contractor__isnull=True, client__isnull=True,
+            ).first()
             InvoiceTemplate.objects.create(
                 title=f"{user.full_name} - Default",
                 code="DEFAULT",
@@ -79,9 +84,11 @@ class UserCreateSerializer(serializers.ModelSerializer):
                 status=InvoiceTemplate.Status.DRAFT,
                 is_default=True,
                 contractor=user,
+                parent=global_tpl,
                 company_name=user.full_name,
                 billing_address=f"{user.full_name}\nAddress\nCity, Country",
                 default_currency="EUR",
+                invoice_series_prefix=global_tpl.invoice_series_prefix if global_tpl else "",
             )
         if user.role == User.Role.CLIENT_CONTACT and client_id:
             from apps.clients.models import ClientContact

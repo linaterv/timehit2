@@ -326,9 +326,13 @@ export function InvoiceTemplateA4({
             <span className="text-amber-600/60">VAT: {contractorOwnEdit ? "from global template" : "from contractor"}</span>
           )}
           <span>&middot;</span>
-          <span className="relative group">Series: <Field value={form.invoice_series_prefix} onChange={(v) => u("invoice_series_prefix", v)} placeholder="{CONTRACTOR}-{YY}-{COUNT_YEAR:4}" className="text-xs w-56 font-mono" mono />
-            <span className="hidden group-hover:block absolute bottom-full left-0 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-pre z-50 mb-1">{"Variables: {YYYY} {YY} {MM} {DD} {Q}\n{CLIENT} {CONTRACTOR}\n{COUNT} {COUNT_YEAR} {COUNT_MONTH} {COUNT_QUARTER}\nPadding: {COUNT:4} → 0001"}</span>
-          </span>
+          {isContractorType || !form.parent_id ? (
+            <span className="relative group">Series: <Field value={form.invoice_series_prefix} onChange={(v) => u("invoice_series_prefix", v)} placeholder="{CONTRACTOR}-{YY}-{COUNT_YEAR:4}" className="text-xs w-56 font-mono" mono />
+              <span className="hidden group-hover:block absolute bottom-full left-0 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-pre z-50 mb-1">{"Variables: {YYYY} {YY} {MM} {DD} {Q}\n{CLIENT} {CONTRACTOR}\n{COUNT} {COUNT_YEAR} {COUNT_MONTH} {COUNT_QUARTER}\nPadding: {COUNT:4} → 0001"}</span>
+            </span>
+          ) : (
+            <span className="text-xs text-gray-400">Series: <span className="font-mono text-amber-600/60">{parentTemplate?.invoice_series_prefix || "from global template"}</span></span>
+          )}
           <span>&middot;</span>
           <span>Next #: <input type="number" value={form.next_invoice_number ?? ""} onChange={(e) => u("next_invoice_number", e.target.value ? parseInt(e.target.value, 10) : null)} className="w-16 bg-blue-50/60 border-b-2 border-brand-200 focus:border-brand-600 focus:bg-blue-50 focus:outline-none rounded-sm text-xs font-mono text-center px-1" /></span>
           <span>&middot;</span>

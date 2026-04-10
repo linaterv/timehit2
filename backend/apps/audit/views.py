@@ -100,6 +100,23 @@ class ContractorAuditLogView(APIView):
         return Response({"data": AuditLogSerializer(qs, many=True).data})
 
 
+class AuditLogDetailView(APIView):
+    @extend_schema(tags=["Audit"])
+    def get(self, request, pk=None):
+        try:
+            entry = AuditLog.objects.select_related("created_by").get(pk=pk)
+        except AuditLog.DoesNotExist:
+            from rest_framework.exceptions import NotFound
+            raise NotFound()
+        # Role-based visibility
+        user = request.user
+        if user.is_contractor and not entry.visible_to_contractor:
+            raise PermissionDenied()
+        if user.is_client_contact and not entry.visible_to_client:
+            raise PermissionDenied()
+        return Response(AuditLogSerializer(entry).data)
+
+
 class GlobalAuditLogView(APIView):
     permission_classes = [IsAdmin]
 
