@@ -122,11 +122,11 @@ Consistent colored badges throughout:
 ### 2. Dashboard / Control Screen (`/`) — ADMIN, BROKER
 The primary operational view. Maps to `GET /control/overview` + `GET /control/summary`.
 
-**Summary cards** (top row, 4 cards):
-- Awaiting Approval (count, amber if > 0)
-- Approved, No Invoice (count, amber)
-- Unpaid Invoices (count)
-- Issues (count, red if > 0)
+**Summary cards** (top row, 4 cards, each with distinct background color and Lucide icon):
+- Awaiting Approval — amber/orange bg, `Clock` icon (count)
+- Approved, No Invoice — blue bg, `FileX` icon (count)
+- Unpaid Invoices — purple bg, `CreditCard` icon (count)
+- Issues — red bg, `AlertTriangle` icon (count = total flags from overview)
 - data-testid: `summary-awaiting`, `summary-no-invoice`, `summary-unpaid`, `summary-issues`
 
 **Month selector** (center top): `< March 2026 >` arrows + dropdown

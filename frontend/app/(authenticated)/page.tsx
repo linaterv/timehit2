@@ -11,6 +11,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { EntityLink as EL } from "@/components/shared/entity-link";
 
 import { GenerateInvoicesModal } from "@/components/shared/generate-invoices-modal";
+import { Clock, FileX, CreditCard, AlertTriangle } from "lucide-react";
 import { formatCurrency, formatMonth } from "@/lib/utils";
 import { api, getAccessToken } from "@/lib/api";
 import type {
@@ -485,39 +486,67 @@ function ControlScreen() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div
           data-testid="summary-awaiting"
-          className="border rounded-lg p-4 bg-surface"
+          className="rounded-lg p-4 bg-amber-50 border border-amber-200"
         >
-          <p className="text-sm text-gray-500">Awaiting Approval</p>
-          <p className="text-2xl font-bold text-gray-900">
-            {summary?.timesheets_awaiting_approval ?? "—"}
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-amber-700">Awaiting Approval</p>
+              <p className="text-3xl font-bold text-amber-900 mt-1">
+                {summary?.timesheets_awaiting_approval ?? "—"}
+              </p>
+            </div>
+            <div className="rounded-full bg-amber-100 p-3">
+              <Clock className="h-6 w-6 text-amber-600" />
+            </div>
+          </div>
         </div>
         <div
           data-testid="summary-no-invoice"
-          className="border rounded-lg p-4 bg-surface"
+          className="rounded-lg p-4 bg-blue-50 border border-blue-200"
         >
-          <p className="text-sm text-gray-500">No Invoice</p>
-          <p className="text-2xl font-bold text-gray-900">
-            {summary?.approved_without_invoices ?? "—"}
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-blue-700">No Invoice</p>
+              <p className="text-3xl font-bold text-blue-900 mt-1">
+                {summary?.approved_without_invoices ?? "—"}
+              </p>
+            </div>
+            <div className="rounded-full bg-blue-100 p-3">
+              <FileX className="h-6 w-6 text-blue-600" />
+            </div>
+          </div>
         </div>
         <div
           data-testid="summary-unpaid"
-          className="border rounded-lg p-4 bg-surface"
+          className="rounded-lg p-4 bg-purple-50 border border-purple-200"
         >
-          <p className="text-sm text-gray-500">Unpaid Invoices</p>
-          <p className="text-2xl font-bold text-gray-900">
-            {summary?.invoices_awaiting_payment ?? "—"}
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-purple-700">Unpaid Invoices</p>
+              <p className="text-3xl font-bold text-purple-900 mt-1">
+                {summary?.invoices_awaiting_payment ?? "—"}
+              </p>
+            </div>
+            <div className="rounded-full bg-purple-100 p-3">
+              <CreditCard className="h-6 w-6 text-purple-600" />
+            </div>
+          </div>
         </div>
         <div
           data-testid="summary-issues"
-          className="border rounded-lg p-4 bg-surface"
+          className="rounded-lg p-4 bg-red-50 border border-red-200"
         >
-          <p className="text-sm text-gray-500">Issues</p>
-          <p className="text-2xl font-bold text-gray-900">
-            {summary?.placements_with_issues ?? "—"}
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-red-700">Issues</p>
+              <p className="text-3xl font-bold text-red-900 mt-1">
+                {summary?.placements_with_issues ?? "—"}
+              </p>
+            </div>
+            <div className="rounded-full bg-red-100 p-3">
+              <AlertTriangle className="h-6 w-6 text-red-600" />
+            </div>
+          </div>
         </div>
       </div>
 
