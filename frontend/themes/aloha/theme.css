@@ -59,4 +59,38 @@
 
   /* Chill rounded font */
   --font-sans: var(--font-comfortaa), "Nunito", system-ui, sans-serif;
+
+  --aloha-bg: url("/themes/aloha/bg.jpg");
+}
+
+[data-theme="aloha"] main {
+  background-image: var(--aloha-bg) !important;
+  background-size: cover !important;
+  background-position: center top !important;
+  background-attachment: fixed !important;
+}
+
+[data-theme="aloha"] main > div {
+  background: rgba(248, 252, 255, 0.9);
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+[data-theme="aloha"] aside {
+  position: relative;
+}
+
+[data-theme="aloha"] aside::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background-image: url("/themes/aloha/person.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: bottom center;
+  pointer-events: none;
+  opacity: 0.4;
 }
