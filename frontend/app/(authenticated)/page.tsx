@@ -11,7 +11,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { EntityLink as EL } from "@/components/shared/entity-link";
 
 import { GenerateInvoicesModal } from "@/components/shared/generate-invoices-modal";
-import { Clock, FileX, CreditCard, MailX, AlertTriangle } from "lucide-react";
+import { FileWarning, FileX, CreditCard, MailX, AlertTriangle } from "lucide-react";
 import { formatCurrency, formatMonth } from "@/lib/utils";
 import { api, getAccessToken } from "@/lib/api";
 import type {
@@ -516,19 +516,19 @@ function ControlScreen() {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div
-          data-testid="summary-awaiting"
-          onClick={() => { setFlagFilter(new Set(["pending_approval"])); setNeedsAttention(false); setPage(1); }}
+          data-testid="summary-ts-issues"
+          onClick={() => { setFlagFilter(new Set(["no_timesheet", "timesheet_draft", "pending_approval", "missing_attachment"])); setNeedsAttention(false); setPage(1); }}
           className="rounded-lg p-4 bg-amber-50 border border-amber-200 cursor-pointer hover:shadow-md transition-shadow"
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-amber-700">Awaiting Approval</p>
+              <p className="text-sm font-medium text-amber-700">Timesheet Issues</p>
               <p className="text-3xl font-bold text-amber-900 mt-1">
-                {summary?.timesheets_awaiting_approval ?? "—"}
+                {summary?.timesheet_issues ?? "—"}
               </p>
             </div>
             <div className="rounded-full bg-amber-100 p-3">
-              <Clock className="h-6 w-6 text-amber-600" />
+              <FileWarning className="h-6 w-6 text-amber-600" />
             </div>
           </div>
         </div>

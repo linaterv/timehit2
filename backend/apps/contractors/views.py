@@ -34,6 +34,8 @@ class ContractorViewSet(viewsets.ModelViewSet):
             qs = qs.filter(Q(user__full_name__icontains=p["search"]) | Q(company_name__icontains=p["search"]))
         if p.get("is_active") is not None:
             qs = qs.filter(user__is_active=p["is_active"].lower() == "true")
+        if p.get("client_id"):
+            qs = qs.filter(user__placements__client_id=p["client_id"]).distinct()
         return qs
 
     def get_object(self):

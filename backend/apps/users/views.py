@@ -134,6 +134,10 @@ class UserViewSet(viewsets.ModelViewSet):
                 u = User.objects.get(email=email)
                 log_audit(entity_type="user", entity_id=u.id, action="CREATED",
                           title=f"User {u.full_name} ({role}) created", user=request.user, data_after={"email": email, "role": role})
+                if role == "CONTRACTOR":
+                    log_audit(entity_type="contractor", entity_id=u.id, action="CREATED",
+                              title=f"Contractor {u.full_name} created", user=request.user,
+                              data_after={"email": email, "full_name": u.full_name, "country": request.data.get("country", "LT")})
             except User.DoesNotExist:
                 pass
         return resp

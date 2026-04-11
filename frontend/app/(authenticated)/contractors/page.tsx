@@ -3,12 +3,14 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
+import { CountrySelect } from "@/components/shared/country-select";
 import { DataTable, type Column } from "@/components/data-table/data-table";
 import { useApiQuery, useApiMutation } from "@/hooks/use-api";
 import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { formatDate } from "@/lib/utils";
-import type { ContractorProfile, PaginatedResponse, User } from "@/types/api";
+import { useGlobalFilter } from "@/lib/global-filter-context";
+import type { ContractorProfile, PaginatedResponse, User, Client } from "@/types/api";
 
 export default function ContractorsPage() {
   const router = useRouter();
@@ -17,6 +19,8 @@ export default function ContractorsPage() {
   const [search, setSearch] = useState("");
   const [isActive, setIsActive] = useState<string>("all");
   const isAdminOrBroker = user?.role === "ADMIN" || user?.role === "BROKER";
+  const { clientId: globalClient } = useGlobalFilter();
+  const [clientFilter, setClientFilter] = useState(globalClient);
   const [sort, setSort] = useState("full_name");
   const [order, setOrder] = useState<"asc" | "desc">("asc");
   const [createOpen, setCreateOpen] = useState(false);
@@ -33,6 +37,7 @@ export default function ContractorsPage() {
   const [formAutoGen, setFormAutoGen] = useState(true);
   const [formShowPwd, setFormShowPwd] = useState(false);
   const [formPwdError, setFormPwdError] = useState("");
+  const [formCountry, setFormCountry] = useState("LT");
 
   const generatePwd = useCallback(async () => {
     try {
@@ -40,6 +45,11 @@ export default function ContractorsPage() {
       if (data.password) { setFormPassword(data.password); setFormConfirm(data.password); setFormShowPwd(true); }
     } catch {}
   }, []);
+
+  const { data: clientsData } = useApiQuery<PaginatedResponse<Client>>(
+    ["clients-for-select"],
+    "/clients?per_page=200"
+  );
 
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
@@ -49,8 +59,9 @@ export default function ContractorsPage() {
     params.set("order", order);
     if (search) params.set("search", search);
     if (isActive !== "all") params.set("is_active", isActive);
+    if (clientFilter) params.set("client_id", clientFilter);
     return params.toString();
-  }, [page, search, isActive, sort, order]);
+  }, [page, search, isActive, sort, order, clientFilter]);
 
   const createMutation = useApiMutation<User, Record<string, unknown>>("POST", "/users", [["contractors"]]);
 
@@ -125,7 +136,7 @@ export default function ContractorsPage() {
     <div data-testid="contractors-page" className="space-y-4">
       <div className="flex items-center gap-3">
         {isAdminOrBroker && (
-          <button data-testid="create-contractor-btn" onClick={() => { setFormEmail(""); setFormName(""); setFormPassword(""); setFormConfirm(""); setFormAutoGen(true); setFormShowPwd(false); setFormPwdError(""); setCreateOpen(true); generatePwd(); }}
+          <button data-testid="create-contractor-btn" onClick={() => { setFormEmail(""); setFormName(""); setFormPassword(""); setFormConfirm(""); setFormAutoGen(true); setFormShowPwd(false); setFormPwdError(""); setFormCountry("LT"); setCreateOpen(true); generatePwd(); }}
             className="px-4 py-2 bg-brand-600 text-white rounded text-sm hover:bg-brand-700">Create Contractor</button>
         )}
         <input
@@ -145,6 +156,17 @@ export default function ContractorsPage() {
           <option value="all">All Status</option>
           <option value="true">Active</option>
           <option value="false">Inactive</option>
+        </select>
+        <select
+          data-testid="contractors-client-filter"
+          value={clientFilter}
+          onChange={(e) => { setClientFilter(e.target.value); setPage(1); }}
+          className="border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600"
+        >
+          <option value="">All Clients</option>
+          {clientsData?.data?.map((c) => (
+            <option key={c.id} value={c.id}>{c.company_name}</option>
+          ))}
         </select>
       </div>
 
@@ -191,6 +213,10 @@ export default function ContractorsPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
               <input type="email" value={formEmail} onChange={(e) => setFormEmail(e.target.value)}
                 className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+              <CountrySelect value={formCountry} onChange={setFormCountry} testId="create-contractor-country" />
             </div>
             <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
               <input type="checkbox" checked={formAutoGen} onChange={(e) => {
@@ -241,7 +267,7 @@ export default function ContractorsPage() {
                       setFormPassword(pwd); setFormConfirm(pwd); setFormShowPwd(true);
                     } catch { setFormPwdError("Failed to generate password"); return; }
                   }
-                  createMutation.mutate({ email: formEmail, full_name: formName, password: pwd, role: "CONTRACTOR" }, { onSuccess: () => setCreateOpen(false) });
+                  createMutation.mutate({ email: formEmail, full_name: formName, password: pwd, role: "CONTRACTOR", country: formCountry }, { onSuccess: () => setCreateOpen(false) });
                 }}
                 className="px-4 py-2 bg-brand-600 text-white rounded-md text-sm font-medium hover:bg-brand-700 disabled:opacity-50">
                 {createMutation.isPending ? "Creating..." : "Create"}

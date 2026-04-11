@@ -286,6 +286,7 @@ export interface ControlSummary {
   invoices_awaiting_payment: number;
   invoices_not_sent: number;
   placements_with_issues: number;
+  timesheet_issues: number;
   total_active_placements: number;
   total_hours: string;
   total_client_revenue: string;

@@ -4,10 +4,19 @@ from .models import User
 
 class UserListSerializer(serializers.ModelSerializer):
     current_placement = serializers.SerializerMethodField()
+    broker_assignments = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ["id", "email", "full_name", "role", "is_active", "created_at", "current_placement"]
+        fields = ["id", "email", "full_name", "role", "is_active", "created_at", "current_placement", "broker_assignments"]
+
+    def get_broker_assignments(self, obj):
+        if obj.role != User.Role.BROKER:
+            return None
+        return [
+            {"id": str(a.id), "broker_id": str(a.broker_id), "client_id": str(a.client_id), "client_name": a.client.company_name}
+            for a in obj.broker_assignments.select_related("client").all()
+        ]
 
     def get_current_placement(self, obj):
         if obj.role not in (User.Role.CONTRACTOR, User.Role.CLIENT_CONTACT):
@@ -46,18 +55,29 @@ class UserListSerializer(serializers.ModelSerializer):
 
 
 class UserDetailSerializer(serializers.ModelSerializer):
+    broker_assignments = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ["id", "email", "full_name", "role", "is_active", "created_at", "updated_at"]
+        fields = ["id", "email", "full_name", "role", "is_active", "created_at", "updated_at", "broker_assignments"]
+
+    def get_broker_assignments(self, obj):
+        if obj.role != User.Role.BROKER:
+            return None
+        return [
+            {"id": str(a.id), "broker_id": str(a.broker_id), "client_id": str(a.client_id), "client_name": a.client.company_name}
+            for a in obj.broker_assignments.select_related("client").all()
+        ]
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=1)
     client_id = serializers.UUIDField(required=False, allow_null=True)
+    country = serializers.CharField(required=False, default="LT")
 
     class Meta:
         model = User
-        fields = ["email", "full_name", "password", "role", "client_id"]
+        fields = ["email", "full_name", "password", "role", "client_id", "country"]
 
     def validate(self, data):
         if data.get("role") == User.Role.CLIENT_CONTACT and not data.get("client_id"):
@@ -66,11 +86,12 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         client_id = validated_data.pop("client_id", None)
+        country = validated_data.pop("country", "LT")
         password = validated_data.pop("password")
         user = User.objects.create_user(password=password, **validated_data)
         if user.role == User.Role.CONTRACTOR:
             from apps.contractors.models import ContractorProfile
-            ContractorProfile.objects.create(user=user)
+            ContractorProfile.objects.create(user=user, country=country)
             from apps.invoices.models import InvoiceTemplate
             # Find global LT contractor template to use as parent and copy series
             global_tpl = InvoiceTemplate.objects.filter(
