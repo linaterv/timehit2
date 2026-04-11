@@ -273,6 +273,7 @@ export interface ControlRow {
   };
   client: ClientRef;
   contractor: UserRef;
+  brokers: UserRef[];
   timesheet: { id: string; status: TimesheetStatus; total_hours: string; submitted_at: string | null; approved_at: string | null } | null;
   client_invoice: { id: string; invoice_number: string; status: InvoiceStatus; total_amount: string } | null;
   contractor_invoice: { id: string; invoice_number: string; status: InvoiceStatus; total_amount: string } | null;

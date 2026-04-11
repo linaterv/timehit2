@@ -348,6 +348,7 @@ export default function PlacementsPage() {
     try {
       const body = {
         ...createForm,
+        end_date: createForm.end_date || null,
         payment_terms_client_days: createForm.payment_terms_client_days ? parseInt(createForm.payment_terms_client_days, 10) : null,
         payment_terms_contractor_days: createForm.payment_terms_contractor_days ? parseInt(createForm.payment_terms_contractor_days, 10) : null,
       };

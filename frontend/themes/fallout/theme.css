@@ -82,15 +82,21 @@
   padding: 1.5rem;
 }
 
-/* Pip Boy in bottom-left corner */
+[data-theme="fallout"] aside {
+  position: relative;
+}
+
 [data-theme="fallout"] aside::after {
   content: "";
-  display: block;
-
-  flex: 1;
-  width: 100%;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
   background-image: var(--fallout-pipboy);
   background-size: contain;
   background-repeat: no-repeat;
   background-position: bottom center;
+  pointer-events: none;
+  opacity: 0.4;
 }

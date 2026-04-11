@@ -5,8 +5,9 @@ Usage:
     python manage.py populate --clean  # wipe everything and repopulate
 """
 import calendar
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
+from django.utils import timezone
 from django.core.management.base import BaseCommand
 from django.core.files.base import ContentFile
 from apps.users.models import User
@@ -588,13 +589,14 @@ class Command(BaseCommand):
             }
 
             broker = jonas  # default generated_by
+            issued_at = timezone.make_aware(datetime.combine(issue_dt, datetime.min.time())) if inv_status in ("ISSUED", "PAID") else None
             Invoice.objects.create(
                 invoice_number=agy_num, invoice_type="CLIENT_INVOICE",
                 timesheet=ts, placement=pl, client=pl.client, contractor=pl.contractor,
                 year=ts.year, month=ts.month, currency=pl.currency,
                 hourly_rate=pl.client_rate, total_hours=ts.total_hours,
                 subtotal=c_sub, total_amount=c_sub,
-                status=inv_status, issue_date=issue_dt, due_date=due_dt,
+                status=inv_status, issued_at=issued_at, issue_date=issue_dt, due_date=due_dt,
                 payment_date=payment_date, billing_snapshot=c_snapshot,
                 generated_by=broker,
             )
@@ -605,7 +607,7 @@ class Command(BaseCommand):
                 hourly_rate=pl.contractor_rate, total_hours=ts.total_hours,
                 subtotal=co_sub, vat_rate_percent=vat_rate, vat_amount=vat_amt,
                 total_amount=co_total,
-                status=inv_status, issue_date=issue_dt, due_date=contr_due,
+                status=inv_status, issued_at=issued_at, issue_date=issue_dt, due_date=contr_due,
                 payment_date=payment_date, billing_snapshot=co_snapshot,
                 generated_by=broker,
             )
@@ -797,7 +799,7 @@ class Command(BaseCommand):
             timesheet=t_ts1, placement=t_pl1, client=acme, contractor=t_contr1,
             year=2026, month=2, currency="EUR", hourly_rate=D("80"),
             total_hours=D("160"), subtotal=D("12800"), total_amount=D("12800"),
-            status="ISSUED", issue_date=date(2026, 3, 1), due_date=date(2026, 3, 31),
+            status="ISSUED", issued_at=timezone.make_aware(datetime(2026, 3, 1, 10, 0, 0)), issue_date=date(2026, 3, 1), due_date=date(2026, 3, 31),
             billing_snapshot={"client_company_name": "Acme Corp"},
             generated_by=t_broker1,
         )

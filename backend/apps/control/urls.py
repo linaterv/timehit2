@@ -7,4 +7,5 @@ urlpatterns = [
     path("control/export", views.ControlExportView.as_view(), name="control-export"),
     path("agency-settings", views.AgencySettingsView.as_view(), name="agency-settings"),
     path("holidays", views.HolidaysView.as_view(), name="holidays"),
+    path("admin/repopulate", views.RepopulateView.as_view(), name="repopulate"),
 ]

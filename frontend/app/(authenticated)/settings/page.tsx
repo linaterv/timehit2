@@ -10,9 +10,15 @@ import {
 } from "@/components/shared/invoice-template-editor";
 import type { InvoiceTemplate } from "@/types/api";
 
+const ALLOWED_HOSTS = ["v1ln.l.dedikuoti.lt", "localhost", "127.0.0.1"];
+
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<"templates" | "placement">("templates");
+  const [repopConfirm, setRepopConfirm] = useState(false);
+  const [repopRunning, setRepopRunning] = useState(false);
+  const [repopOutput, setRepopOutput] = useState("");
+  const isAllowedHost = typeof window !== "undefined" && ALLOWED_HOSTS.includes(window.location.hostname);
 
   // Placement settings
   const [plClientDays, setPlClientDays] = useState(30);
@@ -228,6 +234,81 @@ export default function SettingsPage() {
           saving={saving} error={error}
           globalLabel={`Global — shared with all ${form.template_type === "CONTRACTOR" ? "contractors" : "clients"}`}
         />
+      )}
+
+      {/* Repopulate DB — only on allowed hosts */}
+      {isAllowedHost && (
+        <div className="mt-12 pt-6 border-t border-red-200">
+          <h3 className="text-lg font-semibold text-red-700 mb-2">Danger Zone</h3>
+          <p className="text-sm text-red-600 mb-4">Repopulate will wipe ALL data and recreate demo data. This cannot be undone.</p>
+          <button
+            onClick={() => setRepopConfirm(true)}
+            disabled={repopRunning}
+            className="px-6 py-3 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 disabled:opacity-50 uppercase tracking-wide"
+          >
+            {repopRunning ? "Repopulating..." : "Repopulate Database"}
+          </button>
+        </div>
+      )}
+
+      {/* Repopulate confirmation modal */}
+      {repopConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/50" onClick={() => !repopRunning && setRepopConfirm(false)} />
+          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-lg p-8 space-y-6">
+            {!repopRunning && !repopOutput && (
+              <>
+                <div className="text-center">
+                  <div className="text-6xl mb-4">&#9888;&#65039;</div>
+                  <h2 className="text-2xl font-bold text-red-700">ARE YOU SURE?</h2>
+                  <p className="text-lg text-red-600 mt-3">This will <strong>DELETE ALL DATA</strong> and recreate demo data.</p>
+                  <p className="text-sm text-gray-500 mt-2">All users, clients, contractors, placements, timesheets, invoices, and documents will be wiped.</p>
+                  <p className="text-sm text-red-500 font-semibold mt-4">This action CANNOT be undone.</p>
+                </div>
+                <div className="flex justify-center gap-4 pt-2">
+                  <button onClick={() => setRepopConfirm(false)}
+                    className="px-6 py-3 border-2 border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      setRepopRunning(true);
+                      setRepopOutput("");
+                      try {
+                        const res = await api<{ status: string; output?: string; message?: string }>("/admin/repopulate", { method: "POST" });
+                        setRepopOutput(res.output || res.message || "Done");
+                        setTimeout(() => { logout(); }, 3000);
+                      } catch (err: unknown) {
+                        setRepopOutput("Error: " + ((err as { message?: string })?.message ?? "Failed"));
+                        setRepopRunning(false);
+                      }
+                    }}
+                    className="px-6 py-3 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 uppercase tracking-wide"
+                  >
+                    Yes, Wipe Everything
+                  </button>
+                </div>
+              </>
+            )}
+            {repopRunning && !repopOutput && (
+              <div className="text-center py-8">
+                <div className="text-4xl animate-spin mb-4">&#9881;&#65039;</div>
+                <p className="text-lg font-semibold text-gray-700">Repopulating database...</p>
+                <p className="text-sm text-gray-500 mt-2">This may take a few seconds. Please wait.</p>
+              </div>
+            )}
+            {repopOutput && (
+              <div className="space-y-4">
+                <div className="text-center">
+                  <div className="text-4xl mb-2">&#9989;</div>
+                  <h3 className="text-lg font-semibold text-green-700">Database repopulated</h3>
+                  <p className="text-sm text-gray-500 mt-1">Logging you out in 3 seconds...</p>
+                </div>
+                <pre className="bg-gray-50 rounded-lg p-4 text-xs text-gray-600 max-h-48 overflow-auto whitespace-pre-wrap">{repopOutput}</pre>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

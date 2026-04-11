@@ -24,7 +24,7 @@ class ControlOverviewView(APIView):
         if not year or not month:
             return Response({"error": {"code": "VALIDATION_ERROR", "message": "year and month required", "details": []}}, status=400)
 
-        placements = Placement.objects.filter(status=Placement.Status.ACTIVE).select_related("client", "contractor")
+        placements = Placement.objects.filter(status=Placement.Status.ACTIVE).select_related("client", "contractor").prefetch_related("client__broker_assignments__broker")
         user = request.user
         if user.is_broker:
             placements = placements.filter(client__broker_assignments__broker=user)
@@ -33,6 +33,8 @@ class ControlOverviewView(APIView):
             placements = placements.filter(client_id=p["client_id"])
         if p.get("contractor_id"):
             placements = placements.filter(contractor_id=p["contractor_id"])
+        if p.get("broker_id"):
+            placements = placements.filter(client__broker_assignments__broker_id=p["broker_id"])
 
         data = []
         now = date.today()
@@ -78,8 +80,9 @@ class ControlOverviewView(APIView):
                         _flags.append(f"{label}_not_sent")
                     elif inv.status == Invoice.Status.ISSUED:
                         due = terms_days or 30
-                        if inv.issued_at and inv.issued_at.date() + timedelta(days=due) < now:
-                            overdue = (now - (inv.issued_at.date() + timedelta(days=due))).days
+                        issued_date = inv.issued_at.date() if inv.issued_at else inv.created_at.date()
+                        if issued_date + timedelta(days=due) < now:
+                            overdue = (now - (issued_date + timedelta(days=due))).days
                             _flags.append(f"{label}_unpaid_{overdue}d")
 
                 _inv_flags(c_inv, pl.payment_terms_client_days, "client_inv")
@@ -148,6 +151,7 @@ class ControlOverviewView(APIView):
                     "require_timesheet_attachment": pl.require_timesheet_attachment,
                 },
                 "client": {"id": str(pl.client_id), "company_name": pl.client.company_name},
+                "brokers": [{"id": str(a.broker_id), "full_name": a.broker.full_name} for a in pl.client.broker_assignments.all()],
                 "contractor": {"id": str(pl.contractor_id), "full_name": pl.contractor.full_name},
                 "timesheet": {"id": str(ts.id), "status": ts.status, "total_hours": str(ts.total_hours), "submitted_at": ts.submitted_at, "approved_at": ts.approved_at} if ts else None,
                 "client_invoice": {"id": str(c_inv.id), "invoice_number": c_inv.invoice_number, "status": c_inv.status, "total_amount": str(c_inv.total_amount)} if c_inv else None,
@@ -175,6 +179,8 @@ class ControlSummaryView(APIView):
             placements = placements.filter(client_id=request.query_params["client_id"])
         if request.query_params.get("contractor_id"):
             placements = placements.filter(contractor_id=request.query_params["contractor_id"])
+        if request.query_params.get("broker_id"):
+            placements = placements.filter(client__broker_assignments__broker_id=request.query_params["broker_id"])
 
         awaiting, no_inv, unpaid, not_sent, issues, ts_issues = 0, 0, 0, 0, 0, 0
         total_hours, currency_data = Decimal("0"), defaultdict(lambda: {"revenue": Decimal("0"), "cost": Decimal("0"), "margin": Decimal("0")})
@@ -290,6 +296,29 @@ class AgencySettingsView(APIView):
             "default_payment_terms_contractor_days": s.default_payment_terms_contractor_days,
             "default_client_invoice_template_id": str(s.default_client_invoice_template_id) if s.default_client_invoice_template_id else None,
         })
+
+
+ALLOWED_REPOPULATE_HOSTS = {"v1ln.l.dedikuoti.lt", "localhost", "127.0.0.1"}
+
+
+class RepopulateView(APIView):
+    permission_classes = [IsAdminOrBroker]
+
+    @extend_schema(tags=["Control"])
+    def post(self, request):
+        if not request.user.is_admin:
+            raise PermissionDenied("Only admins can repopulate")
+        host = request.get_host().split(":")[0]
+        if host not in ALLOWED_REPOPULATE_HOSTS:
+            return Response({"error": "Repopulate is not allowed on this host"}, status=403)
+        from django.core.management import call_command
+        from io import StringIO
+        out = StringIO()
+        try:
+            call_command("populate", "--clean", stdout=out)
+            return Response({"status": "ok", "output": out.getvalue()})
+        except Exception as e:
+            return Response({"status": "error", "message": str(e)}, status=500)
 
 
 class HolidaysView(APIView):

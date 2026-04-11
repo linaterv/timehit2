@@ -20,6 +20,7 @@ import type {
   PaginatedResponse,
   Client,
   Timesheet,
+  User,
 } from "@/types/api";
 
 /* ──────────────────────────── Contractor redirect ──────────────────────────── */
@@ -185,6 +186,7 @@ function ControlScreen() {
   const { clientId: globalClient, contractorId: globalContractor } = useGlobalFilter();
   const [clientFilter, setClientFilter] = useState(globalClient);
   const [contractorFilter, setContractorFilter] = useState(globalContractor);
+  const [brokerFilter, setBrokerFilter] = useState("");
   const [needsAttention, setNeedsAttention] = useState(false);
   const [flagFilter, setFlagFilter] = useState<Set<string>>(new Set());
   const [flagDropdownOpen, setFlagDropdownOpen] = useState(false);
@@ -240,8 +242,9 @@ function ControlScreen() {
     p.set("month", String(month));
     if (clientFilter) p.set("client_id", clientFilter);
     if (contractorFilter) p.set("contractor_id", contractorFilter);
+    if (brokerFilter) p.set("broker_id", brokerFilter);
     return p.toString();
-  }, [year, month, clientFilter, contractorFilter]);
+  }, [year, month, clientFilter, contractorFilter, brokerFilter]);
 
   const overviewParams = useMemo(() => {
     const p = new URLSearchParams();
@@ -255,9 +258,10 @@ function ControlScreen() {
     }
     if (clientFilter) p.set("client_id", clientFilter);
     if (contractorFilter) p.set("contractor_id", contractorFilter);
+    if (brokerFilter) p.set("broker_id", brokerFilter);
     if (needsAttention) p.set("needs_attention", "true");
     return p.toString();
-  }, [year, month, page, sort, order, clientFilter, contractorFilter, needsAttention]);
+  }, [year, month, page, sort, order, clientFilter, contractorFilter, brokerFilter, needsAttention]);
 
   const { data: summary } = useApiQuery<ControlSummary>(
     ["control-summary", summaryParams],
@@ -280,6 +284,7 @@ function ControlScreen() {
     base.set("year", String(year));
     if (clientFilter) base.set("client_id", clientFilter);
     if (contractorFilter) base.set("contractor_id", contractorFilter);
+    if (brokerFilter) base.set("broker_id", brokerFilter);
     if (needsAttention) base.set("needs_attention", "true");
     const maxMonth = year === now.getFullYear() ? now.getMonth() + 1 : 12;
     Promise.all(
@@ -294,7 +299,7 @@ function ControlScreen() {
       setAllMonthsData(results.flat());
       setAllMonthsLoading(false);
     });
-  }, [month, year, clientFilter, contractorFilter, needsAttention]);
+  }, [month, year, clientFilter, contractorFilter, brokerFilter, needsAttention]);
 
   const overviewData = month === 0
     ? (allMonthsData ? { data: allMonthsData, meta: { total: allMonthsData.length, page: 1, per_page: 999, total_pages: 1 } } : null)
@@ -309,6 +314,11 @@ function ControlScreen() {
   const { data: contractorsData } = useApiQuery<
     PaginatedResponse<{ id: string; user_id: string; full_name: string }>
   >(["contractors-for-select"], "/contractors?per_page=200");
+
+  const { data: brokersData } = useApiQuery<PaginatedResponse<User>>(
+    ["brokers-for-select"],
+    "/users?role=BROKER&is_active=true&per_page=200"
+  );
 
   const overviewRows = overviewData?.data ?? [];
 
@@ -329,6 +339,20 @@ function ControlScreen() {
           {row.placement.title && <div className="text-xs"><EL href={`/contractors/${row.contractor.id}`} className="text-gray-400 hover:text-brand-600">{row.contractor.full_name}</EL></div>}
         </div>
       ),
+    },
+    {
+      key: "brokers" as keyof ControlRow,
+      label: "Broker",
+      render: (row) => {
+        if (!row.brokers?.length) return <span className="text-gray-400">—</span>;
+        return (
+          <div className="flex flex-wrap gap-1">
+            {row.brokers.map((b) => (
+              <span key={b.id} className="text-xs text-gray-600">{b.full_name}</span>
+            ))}
+          </div>
+        );
+      },
     },
     {
       key: "hours",
@@ -662,6 +686,23 @@ function ControlScreen() {
           {(contractorsData?.data ?? []).map((c) => (
             <option key={c.id} value={c.user_id}>
               {c.full_name}
+            </option>
+          ))}
+        </select>
+
+        <select
+          data-testid="control-broker-filter"
+          value={brokerFilter}
+          onChange={(e) => {
+            setBrokerFilter(e.target.value);
+            setPage(1); setLastActedRowId(null);
+          }}
+          className="px-3 py-2 border rounded text-sm"
+        >
+          <option value="">All Brokers</option>
+          {(brokersData?.data ?? []).map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.full_name}
             </option>
           ))}
         </select>

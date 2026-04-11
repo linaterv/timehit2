@@ -78,15 +78,21 @@
   padding: 1.5rem;
 }
 
-/* Princess in bottom-left of sidebar */
+[data-theme="barbie"] aside {
+  position: relative;
+}
+
 [data-theme="barbie"] aside::after {
   content: "";
-  display: block;
-
-  flex: 1;
-  width: 100%;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
   background-image: url("/themes/barbie/princess.png");
   background-size: contain;
   background-repeat: no-repeat;
   background-position: bottom center;
+  pointer-events: none;
+  opacity: 0.4;
 }

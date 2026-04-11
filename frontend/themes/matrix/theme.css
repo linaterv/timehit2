@@ -77,13 +77,21 @@
   padding: 1.5rem;
 }
 
+[data-theme="matrix"] aside {
+  position: relative;
+}
+
 [data-theme="matrix"] aside::after {
   content: "";
-  display: block;
-  flex: 1;
-  width: 100%;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
   background-image: url("/themes/matrix/person.png");
-  background-size: cover;
+  background-size: contain;
   background-repeat: no-repeat;
-  background-position: top center;
+  background-position: bottom center;
+  pointer-events: none;
+  opacity: 0.4;
 }

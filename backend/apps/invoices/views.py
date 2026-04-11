@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 from django.db import models, transaction
+from django.utils import timezone
 from django.db.models import F
 from django.http import FileResponse, HttpResponse
 from rest_framework import viewsets, status
@@ -218,6 +219,7 @@ class GenerateInvoicesView(APIView):
 
             pl = ts.placement
             inv_status = Invoice.Status.ISSUED if auto_issue else Invoice.Status.DRAFT
+            inv_issued_at = timezone.now() if auto_issue else None
             with transaction.atomic():
                 profile = ContractorProfile.objects.select_for_update().get(pk=profile.pk)
 
@@ -258,7 +260,7 @@ class GenerateInvoicesView(APIView):
                         timesheet=ts, placement=pl, client=pl.client, contractor=pl.contractor,
                         year=ts.year, month=ts.month, currency=pl.currency,
                         hourly_rate=pl.client_rate, total_hours=ts.total_hours,
-                        subtotal=c_sub, total_amount=c_sub, status=inv_status,
+                        subtotal=c_sub, total_amount=c_sub, status=inv_status, issued_at=inv_issued_at,
                         issue_date=date.today(),
                         due_date=date.today() + timedelta(days=pl.payment_terms_client_days or pl.client.payment_terms_days or 30),
                         billing_snapshot=c_snap,
@@ -300,7 +302,7 @@ class GenerateInvoicesView(APIView):
                         year=ts.year, month=ts.month, currency=pl.currency,
                         hourly_rate=pl.contractor_rate, total_hours=ts.total_hours,
                         subtotal=co_sub, vat_rate_percent=vat, vat_amount=vat_amt,
-                        total_amount=total, status=inv_status, issue_date=date.today(),
+                        total_amount=total, status=inv_status, issued_at=inv_issued_at, issue_date=date.today(),
                         due_date=date.today() + timedelta(days=pl.payment_terms_contractor_days or co_src.payment_terms_days or 14),
                         billing_snapshot=co_snap,
                         generated_by=request.user,

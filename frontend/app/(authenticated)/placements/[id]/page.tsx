@@ -177,7 +177,7 @@ export default function PlacementDetailPage() {
       const body: Record<string, unknown> = {
         title: editForm.title,
         start_date: editForm.start_date,
-        end_date: editForm.end_date,
+        end_date: editForm.end_date || null,
         payment_terms_client_days: editForm.payment_terms_client_days ? parseInt(editForm.payment_terms_client_days, 10) : null,
         payment_terms_contractor_days: editForm.payment_terms_contractor_days ? parseInt(editForm.payment_terms_contractor_days, 10) : null,
       };
