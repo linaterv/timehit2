@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import {
   LayoutDashboard, Users, Building2, HardHat, Briefcase, Clock,
-  FileText, FolderOpen, UserCog, Settings, ScrollText, PanelLeftClose, PanelLeft, Menu, UserCheck,
+  FileText, FolderOpen, UserCog, Settings, ScrollText, PanelLeftClose, PanelLeft, Menu, UserCheck, UserSearch,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -26,6 +26,7 @@ const NAV: Record<Role, NavItem[]> = {
     { label: "Placements", icon: Briefcase, href: "/placements" },
     { label: "Timesheets", icon: Clock, href: "/timesheets" },
     { label: "Invoices", icon: FileText, href: "/invoices" },
+    { label: "Candidates", icon: UserSearch, href: "/candidates", more: true },
     { label: "Brokers", icon: UserCheck, href: "/brokers", more: true },
     { label: "Users", icon: Users, href: "/users", more: true },
     { label: "Documents", icon: FolderOpen, href: "/documents", more: true },
@@ -39,6 +40,7 @@ const NAV: Record<Role, NavItem[]> = {
     { label: "Placements", icon: Briefcase, href: "/placements" },
     { label: "Timesheets", icon: Clock, href: "/timesheets" },
     { label: "Invoices", icon: FileText, href: "/invoices" },
+    { label: "Candidates", icon: UserSearch, href: "/candidates", more: true },
     { label: "Documents", icon: FolderOpen, href: "/documents", more: true },
   ],
   CONTRACTOR: [

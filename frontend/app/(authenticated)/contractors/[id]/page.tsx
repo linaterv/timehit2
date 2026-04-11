@@ -215,6 +215,12 @@ export default function ContractorDetailPage() {
             {contractor.full_name}
           </h2>
           <p className="text-sm text-gray-500">{contractor.email}</p>
+          {contractor.candidate_id && (
+            <button onClick={() => router.push(`/candidates/${contractor.candidate_id}`)}
+              className="text-xs text-brand-600 hover:underline mt-1 inline-flex items-center gap-1">
+              View candidate profile &rarr;
+            </button>
+          )}
         </div>
         <div className="flex gap-2">
           {isAdmin && !editing && (

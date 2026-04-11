@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     "apps.control",
     "apps.audit",
     "apps.authentication",
+    "apps.candidates",
 ]
 
 MIDDLEWARE = [
@@ -49,8 +50,14 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
-    }
+    },
+    "candidates": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "candidates.sqlite3",
+    },
 }
+
+DATABASE_ROUTERS = ["apps.candidates.router.CandidatesRouter"]
 
 AUTH_USER_MODEL = "users.User"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
@@ -108,5 +115,6 @@ SPECTACULAR_SETTINGS = {
         {"name": "Timesheet Attachments"},
         {"name": "Invoices"},
         {"name": "Control"},
+        {"name": "Candidates"},
     ],
 }

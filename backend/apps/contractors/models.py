@@ -21,6 +21,7 @@ class ContractorProfile(models.Model):
     billing_address = models.TextField(blank=True, default="")
     country = models.CharField(max_length=100, default="")
     default_currency = models.CharField(max_length=3, default="EUR")
+    candidate_id = models.CharField(max_length=36, blank=True, default="")
 
     class Meta:
         db_table = "contractor_profiles"

@@ -70,7 +70,12 @@ export async function api<T = unknown>(path: string, options: RequestInit = {}):
 
   if (res.status === 204) return undefined as T;
 
-  const data = await res.json();
+  let data: unknown;
+  try {
+    data = await res.json();
+  } catch {
+    throw { status: res.status, message: `Server error (${res.status})` };
+  }
 
   if (!res.ok) {
     const err = data as ApiError;

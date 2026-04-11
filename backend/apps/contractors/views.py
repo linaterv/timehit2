@@ -39,7 +39,16 @@ class ContractorViewSet(viewsets.ModelViewSet):
         return qs
 
     def get_object(self):
-        obj = super().get_object()
+        # Allow lookup by user_id as well as profile pk
+        lookup = self.kwargs.get(self.lookup_field)
+        try:
+            obj = self.get_queryset().get(pk=lookup)
+        except ContractorProfile.DoesNotExist:
+            obj = self.get_queryset().filter(user_id=lookup).first()
+            if not obj:
+                from rest_framework.exceptions import NotFound
+                raise NotFound("Contractor not found")
+        self.check_object_permissions(self.request, obj)
         user = self.request.user
         if user.is_contractor and obj.user_id != user.id:
             raise PermissionDenied()

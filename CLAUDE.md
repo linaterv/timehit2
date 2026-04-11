@@ -22,6 +22,8 @@ TimeHit is a recruitment/contracting agency platform. The agency places IT contr
 - `backend-reqs.md` — Backend stack, project structure, seed data, implementation notes
 - `req-populatedata.md` — Detailed seed data definition
 - `reqs.md` / `questions.md` — Original requirements and clarified decisions
+- `candidate-reqs.md` — Candidate CRM module requirements (data model, FTS, API, UX)
+- `candidate-implementation.md` — Candidate CRM implementation reference (architecture, endpoints, file layout)
 
 ## Commands
 
@@ -73,9 +75,11 @@ timehit3/
 │   │   ├── placements/             # Placement (state machine, title field), PlacementDocument, flat /documents endpoint
 │   │   ├── timesheets/             # Timesheet (state machine), TimesheetEntry, TimesheetAttachment, /pending endpoint
 │   │   ├── invoices/               # Invoice, InvoiceNotification, InvoiceCorrectionLink, PDF generation
-│   │   └── control/                # Control screen: overview, summary, CSV export
-│   ├── media/                      # uploaded files + generated invoice PDFs
-│   └── db.sqlite3
+│   │   ├── control/                # Control screen: overview, summary, CSV export
+│   │   └── candidates/            # Candidate CRM (separate SQLite DB), FTS5 search, CV parsing, timeline
+│   ├── media/                      # uploaded files + generated invoice PDFs + candidate CVs
+│   ├── db.sqlite3
+│   └── candidates.sqlite3          # separate DB for candidates module
 ├── frontend/
 │   ├── app/
 │   │   ├── login/                  # login page with quick-login dropdown + last-user cookie
@@ -88,6 +92,7 @@ timehit3/
 │   │       ├── timesheets/         # timesheet list (with pending filter) + [id] detail (calendar + detailed view)
 │   │       ├── invoices/           # invoice list + [id] detail (with notification history)
 │   │       ├── documents/          # flat document listing
+│   │       ├── candidates/        # candidate CRM: search, list, create (with PDF import)
 │   │       └── profile/            # contractor's own profile
 │   ├── components/                 # layout, data-table, forms, shared
 │   ├── lib/                        # api.ts (JWT in localStorage), auth-context, query-provider, utils
@@ -127,7 +132,8 @@ auth, sidebar, users, clients, contractors, placements, timesheets, invoices, da
 - **Placement** = 1 contractor at 1 client at agreed rates. Has a `title` field (position, e.g. "Backend Developer"). Rates immutable once ACTIVE.
 - **Timesheet** = monthly hours for one placement. Approval flow configurable per placement (BROKER_ONLY or CLIENT_THEN_BROKER). Calendar view default, detailed view toggle.
 - **Invoice** = always generated in pairs (client + contractor) from approved timesheet. Billing details snapshotted. PDFs generated. Has notification history (InvoiceNotification).
-- **Roles**: ADMIN (full), BROKER (assigned clients, all contractors), CONTRACTOR (own data, restricted view), CLIENT_CONTACT (configurable per placement).
+- **Candidate** = potential contractor in CRM pipeline. Separate SQLite DB with FTS5 search. Has CVs (PDF with auto-text extraction), activity timeline, and optional link to ContractorProfile. Statuses: AVAILABLE → PROPOSED → INTERVIEW → OFFERED → PLACED. Import from PDF auto-parses name/email/phone/skills/country (supports both regular CVs and LinkedIn PDF exports).
+- **Roles**: ADMIN (full), BROKER (assigned clients, all contractors, all candidates), CONTRACTOR (own data, restricted view), CLIENT_CONTACT (configurable per placement).
 
 ## State Machines
 
@@ -135,6 +141,7 @@ auth, sidebar, users, clients, contractors, placements, timesheets, invoices, da
 - **Timesheet (BROKER_ONLY)**: DRAFT -> SUBMITTED -> APPROVED|REJECTED(->DRAFT)
 - **Timesheet (CLIENT_THEN_BROKER)**: DRAFT -> SUBMITTED -> CLIENT_APPROVED -> APPROVED|REJECTED(->DRAFT)
 - **Invoice**: DRAFT -> ISSUED -> PAID|VOIDED|CORRECTED; PAID -> VOIDED
+- **Candidate**: AVAILABLE -> PROPOSED -> INTERVIEW -> OFFERED -> PLACED|UNAVAILABLE|ARCHIVED
 
 ## Populate Data Users (all pwd=`a`)
 

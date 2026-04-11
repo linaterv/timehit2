@@ -101,6 +101,7 @@ export interface ContractorProfile {
   billing_address: string;
   country: string;
   default_currency: string;
+  candidate_id: string;
   is_active?: boolean;
   current_placement?: PlacementRef | null;
   placement_summary?: PlacementSummary;
@@ -294,6 +295,61 @@ export interface ControlSummary {
   total_contractor_cost: string;
   total_margin: string;
   currency_breakdown: { currency: string; revenue: string; cost: string; margin: string }[];
+}
+
+// Candidates
+export type CandidateStatus = "AVAILABLE" | "PROPOSED" | "INTERVIEW" | "OFFERED" | "PLACED" | "UNAVAILABLE" | "ARCHIVED";
+export type CandidateFileType = "CV" | "ATTACHMENT";
+export type CandidateActivityType = "NOTE" | "STATUS_CHANGE" | "CV_UPLOADED" | "CV_REMOVED" | "FILE_ATTACHED" | "LINKED" | "UNLINKED" | "PROPOSED" | "REJECTED" | "INTERVIEW" | "OFFER" | "PLACED";
+
+export interface Candidate {
+  id: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  country: string;
+  status: CandidateStatus;
+  skills: string;
+  desired_rate: string | null;
+  desired_currency: string;
+  source: string;
+  linkedin_url: string;
+  notes: string;
+  contractor_id: string;
+  created_at: string;
+  updated_at: string;
+  cv_count?: number;
+  activity_count?: number;
+  files?: CandidateFileInfo[];
+  activities?: CandidateActivityInfo[];
+}
+
+export interface CandidateFileInfo {
+  id: string;
+  candidate_id: string;
+  activity_id: string | null;
+  original_filename: string;
+  file_type: CandidateFileType;
+  file_size: number;
+  uploaded_at: string;
+}
+
+export interface CandidateActivityInfo {
+  id: string;
+  candidate_id: string;
+  type: CandidateActivityType;
+  text: string;
+  old_value: string;
+  new_value: string;
+  client_name: string;
+  created_by: string;
+  created_at: string;
+  files: CandidateFileInfo[];
+}
+
+export interface CandidateSearchResult extends Candidate {
+  snippet: string;
+  rank: number;
 }
 
 export interface PaginatedResponse<T> {

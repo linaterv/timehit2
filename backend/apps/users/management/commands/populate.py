@@ -19,6 +19,9 @@ from apps.timesheets.models import Timesheet, TimesheetEntry, TimesheetAttachmen
 from apps.invoices.models import Invoice, InvoiceCorrectionLink, InvoiceTemplate
 from apps.invoices.pdf import generate_invoice_pdf
 from apps.control.models import AgencySettings
+from apps.candidates.models import Candidate, CandidateFile, CandidateActivity
+from apps.candidates.fts import rebuild_fts
+from apps.candidates.pdf import extract_text
 
 D = Decimal
 PWD = "a"
@@ -68,6 +71,10 @@ class Command(BaseCommand):
             Client.objects.all().delete()
             User.objects.all().delete()
             AgencySettings.objects.all().delete()
+            # Candidates DB
+            CandidateFile.objects.all().delete()
+            CandidateActivity.objects.all().delete()
+            Candidate.objects.all().delete()
             self.stdout.write("Done cleaning.")
 
         if User.objects.exists():
@@ -814,6 +821,10 @@ class Command(BaseCommand):
             generated_by=t_broker1,
         )
 
+        # ── CANDIDATES ───────────────────────────────────────────────────────
+        self.stdout.write("Creating candidates with CVs...")
+        self._populate_candidates()
+
         # ── SUMMARY ──────────────────────────────────────────────────────────
         ts_count = Timesheet.objects.count()
         inv_count = Invoice.objects.count()
@@ -821,7 +832,521 @@ class Command(BaseCommand):
         user_count = User.objects.count()
         client_count = Client.objects.count()
         pl_count = Placement.objects.count()
+        cand_count = Candidate.objects.count()
         self.stdout.write(self.style.SUCCESS(
             f"Populated: {user_count} users, {client_count} clients, {pl_count} placements, "
-            f"{ts_count} timesheets, {inv_count} invoices, {doc_count} documents"
+            f"{ts_count} timesheets, {inv_count} invoices, {doc_count} documents, "
+            f"{cand_count} candidates"
         ))
+
+    # ── CANDIDATE CV GENERATION ─────────────────────────────────────────
+    def _build_cv_pdf(self, data):
+        """Generate a CV PDF in memory, return bytes."""
+        import io
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.units import mm
+        from reportlab.lib.colors import HexColor
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+
+        styles = getSampleStyleSheet()
+        BLUE = HexColor("#2D3748")
+        ACCENT = HexColor("#4A5568")
+        LIGHT = HexColor("#718096")
+
+        name_s = ParagraphStyle("CVName", parent=styles["Title"], fontSize=22, textColor=BLUE, spaceAfter=2*mm)
+        sub_s = ParagraphStyle("CVSub", parent=styles["Normal"], fontSize=11, textColor=ACCENT, spaceAfter=4*mm)
+        sec_s = ParagraphStyle("CVSec", parent=styles["Heading2"], fontSize=13, textColor=BLUE, spaceBefore=6*mm, spaceAfter=3*mm)
+        body_s = ParagraphStyle("CVBody", parent=styles["Normal"], fontSize=10, textColor=HexColor("#2D3748"), leading=14, spaceAfter=2*mm)
+        bold_s = ParagraphStyle("CVBold", parent=body_s, fontName="Helvetica-Bold")
+        small_s = ParagraphStyle("CVSmall", parent=body_s, fontSize=9, textColor=LIGHT)
+
+        def hr():
+            return HRFlowable(width="100%", thickness=0.5, color=HexColor("#CBD5E0"), spaceAfter=3*mm, spaceBefore=1*mm)
+
+        buf = io.BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=25*mm, rightMargin=25*mm, topMargin=20*mm, bottomMargin=20*mm)
+        story = []
+        story.append(Paragraph(data["name"], name_s))
+        story.append(Paragraph(data["title"], sub_s))
+        story.append(Paragraph(f'{data["email"]}  |  {data["phone"]}  |  {data["location"]}', small_s))
+        story.append(hr())
+        story.append(Paragraph("PROFESSIONAL SUMMARY", sec_s))
+        story.append(Paragraph(data["summary"], body_s))
+        story.append(Paragraph("TECHNICAL SKILLS", sec_s))
+        for cat, skills in data["skills"].items():
+            story.append(Paragraph(f"<b>{cat}:</b> {skills}", body_s))
+        story.append(Paragraph("PROFESSIONAL EXPERIENCE", sec_s))
+        for job in data["experience"]:
+            story.append(Paragraph(f'<b>{job["role"]}</b> — {job["company"]}', bold_s))
+            story.append(Paragraph(f'{job["period"]}  |  {job["location"]}', small_s))
+            for b in job["bullets"]:
+                story.append(Paragraph(f"• {b}", body_s))
+            story.append(Spacer(1, 2*mm))
+        story.append(Paragraph("EDUCATION", sec_s))
+        for edu in data["education"]:
+            story.append(Paragraph(f'<b>{edu["degree"]}</b>', bold_s))
+            story.append(Paragraph(f'{edu["school"]}  |  {edu["year"]}', small_s))
+        if data.get("certs"):
+            story.append(Paragraph("CERTIFICATIONS", sec_s))
+            for c in data["certs"]:
+                story.append(Paragraph(f"• {c}", body_s))
+        doc.build(story)
+        return buf.getvalue()
+
+    def _populate_candidates(self):
+        CANDIDATES = [
+            # ── Java Mid-Level (3) ──────────────────────────────────────
+            {
+                "name": "Tomas Kazlauskas", "email": "tomas.kazlauskas@gmail.com",
+                "phone": "+370 612 34567", "location": "Vilnius, Lithuania", "country": "LT",
+                "title": "Mid-Level Java Developer",
+                "skills_csv": "Java, Spring Boot, Hibernate, PostgreSQL, Docker, Kubernetes, REST API, Kafka, Git, Jenkins",
+                "rate": "45", "source": "LinkedIn", "linkedin_url": "https://linkedin.com/in/tomas-kazlauskas-dev",
+                "summary": "Java developer with 4+ years of experience building scalable microservices and backend systems. Proficient in Spring Boot ecosystem, cloud-native development, and agile methodologies. Strong focus on clean code, test-driven development, and CI/CD practices.",
+                "skills": {
+                    "Languages": "Java 17, SQL, Bash, Python (basic)",
+                    "Frameworks": "Spring Boot, Spring Cloud, Spring Security, Hibernate, JPA",
+                    "Databases": "PostgreSQL, Redis, MongoDB",
+                    "DevOps": "Docker, Kubernetes, Jenkins, GitLab CI, AWS (EC2, S3, RDS)",
+                    "Messaging": "Apache Kafka, RabbitMQ",
+                    "Testing": "JUnit 5, Mockito, TestContainers, Postman",
+                },
+                "experience": [
+                    {"role": "Java Developer", "company": "Danske Bank (via Cognizant)", "period": "Mar 2023 – Present", "location": "Vilnius",
+                     "bullets": ["Developed microservices for payment processing platform handling 50K+ daily transactions",
+                                 "Implemented event-driven architecture using Kafka for real-time transaction monitoring",
+                                 "Reduced API response times by 40% through query optimization and Redis caching",
+                                 "Mentored one junior developer through pair programming and code reviews"]},
+                    {"role": "Junior Java Developer", "company": "NFQ Technologies", "period": "Sep 2021 – Feb 2023", "location": "Vilnius",
+                     "bullets": ["Built RESTful APIs for e-commerce platform serving 200K+ monthly active users",
+                                 "Migrated monolithic modules to Spring Boot microservices",
+                                 "Wrote integration tests using TestContainers, achieving 85% code coverage"]},
+                ],
+                "education": [{"degree": "BSc Computer Science", "school": "Vilnius University", "year": "2017 – 2021"}],
+                "certs": ["Oracle Certified Professional: Java SE 17 Developer (2024)", "AWS Certified Cloud Practitioner (2023)"],
+            },
+            {
+                "name": "Marta Nowak", "email": "marta.nowak.dev@outlook.com",
+                "phone": "+48 501 223 445", "location": "Warsaw, Poland", "country": "PL",
+                "title": "Java Backend Engineer",
+                "skills_csv": "Java, Spring Boot, Microservices, PostgreSQL, MongoDB, Docker, Azure, REST, GraphQL, Gradle",
+                "rate": "50", "source": "Referral", "linkedin_url": "https://linkedin.com/in/marta-nowak-java",
+                "summary": "Backend engineer with 5 years of experience in Java/Spring ecosystem. Specialized in distributed systems for fintech and insurance. Strong analytical skills with focus on system reliability, observability, and performance.",
+                "skills": {
+                    "Languages": "Java 21, Kotlin (intermediate), SQL, TypeScript (basic)",
+                    "Frameworks": "Spring Boot 3, Spring WebFlux, Micronaut, Hibernate, QueryDSL",
+                    "Databases": "PostgreSQL, MongoDB, Elasticsearch, Redis",
+                    "Cloud & DevOps": "Azure (App Service, AKS, Service Bus), Docker, Terraform, GitHub Actions",
+                    "API": "REST, GraphQL (Netflix DGS), gRPC",
+                    "Observability": "Grafana, Prometheus, Jaeger, ELK Stack",
+                },
+                "experience": [
+                    {"role": "Java Backend Engineer", "company": "Allianz Technology", "period": "Jan 2024 – Present", "location": "Warsaw",
+                     "bullets": ["Designing claims processing microservices handling 10M+ policies",
+                                 "Introduced reactive programming with Spring WebFlux for notification service",
+                                 "Set up distributed tracing with Jaeger, reducing mean time to detection by 60%",
+                                 "Led migration from on-premise to Azure Kubernetes Service (AKS)"]},
+                    {"role": "Mid Java Developer", "company": "mBank S.A.", "period": "Jun 2022 – Dec 2023", "location": "Warsaw",
+                     "bullets": ["Built GraphQL APIs for mobile banking features serving 4M+ users",
+                                 "Implemented CQRS pattern for account statement generation, improving query performance 3x",
+                                 "Developed automated reconciliation service processing 500K+ transactions daily"]},
+                    {"role": "Junior Java Developer", "company": "Comarch S.A.", "period": "Aug 2020 – May 2022", "location": "Krakow",
+                     "bullets": ["Developed modules for telecom billing platform used by 3 European operators",
+                                 "Implemented scheduled batch jobs for invoice generation using Spring Batch"]},
+                ],
+                "education": [
+                    {"degree": "MSc Software Engineering", "school": "Warsaw University of Technology", "year": "2018 – 2020"},
+                    {"degree": "BSc Computer Science", "school": "AGH University, Krakow", "year": "2014 – 2018"},
+                ],
+                "certs": ["Azure Developer Associate AZ-204 (2024)", "Oracle Certified Professional: Java SE 11 (2022)"],
+            },
+            {
+                "name": "Erik Johansson", "email": "erik.johansson.dev@proton.me",
+                "phone": "+46 70 123 4567", "location": "Stockholm, Sweden", "country": "SE",
+                "title": "Java / Kotlin Developer",
+                "skills_csv": "Java, Kotlin, Spring Boot, Kubernetes, PostgreSQL, Cassandra, Docker, Terraform, CI/CD, OpenShift",
+                "rate": "55", "source": "Job board", "linkedin_url": "https://linkedin.com/in/erik-johansson-kotlin",
+                "summary": "Versatile Java/Kotlin developer with 4 years of hands-on experience in high-traffic backend systems. Background in gaming and adtech with emphasis on low-latency, high-throughput architectures. Comfortable with polyglot environments and infrastructure-as-code.",
+                "skills": {
+                    "Languages": "Java 21, Kotlin 2.0, SQL, Go (learning)",
+                    "Frameworks": "Spring Boot 3, Ktor, Quarkus, Hibernate, jOOQ",
+                    "Databases": "PostgreSQL, Apache Cassandra, DynamoDB, Redis",
+                    "Infrastructure": "Kubernetes, OpenShift, Docker, Terraform, ArgoCD",
+                    "Cloud": "AWS (ECS, Lambda, SQS, DynamoDB), GCP (basic)",
+                    "Testing": "JUnit 5, Kotest, WireMock, ArchUnit, Gatling",
+                },
+                "experience": [
+                    {"role": "Backend Developer (Java/Kotlin)", "company": "King (Activision Blizzard)", "period": "Aug 2023 – Present", "location": "Stockholm",
+                     "bullets": ["Building game backend services in Kotlin/Ktor handling 2M+ concurrent players",
+                                 "Designed leaderboard service using Cassandra with sub-10ms p99 latency",
+                                 "Optimized matchmaking service, reducing queue times by 35%",
+                                 "Contributing to shared Kotlin libraries used across 5 game titles"]},
+                    {"role": "Java Developer", "company": "Adform", "period": "Mar 2022 – Jul 2023", "location": "Stockholm",
+                     "bullets": ["Developed real-time bidding services processing 500K+ requests/second",
+                                 "Built data pipeline for ad impression analytics using Kafka Streams",
+                                 "Migrated legacy Java 8 codebase to Java 17 with modular architecture"]},
+                ],
+                "education": [{"degree": "BSc Computer Science", "school": "Chalmers University, Gothenburg", "year": "2017 – 2021"}],
+                "certs": ["Certified Kubernetes Application Developer CKAD (2023)", "AWS Solutions Architect Associate (2022)"],
+            },
+            # ── Spring Boot + UI (3) ────────────────────────────────────
+            {
+                "name": "Ieva Barkauskaite", "email": "ieva.bark@gmail.com",
+                "phone": "+370 698 77123", "location": "Kaunas, Lithuania", "country": "LT",
+                "title": "Full-Stack Java / React Developer",
+                "skills_csv": "Java, Spring Boot, React, TypeScript, PostgreSQL, Docker, REST API, Tailwind CSS, Redux, Webpack",
+                "rate": "42", "source": "LinkedIn", "linkedin_url": "https://linkedin.com/in/ieva-barkauskaite",
+                "summary": "Full-stack developer with 4 years of experience combining Spring Boot backends with modern React frontends. Strong eye for UI/UX, experienced in building responsive admin panels and SaaS dashboards. Comfortable owning features end-to-end from API design to pixel-perfect UI.",
+                "skills": {
+                    "Backend": "Java 17, Spring Boot, Spring Security, JPA/Hibernate, Liquibase",
+                    "Frontend": "React 18, TypeScript, Next.js, Tailwind CSS, Redux Toolkit, Vite",
+                    "Databases": "PostgreSQL, MySQL, Redis",
+                    "DevOps": "Docker, GitHub Actions, Nginx, Linux",
+                    "Testing": "JUnit 5, React Testing Library, Cypress, Playwright",
+                },
+                "experience": [
+                    {"role": "Full-Stack Developer", "company": "Vinted", "period": "May 2023 – Present", "location": "Kaunas",
+                     "bullets": ["Built internal admin dashboard with Spring Boot + React serving 200+ ops staff",
+                                 "Implemented real-time notification system with WebSocket and Spring STOMP",
+                                 "Created reusable React component library with Storybook documentation",
+                                 "Reduced page load times by 50% through code splitting and lazy loading"]},
+                    {"role": "Java Developer", "company": "Bentley Systems", "period": "Jun 2021 – Apr 2023", "location": "Kaunas",
+                     "bullets": ["Developed Spring Boot REST APIs for infrastructure asset management platform",
+                                 "Built interactive map-based UI with React and Leaflet for asset visualization",
+                                 "Integrated SAML SSO and role-based access control"]},
+                ],
+                "education": [{"degree": "BSc Information Systems", "school": "Kaunas University of Technology", "year": "2017 – 2021"}],
+                "certs": ["AWS Certified Developer Associate (2024)"],
+            },
+            {
+                "name": "Lukas Petrauskas", "email": "lukas.petrauskas@proton.me",
+                "phone": "+370 655 88912", "location": "Vilnius, Lithuania", "country": "LT",
+                "title": "Spring Boot / Angular Developer",
+                "skills_csv": "Java, Spring Boot, Angular, TypeScript, PostgreSQL, RabbitMQ, Docker, Jenkins, Material UI, Flyway",
+                "rate": "43", "source": "Referral",
+                "summary": "Backend-leaning full-stack developer with 5 years experience building enterprise applications. Expert in Spring Boot with strong Angular frontend skills. Experienced in healthcare and logistics domains with emphasis on data integrity and compliance.",
+                "skills": {
+                    "Backend": "Java 21, Spring Boot 3, Spring Batch, Spring Integration, MapStruct",
+                    "Frontend": "Angular 17, TypeScript, RxJS, Angular Material, NgRx",
+                    "Databases": "PostgreSQL, Oracle DB, H2",
+                    "DevOps": "Docker, Jenkins, SonarQube, Nexus, Linux",
+                    "Messaging": "RabbitMQ, Spring AMQP",
+                },
+                "experience": [
+                    {"role": "Full-Stack Developer", "company": "Affidea", "period": "Jan 2024 – Present", "location": "Vilnius",
+                     "bullets": ["Building patient records management system with Spring Boot + Angular",
+                                 "Implemented HL7 FHIR integration for medical data exchange",
+                                 "Designed audit trail system for GDPR compliance tracking",
+                                 "Mentoring 2 junior developers on Spring Boot best practices"]},
+                    {"role": "Java Developer", "company": "Girteka Logistics", "period": "Mar 2022 – Dec 2023", "location": "Vilnius",
+                     "bullets": ["Developed fleet management modules processing GPS data from 8000+ trucks",
+                                 "Built Spring Batch jobs for daily route optimization reports",
+                                 "Created Angular dashboard for real-time fleet monitoring"]},
+                    {"role": "Junior Java Developer", "company": "Telia", "period": "Sep 2020 – Feb 2022", "location": "Vilnius",
+                     "bullets": ["Built self-service portal features for telecom customers using Spring Boot",
+                                 "Developed Angular components for billing and subscription management"]},
+                ],
+                "education": [{"degree": "BSc Software Engineering", "school": "Vilnius Gediminas Technical University", "year": "2016 – 2020"}],
+                "certs": ["Spring Professional Certified (VMware, 2023)", "Oracle Java SE 17 Developer (2023)"],
+            },
+            {
+                "name": "Agata Wisniewska", "email": "agata.wis.dev@gmail.com",
+                "phone": "+48 512 334 556", "location": "Wroclaw, Poland", "country": "PL",
+                "title": "Spring Boot / Vue.js Developer",
+                "skills_csv": "Java, Spring Boot, Vue.js, TypeScript, PostgreSQL, Docker, Kubernetes, Vuetify, REST, GraphQL",
+                "rate": "47", "source": "Job board",
+                "summary": "Full-stack developer with 4 years of experience specializing in Spring Boot microservices and Vue.js SPAs. Passionate about clean architecture, automated testing, and developer experience. Strong background in fintech and e-government projects.",
+                "skills": {
+                    "Backend": "Java 17, Spring Boot, Spring Cloud Gateway, Spring Data, Lombok",
+                    "Frontend": "Vue.js 3, TypeScript, Vuetify, Pinia, Vite, Nuxt.js",
+                    "Databases": "PostgreSQL, MariaDB, Redis, MinIO (S3-compatible)",
+                    "Cloud": "AWS (ECS, RDS, S3, CloudFront), Docker, Kubernetes",
+                    "Testing": "JUnit 5, Testcontainers, Vitest, Cypress",
+                },
+                "experience": [
+                    {"role": "Full-Stack Developer", "company": "ING Hubs Poland", "period": "Jun 2023 – Present", "location": "Wroclaw",
+                     "bullets": ["Developing Spring Boot microservices for mortgage application processing",
+                                 "Built Vue.js customer-facing portal for loan applications with multi-step wizard",
+                                 "Implemented document upload pipeline with virus scanning and OCR extraction",
+                                 "Set up API gateway with Spring Cloud for routing and rate limiting"]},
+                    {"role": "Java / Vue Developer", "company": "Ailleron (LiveBank)", "period": "Aug 2021 – May 2023", "location": "Krakow",
+                     "bullets": ["Built video banking platform components with Spring Boot and Vue.js",
+                                 "Developed real-time chat features using WebSocket and STOMP protocol",
+                                 "Created component library in Vue 3 with Storybook documentation"]},
+                ],
+                "education": [{"degree": "BSc Computer Science", "school": "Wroclaw University of Science and Technology", "year": "2017 – 2021"}],
+                "certs": ["AWS Solutions Architect Associate (2024)", "Kubernetes CKAD (2023)"],
+            },
+            # ── C/C++ Testers (3) ───────────────────────────────────────
+            {
+                "name": "Andrius Vasiliauskas", "email": "andrius.vas@inbox.lt",
+                "phone": "+370 611 22334", "location": "Vilnius, Lithuania", "country": "LT",
+                "title": "C/C++ Test Automation Engineer",
+                "skills_csv": "C, C++, GoogleTest, CMake, Python, Jenkins, Valgrind, GDB, Linux, Embedded Testing",
+                "rate": "48", "source": "LinkedIn",
+                "summary": "Test automation engineer with 5 years of experience in C/C++ environments. Specialized in embedded systems testing, static analysis, and hardware-in-the-loop (HIL) test frameworks. Strong background in automotive and IoT domains with expertise in MISRA compliance and safety-critical systems.",
+                "skills": {
+                    "Languages": "C (C11), C++ (C++20), Python 3, Bash",
+                    "Test Frameworks": "GoogleTest, Google Mock, CppUnit, Catch2, pytest",
+                    "Build & CI": "CMake, Make, Conan, Jenkins, GitLab CI, Docker",
+                    "Analysis Tools": "Valgrind, AddressSanitizer, Coverity, cppcheck, gcov/lcov",
+                    "Debug": "GDB, JTAG, Logic Analyzer, Wireshark",
+                    "Platforms": "Linux (embedded), FreeRTOS, Yocto, QEMU",
+                },
+                "experience": [
+                    {"role": "Senior Test Engineer", "company": "Continental Automotive", "period": "Feb 2023 – Present", "location": "Vilnius",
+                     "bullets": ["Designed test automation framework for ADAS ECU software in C/C++",
+                                 "Implemented HIL test environment processing 500+ test cases nightly",
+                                 "Introduced fuzzing with AFL++ for protocol parsing modules, found 12 critical bugs",
+                                 "Ensured MISRA C:2012 compliance across 300K+ lines of codebase"]},
+                    {"role": "C/C++ Test Developer", "company": "Teltonika Networks", "period": "Jun 2021 – Jan 2023", "location": "Vilnius",
+                     "bullets": ["Built automated test suite for networking stack on embedded Linux devices",
+                                 "Developed Python-based test harness for router firmware validation",
+                                 "Achieved 90% unit test coverage for core networking libraries using GoogleTest"]},
+                    {"role": "QA Engineer", "company": "Devbridge (now Cognizant)", "period": "Sep 2020 – May 2021", "location": "Vilnius",
+                     "bullets": ["Wrote automated tests for C++ desktop application components",
+                                 "Set up CI pipeline for nightly test runs with coverage reporting"]},
+                ],
+                "education": [{"degree": "BSc Electronics Engineering", "school": "Vilnius Gediminas Technical University", "year": "2016 – 2020"}],
+                "certs": ["ISTQB Certified Tester Advanced Level – Test Automation Engineer (2023)", "Embedded Linux Training Certificate (2022)"],
+            },
+            {
+                "name": "Katarzyna Dabrowska", "email": "k.dabrowska.qa@gmail.com",
+                "phone": "+48 503 112 233", "location": "Krakow, Poland", "country": "PL",
+                "title": "C++ Software Tester / SDET",
+                "skills_csv": "C++, C, GoogleTest, Catch2, Python, Robot Framework, Jenkins, Docker, Linux, Performance Testing",
+                "rate": "44", "source": "Job board",
+                "summary": "SDET with 4 years of experience testing C++ systems in telecom and aerospace domains. Expert in designing test architectures for complex multi-threaded systems. Strong combination of manual testing intuition and automation engineering skills.",
+                "skills": {
+                    "Languages": "C++ (C++17), C, Python 3, Bash, Lua",
+                    "Test Frameworks": "GoogleTest, Catch2, Robot Framework, pytest, Boost.Test",
+                    "Performance": "Google Benchmark, perf, Valgrind Massif, custom profilers",
+                    "CI/CD": "Jenkins, Docker, Artifactory, Conan, CMake",
+                    "Tools": "Jira, TestRail, Wireshark, Perforce, Git",
+                    "Methods": "TDD, BDD, Exploratory Testing, Risk-Based Testing",
+                },
+                "experience": [
+                    {"role": "SDET (C++)", "company": "Nokia Networks", "period": "Mar 2023 – Present", "location": "Krakow",
+                     "bullets": ["Testing 5G RAN software components written in C/C++",
+                                 "Developed test framework for L2/L3 protocol stack validation processing 100K+ messages/sec",
+                                 "Created performance benchmarks for latency-critical scheduling algorithms",
+                                 "Automated regression suite of 2000+ test cases with Robot Framework + GoogleTest"]},
+                    {"role": "C++ Test Engineer", "company": "Airbus Defence & Space (via Asseco)", "period": "Aug 2021 – Feb 2023", "location": "Warsaw",
+                     "bullets": ["Tested safety-critical satellite communication C++ modules (DO-178C)",
+                                 "Designed unit and integration tests for real-time signal processing pipelines",
+                                 "Achieved MC/DC coverage requirements for Level A software certification"]},
+                ],
+                "education": [
+                    {"degree": "MSc Computer Science", "school": "AGH University of Science and Technology, Krakow", "year": "2019 – 2021"},
+                    {"degree": "BSc Computer Science", "school": "AGH University, Krakow", "year": "2015 – 2019"},
+                ],
+                "certs": ["ISTQB Certified Tester Foundation Level (2021)", "ISTQB Advanced Level – Technical Test Analyst (2023)"],
+            },
+            {
+                "name": "Arvydas Rimkus", "email": "arvydas.rimkus@pm.me",
+                "phone": "+370 677 55443", "location": "Kaunas, Lithuania", "country": "LT",
+                "title": "Embedded C / Test Engineer",
+                "skills_csv": "C, C++, Unity Test, CMock, Python, Pytest, JTAG, ARM Cortex, FreeRTOS, CAN bus",
+                "rate": "40", "source": "LinkedIn",
+                "summary": "Embedded test engineer with 3+ years of experience testing firmware and low-level C code for industrial and automotive applications. Deep understanding of hardware-software interaction, real-time constraints, and communication protocols. Methodical approach to test design with strong debugging skills.",
+                "skills": {
+                    "Languages": "C (C99/C11), C++ (basic), Python 3, Bash",
+                    "Test Frameworks": "Unity Test, CMock, GoogleTest, pytest, Ceedling",
+                    "Hardware": "ARM Cortex-M (STM32, NXP), ESP32, Oscilloscope, Logic Analyzer",
+                    "Protocols": "CAN bus, SPI, I2C, UART, Modbus, MQTT",
+                    "Tools": "JTAG/SWD, OpenOCD, GDB, Segger J-Link, PlatformIO",
+                    "CI": "Jenkins, GitHub Actions, Docker, Ceedling",
+                },
+                "experience": [
+                    {"role": "Embedded Test Engineer", "company": "Enersense (formerly Empower)", "period": "Jan 2024 – Present", "location": "Kaunas",
+                     "bullets": ["Testing firmware for smart energy metering devices (ARM Cortex-M4)",
+                                 "Built automated test bench with Python + pytest for CAN bus protocol validation",
+                                 "Designed integration tests simulating 100+ concurrent device communications",
+                                 "Reduced firmware regression testing time from 8 hours to 45 minutes"]},
+                    {"role": "Junior Test Engineer", "company": "Kitron", "period": "Mar 2022 – Dec 2023", "location": "Kaunas",
+                     "bullets": ["Wrote unit tests for industrial control board firmware using Unity/CMock",
+                                 "Developed hardware-in-the-loop test fixtures for production validation",
+                                 "Maintained CI pipeline for firmware builds and automated test execution"]},
+                    {"role": "Embedded Software Intern", "company": "Teltonika IoT Group", "period": "Jun 2021 – Feb 2022", "location": "Vilnius",
+                     "bullets": ["Assisted in testing GPS tracker firmware (ESP32 platform)",
+                                 "Created Python scripts for automated MQTT message validation"]},
+                ],
+                "education": [{"degree": "BSc Mechatronics", "school": "Kaunas University of Technology", "year": "2017 – 2021"}],
+                "certs": ["ISTQB Certified Tester Foundation Level (2022)"],
+            },
+        ]
+
+        # ── Linked candidates (with contractor profiles) ──────────
+        LINKED_CANDIDATES = [
+            {
+                "name": "Darius Grigas", "email": "darius.grigas@devmail.lt",
+                "phone": "+370 645 99112", "location": "Vilnius, Lithuania", "country": "LT",
+                "title": "Senior Python / DevOps Engineer",
+                "skills_csv": "Python, Django, FastAPI, AWS, Terraform, Docker, Kubernetes, PostgreSQL, CI/CD, Ansible",
+                "rate": "55", "source": "LinkedIn", "linkedin_url": "https://linkedin.com/in/darius-grigas",
+                "summary": "Python engineer with 6 years of experience combining backend development with DevOps practices. Built and operated large-scale data pipelines, REST APIs, and infrastructure automation. Strong AWS expertise with hands-on Kubernetes and Terraform experience in production.",
+                "skills": {
+                    "Languages": "Python 3.12, Bash, Go (intermediate), SQL",
+                    "Frameworks": "Django, FastAPI, Celery, SQLAlchemy, Pydantic",
+                    "Cloud": "AWS (EKS, Lambda, RDS, SQS, S3, CloudFormation), Terraform, Pulumi",
+                    "DevOps": "Docker, Kubernetes, Helm, ArgoCD, GitHub Actions, Jenkins",
+                    "Databases": "PostgreSQL, Redis, DynamoDB, Elasticsearch",
+                    "Monitoring": "Datadog, Prometheus, Grafana, PagerDuty",
+                },
+                "experience": [
+                    {"role": "Senior Python Engineer", "company": "Vinted", "period": "Apr 2023 – Present", "location": "Vilnius",
+                     "bullets": ["Architected data ingestion pipeline processing 2M+ events/hour with FastAPI + Celery",
+                                 "Migrated legacy Django monolith to microservices on AWS EKS",
+                                 "Built Terraform modules for reproducible multi-environment infrastructure",
+                                 "Led incident response for production outages, reduced MTTR by 45%"]},
+                    {"role": "Python Developer", "company": "Hostinger", "period": "Jan 2021 – Mar 2023", "location": "Vilnius",
+                     "bullets": ["Developed Django REST APIs for domain management platform serving 2M+ customers",
+                                 "Implemented async task processing with Celery handling 100K+ jobs/day",
+                                 "Built CI/CD pipelines with GitHub Actions for 30+ microservices"]},
+                    {"role": "Junior Developer", "company": "TransferGo", "period": "Jun 2019 – Dec 2020", "location": "Vilnius",
+                     "bullets": ["Built internal tools and APIs for compliance team using Django",
+                                 "Automated deployment workflows with Ansible and Docker"]},
+                ],
+                "education": [{"degree": "BSc Information Technologies", "school": "Vilnius University", "year": "2015 – 2019"}],
+                "certs": ["AWS Solutions Architect Professional (2024)", "Certified Kubernetes Administrator CKA (2023)"],
+                "contractor": {
+                    "company_name": "Grigas Dev", "country": "LT",
+                    "vat_registered": True, "vat_number": "LT100200300", "vat_rate_percent": "21",
+                    "invoice_series_prefix": "GD-2026-", "bank_name": "Swedbank",
+                    "bank_account_iban": "LT32 7300 0100 1234 5678", "bank_swift_bic": "HABALT22",
+                    "billing_address": "Savanoriu pr. 28, Vilnius", "payment_terms_days": 14,
+                },
+            },
+            {
+                "name": "Olga Petrova", "email": "olga.petrova.dev@gmail.com",
+                "phone": "+370 699 33221", "location": "Vilnius, Lithuania", "country": "LT",
+                "title": ".NET / Azure Cloud Developer",
+                "skills_csv": "C#, .NET 8, ASP.NET Core, Azure, SQL Server, Docker, Blazor, Entity Framework, REST, RabbitMQ",
+                "rate": "50", "source": "Referral",
+                "summary": "Full-stack .NET developer with 5 years of experience building enterprise applications on Azure. Expert in ASP.NET Core, microservices architecture, and cloud-native patterns. Experienced in banking and insurance domains with strong focus on security and performance.",
+                "skills": {
+                    "Languages": "C# 12, SQL, TypeScript, PowerShell",
+                    "Frameworks": "ASP.NET Core 8, Entity Framework Core, Blazor, MediatR, MassTransit",
+                    "Cloud": "Azure (App Service, Functions, Service Bus, Cosmos DB, AKS, Key Vault)",
+                    "Databases": "SQL Server, Cosmos DB, Redis, MongoDB",
+                    "DevOps": "Docker, Azure DevOps, Terraform, GitHub Actions",
+                    "Testing": "xUnit, NSubstitute, SpecFlow, Playwright",
+                },
+                "experience": [
+                    {"role": ".NET Developer", "company": "Swedbank", "period": "Sep 2023 – Present", "location": "Vilnius",
+                     "bullets": ["Building loan origination microservices with ASP.NET Core on Azure AKS",
+                                 "Implemented event-driven architecture using Azure Service Bus + MassTransit",
+                                 "Designed CQRS/Event Sourcing patterns for audit-critical financial workflows",
+                                 "Reduced deployment time from 2 hours to 15 minutes with automated pipelines"]},
+                    {"role": "Software Developer", "company": "If Insurance (via Cognizant)", "period": "Mar 2021 – Aug 2023", "location": "Vilnius",
+                     "bullets": ["Developed policy management system with ASP.NET Core serving 500K+ policies",
+                                 "Built Blazor Server internal admin tools replacing legacy WPF applications",
+                                 "Implemented Azure Functions for document generation processing 10K+ PDFs/day"]},
+                    {"role": "Junior .NET Developer", "company": "Baltic Amadeus", "period": "Sep 2019 – Feb 2021", "location": "Vilnius",
+                     "bullets": ["Developed e-government portal modules with ASP.NET Core MVC",
+                                 "Created REST APIs for citizen service integrations"]},
+                ],
+                "education": [{"degree": "MSc Computer Science", "school": "Vilnius University", "year": "2017 – 2019"},
+                              {"degree": "BSc Mathematics and Informatics", "school": "Vilnius University", "year": "2013 – 2017"}],
+                "certs": ["Azure Developer Associate AZ-204 (2024)", "Azure Solutions Architect AZ-305 (2023)"],
+                "contractor": {
+                    "company_name": "O.Petrova IT", "country": "LT",
+                    "vat_registered": True, "vat_number": "LT400500600", "vat_rate_percent": "21",
+                    "invoice_series_prefix": "OP-2026-", "bank_name": "SEB",
+                    "bank_account_iban": "LT55 7044 0600 0812 3456", "bank_swift_bic": "CBVILT2X",
+                    "billing_address": "Konstitucijos pr. 7, Vilnius", "payment_terms_days": 21,
+                },
+            },
+            {
+                "name": "Mindaugas Salna", "email": "mindaugas.salna@outlook.com",
+                "phone": "+370 620 44556", "location": "Kaunas, Lithuania", "country": "LT",
+                "title": "React / Node.js Frontend Engineer",
+                "skills_csv": "React, TypeScript, Node.js, Next.js, GraphQL, Tailwind CSS, PostgreSQL, Docker, Figma, Jest",
+                "rate": "45", "source": "Job board",
+                "summary": "Frontend-focused engineer with 4 years of experience building performant web applications. Expert in React ecosystem with strong Node.js backend skills. Keen eye for design, experienced in translating Figma designs to pixel-perfect, accessible UIs. Background in e-commerce and SaaS products.",
+                "skills": {
+                    "Frontend": "React 19, Next.js 15, TypeScript, Tailwind CSS v4, Zustand, Radix UI",
+                    "Backend": "Node.js, Express, Fastify, Prisma, tRPC",
+                    "Databases": "PostgreSQL, MongoDB, Redis, Supabase",
+                    "Tools": "Figma, Storybook, Turborepo, pnpm, Vercel",
+                    "Testing": "Jest, React Testing Library, Playwright, Vitest",
+                    "DevOps": "Docker, GitHub Actions, Vercel, AWS (S3, CloudFront)",
+                },
+                "experience": [
+                    {"role": "Frontend Engineer", "company": "Nord Security", "period": "Jun 2023 – Present", "location": "Kaunas",
+                     "bullets": ["Building NordVPN dashboard with Next.js 15 and React Server Components",
+                                 "Developed shared UI component library used across 4 product teams",
+                                 "Implemented A/B testing framework integrated with analytics pipeline",
+                                 "Improved Core Web Vitals: LCP from 3.2s to 1.1s, CLS from 0.15 to 0.02"]},
+                    {"role": "React Developer", "company": "Kilo Health", "period": "Aug 2021 – May 2023", "location": "Kaunas",
+                     "bullets": ["Built subscription management dashboard with React + TypeScript for 5M+ users",
+                                 "Created multi-step onboarding flows with complex form validation",
+                                 "Developed Node.js/Express BFF layer for mobile app API aggregation"]},
+                    {"role": "Junior Frontend Developer", "company": "Telesoftas", "period": "Feb 2021 – Jul 2021", "location": "Vilnius",
+                     "bullets": ["Developed React components for fintech client portal",
+                                 "Implemented responsive layouts following mobile-first methodology"]},
+                ],
+                "education": [{"degree": "BSc Informatics", "school": "Kaunas University of Technology", "year": "2017 – 2021"}],
+                "certs": ["Meta Front-End Developer Professional Certificate (2023)"],
+                "contractor": {
+                    "company_name": "", "country": "LT",
+                    "vat_registered": False,
+                    "invoice_series_prefix": "MS-2026-", "bank_name": "Luminor",
+                    "bank_account_iban": "LT12 4010 0424 0056 7890", "bank_swift_bic": "AGBLLT2X",
+                    "billing_address": "Laisves al. 45, Kaunas", "payment_terms_days": 14,
+                },
+            },
+        ]
+
+        all_candidates = CANDIDATES + LINKED_CANDIDATES
+
+        for c in all_candidates:
+            pdf_bytes = self._build_cv_pdf(c)
+            fname = f"{c['name'].replace(' ', '_')}_CV.pdf"
+
+            cand = Candidate.objects.create(
+                full_name=c["name"], email=c["email"], phone=c["phone"],
+                country=c["country"], skills=c["skills_csv"],
+                desired_rate=D(c["rate"]), desired_currency="EUR",
+                source=c["source"], linkedin_url=c.get("linkedin_url", ""),
+                notes=c["summary"],
+            )
+            cf = CandidateFile.objects.create(
+                candidate=cand, original_filename=fname,
+                file_type="CV", file_size=len(pdf_bytes),
+            )
+            cf.file.save(fname, ContentFile(pdf_bytes), save=True)
+            text = extract_text(cf.file.path)
+            if text:
+                cf.extracted_text = text
+                cf.save(update_fields=["extracted_text"])
+
+            # Link to contractor if specified
+            if "contractor" in c:
+                cp = c["contractor"]
+                user = User.objects.create_user(
+                    c["email"], PWD, full_name=c["name"], role="CONTRACTOR",
+                )
+                profile = ContractorProfile.objects.create(
+                    user=user, company_name=cp.get("company_name", ""), country=cp["country"],
+                    vat_registered=cp.get("vat_registered", False),
+                    vat_number=cp.get("vat_number", ""),
+                    vat_rate_percent=D(cp["vat_rate_percent"]) if cp.get("vat_rate_percent") else None,
+                    invoice_series_prefix=cp.get("invoice_series_prefix", ""),
+                    bank_name=cp.get("bank_name", ""),
+                    bank_account_iban=cp.get("bank_account_iban", ""),
+                    bank_swift_bic=cp.get("bank_swift_bic", ""),
+                    billing_address=cp.get("billing_address", ""),
+                    payment_terms_days=cp.get("payment_terms_days"),
+                    candidate_id=str(cand.id),
+                )
+                cand.contractor_id = str(user.id)
+                cand.status = Candidate.Status.PLACED
+                cand.save(update_fields=["contractor_id", "status"])
+                self.stdout.write(f"  {cand.full_name} ({cand.country}) + CV + contractor linked")
+            else:
+                self.stdout.write(f"  {cand.full_name} ({cand.country}) + CV")
+
+            rebuild_fts(cand)
+        self.stdout.write(f"  Created {len(all_candidates)} candidates ({len(LINKED_CANDIDATES)} linked)")

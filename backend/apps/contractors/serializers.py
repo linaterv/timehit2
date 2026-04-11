@@ -46,7 +46,7 @@ class ContractorProfileDetailSerializer(serializers.ModelSerializer):
             "registration_number", "vat_registered", "vat_number", "vat_rate_percent",
             "invoice_series_prefix", "next_invoice_number", "bank_name",
             "bank_account_iban", "bank_swift_bic", "payment_terms_days",
-            "billing_address", "country", "default_currency",
+            "billing_address", "country", "default_currency", "candidate_id",
         ]
 
 
