@@ -45,13 +45,13 @@ npm run dev                          # http://localhost:3000
 # Backend API tests (requires backend running + populated)
 cd tests
 pip install -r requirements.txt
-pytest -v                            # 176 tests across 11 files
+pytest -v                            # 213 tests across 17 files
 
 # Frontend E2E tests (requires both backend + frontend running)
 cd frontend-tests
 npm install
 npx playwright install chromium
-npx playwright test                  # 102 tests in 24 files
+npx playwright test                  # 115 tests in 28 files
 ```
 
 ## URLs
@@ -108,7 +108,7 @@ timehit3/
 
 **See [`tests.md`](tests.md) for the full catalog (every test, what it verifies, how to run).**
 
-### Backend API Tests — 176 tests across 11 files in `tests/`
+### Backend API Tests — 213 tests across 17 files in `tests/`
 | File | Tests | Coverage |
 |---|---|---|
 | `test_api.py` | 80 | Auth, users, clients, contractors, placements, timesheets, invoices, documents, control, rate confidentiality, contractor creation, PDF generation |
@@ -123,7 +123,7 @@ timehit3/
 | `test_control_extra.py` | 3 | Past issues, repopulate access control |
 | `test_timesheet_extra.py` | 2 | Withdraw flow |
 
-### Playwright E2E Tests — 102 tests across 24 files in `frontend-tests/`
+### Playwright E2E Tests — 115 tests across 28 files in `frontend-tests/`
 auth, sidebar, users, clients, contractors, placements, timesheets, invoices, dashboard, documents, rate-confidentiality, entity-links, timesheet-lifecycle, dashboard-check, dashboard-flags, candidates, brokers, settings, audit, plus 5 theme/screenshot specs.
 
 ## Key Domain Concepts

@@ -1,11 +1,13 @@
 # Test Suite Documentation
 
-Comprehensive documentation of TimeHit2's test coverage. **278 tests across two suites:**
+Comprehensive documentation of TimeHit2's test coverage. **328 tests across two suites:**
 
 | Suite | Location | Count | Purpose |
 |---|---|---|---|
-| Backend API | `tests/` | 176 | HTTP-level integration tests against running Django server |
-| Playwright E2E | `frontend-tests/` | 102 | Browser-based end-to-end tests of full stack |
+| Backend API | `tests/` | 213 | HTTP-level integration tests against running Django server |
+| Playwright E2E | `frontend-tests/` | 115 | Browser-based end-to-end tests of full stack |
+
+**See [`tests-todo.md`](tests-todo.md)** for the original backlog and future test ideas.
 
 ---
 
@@ -72,7 +74,15 @@ The most thorough coverage area — verified at **both** API level (fields nulle
 
 ---
 
-## Backend Test Catalog (176 tests)
+## Backend Test Catalog (213 tests)
+
+**New files since initial catalog (37 tests):**
+- `test_invoice_extras.py` (12) — Corrective flow, duplicate prevention, cross-currency, series API, sample PDF parent
+- `test_timesheet_state.py` (3) — Full reject→resubmit cycles, withdraw from CLIENT_APPROVED
+- `test_placement_copy.py` (2) — Copy with end_date, open-ended placements
+- `test_lock_blocking.py` (5) — Locked entity blocks mutations, lock cascading
+- `test_misc_backend.py` (11) — Pending view, attachment download, pagination, weekend entries, bug-report, password gen, audit triggers
+- `test_p4_misc.py` (4) — CSV columns, all 8 country holidays, past issues, invoice number uniqueness
 
 ### File: `tests/test_api.py` (80 tests)
 
@@ -281,7 +291,13 @@ GET /control/past-issues returns issue scan, POST /admin/repopulate forbidden fo
 
 ---
 
-## Playwright E2E Catalog (102 tests)
+## Playwright E2E Catalog (115 tests)
+
+**New spec files since initial catalog (13 tests):**
+- `invoice-correction.spec.ts` (2) — Correction flow, series live preview
+- `timesheet-rejection.spec.ts` (3) — Rejection modal, placement copy, PDF download button
+- `ui-misc.spec.ts` (6) — Page smoke tests, slide-over, toast, theme persist, responsive, back button
+- `ui-extras.spec.ts` (4) — Confirm dialog, pagination, entry warnings, escape key
 
 ### File: `frontend-tests/auth.spec.ts` (4 tests)
 Login with valid creds (sidebar visible), invalid creds (stays on /login with error), logout (returns to /login), unauthenticated /clients redirects to /login.
