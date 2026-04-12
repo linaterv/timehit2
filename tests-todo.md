@@ -55,17 +55,83 @@ Tests that **could** be added but aren't yet. Companion doc to [`tests.md`](test
 
 ---
 
+---
+
+## Deep edge-case backlog (from 2026-04-12 analysis)
+
+### Priority E — Numerical precision & VAT rounding
+
+- [ ] **VAT rounding on fractional cents** — Invoice with subtotal 100.03 EUR, VAT 21% → verify vat_amount uses banker's rounding (21.01 not 21.006).
+- [ ] **Sum-of-parts vs total drift** — Generate three invoices for partial hours same placement, then regenerate as one — totals must be identical (no cumulative rounding error).
+- [ ] **Zero-rate placement** — Placement with contractor_rate=0.00 → generate invoice → vat_amount=0.00 (not None, no division error).
+- [ ] **Fractional hours (0.33)** — Hours=0.33 × rate=100.00 → subtotal must be 33.00 stored with full decimal precision.
+- [ ] **Negative rate rejection** — POST /placements with rate=-10.00 → 400. Test both rate fields.
+
+### Priority F — Time & date edge cases
+
+- [ ] **Feb 28 vs 29 leap year** — Add entry on day 29 of 2026-02 (non-leap, 28 days) → rejected. On 2024-02 → accepted.
+- [ ] **Year wrap** — Placement spans 2025-12 to 2026-01 → timesheets for both exist with unique (placement, year, month) constraint.
+- [ ] **Placement with future end_date** — start=2026-04-01, end=2026-12-31 → timesheet for 2027-01 should reject (past placement range).
+- [ ] **Retrospective timesheet for archived month** — Create timesheet for 2025-06 (placement was active then, now completed) → should allow edits of past approved months per retrospective rule.
+- [ ] **Invoice issue_date before placement start** — issue_date=2026-03-01 on placement starting 2026-04-01 → should reject or warn.
+- [ ] **Timesheet for not-yet-active placement** — Placement activated 2026-06-15, try create timesheet for 2026-05 → should reject.
+
+### Priority G — Cascading deletes & referential integrity
+
+- [ ] **Contractor deleted mid-placement** — Delete contractor who has active placement + issued invoice → soft-delete (deactivate) preserving invoice readability.
+- [ ] **Client contact removed as approver** — CLIENT_THEN_BROKER flow, remove contact → timesheets fall back to BROKER_ONLY behavior or raise clear error.
+- [ ] **Broker loses client assignment** — Broker1 created 5 placements then admin revokes assignment → GET /placements returns 0 (broker scoped), but invoices they generated remain visible to admin.
+- [ ] **Parent template archived, child still uses it** — Generate invoice using child template whose parent is ARCHIVED → should resolve billing via parent chain walk.
+- [ ] **Candidate contractor_id points to deleted user** — Delete contractor who's linked to candidate → candidate.contractor_id becomes empty, no orphaned reference.
+- [ ] **FTS index stale after candidate archive** — Archive candidate → search should either exclude OR indicate archived status in results.
+
+### Priority H — Unicode & internationalization
+
+- [ ] **Lithuanian diacritics** — Contractor full_name="Vilnius Čekaitė" → retrieved correctly, renders in PDF.
+- [ ] **RTL company names** — Arabic/Hebrew company name → stored correctly.
+- [ ] **Emoji in task_name** — "Build 🚀 Backend" → stored, retrieved, appears in PDF.
+- [ ] **Very long name (256 chars)** — Rejected at serializer (max_length=255).
+- [ ] **Unicode in FTS search** — Candidate with skills="Django/Python/中文" → search for "中文" finds them.
+
+### Priority I — Boundary values
+
+- [ ] **Zero hours timesheet invoicing** — Approve empty timesheet (confirm_zero) → generate invoice → subtotal=0.00, no division-by-zero in PDF.
+- [ ] **24+ hours in single day** — Entry hours=25.00 → should reject at serializer (24.0 max per day per rules doc).
+- [ ] **Pre-epoch date** — Timesheet year=2000 month=01 → accepted (Django DateField has no epoch limit).
+- [ ] **Max decimal hours** — Hours=9999.99 → stored correctly, no overflow.
+
+### Priority J — Concurrency
+
+- [ ] **Concurrent invoice generation same timesheet** — Two parallel POST /invoices/generate with same timesheet_id → only one pair created, other returns error.
+- [ ] **Race on contractor series counter** — 20 concurrent invoices for same contractor → all unique invoice_numbers (no duplicates from race).
+- [ ] **Concurrent timesheet entry updates** — Two users bulk-upsert same timesheet → last write wins gracefully, no data corruption.
+- [ ] **Lock during mutation** — User A opens edit form, User B locks entity, User A saves → A's save fails with 423.
+
+### Priority K — Regressions from bug-reports/
+
+- [ ] **Placement title renders (not em-dash)** — Placements list always shows title, fallback to "—" only when genuinely null.
+- [ ] **Broker scope enforced on /placements** — Broker sees only assigned clients' placements (already tested but verify across all views).
+- [ ] **Contractor creation auto-creates profile** — POST /users role=CONTRACTOR → ContractorProfile exists immediately; invoice generation doesn't fail.
+- [ ] **Delete contractor with active placement blocked** — Already in test_entity_delete.py but verify message is actionable.
+- [ ] **Open-ended placement saves with null end_date** — Referenced in `fixed-260411-023436` — regression test: POST placement with end_date=null → saves, stays null, doesn't default to today.
+- [ ] **"Cannot save" generic error surfaced** — From `fixed-260411-041928` — when save fails, specific reason shown (not just "error"). Test invalid payload → 400 with details.
+
+---
+
 ## Notes
 
-**Why these aren't tested yet:**
-- Priority A: concurrency/atomicity tests are genuinely hard without a load-generator framework.
-- Priority B: would need additional seed data (second client contact, isolated broker).
-- Priority C: most are UI-heavy and depend on specific component behavior.
-- Priority D: typically requires mocking at the network layer (Playwright `route.fulfill`).
+**Priority letters continue alphabetically** from earlier A-D backlog. Sections E-K add 35 more deep test ideas on top of that 25, for **~60 total future tests** → potential grand total **~388 tests**.
 
-**Estimated effort:**
-- Priority A: 7 tests (~5 backend, 2 E2E) — ~2 hours
-- Priority B: 6 backend tests — ~1 hour
-- Priority C: 7 E2E tests — ~2 hours
-- Priority D: 5 mixed tests — ~2 hours (complex)
-- **Total potential: ~25 more → 353 grand total**
+**How to approach:** E-K tests are more specialized than P1-P4. Pick when:
+- **E (precision):** After any invoice calculation/PDF change.
+- **F (time):** Before year-end rollover (2026→2027 in real use).
+- **G (cascading):** After schema changes to FK relationships.
+- **H (unicode):** Before onboarding non-Latin clients.
+- **I (boundaries):** During fuzz/hardening passes.
+- **J (concurrency):** Under load testing or after race-condition bug reports.
+- **K (regressions):** Each time a bug report is fixed — add its test before closing.
+
+**Total test potential if all done:**
+- Current: 328
+- Priority A-D: +25 → 353
+- Priority E-K: +35 → 388
