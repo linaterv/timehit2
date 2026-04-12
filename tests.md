@@ -1,13 +1,13 @@
 # Test Suite Documentation
 
-Comprehensive documentation of TimeHit2's test coverage. **328 tests across two suites:**
+Comprehensive documentation of TimeHit2's test coverage. **394 tests across two suites:**
 
 | Suite | Location | Count | Purpose |
 |---|---|---|---|
-| Backend API | `tests/` | 213 | HTTP-level integration tests against running Django server |
-| Playwright E2E | `frontend-tests/` | 115 | Browser-based end-to-end tests of full stack |
+| Backend API | `tests/` | 269 | HTTP-level integration tests against running Django server |
+| Playwright E2E | `frontend-tests/` | 125 | Browser-based end-to-end tests of full stack |
 
-**See [`tests-todo.md`](tests-todo.md)** for the original backlog and future test ideas.
+**See [`tests-todo.md`](tests-todo.md)** for future test ideas beyond current coverage.
 
 ---
 
@@ -74,15 +74,22 @@ The most thorough coverage area — verified at **both** API level (fields nulle
 
 ---
 
-## Backend Test Catalog (213 tests)
+## Backend Test Catalog (269 tests)
 
-**New files since initial catalog (37 tests):**
-- `test_invoice_extras.py` (12) — Corrective flow, duplicate prevention, cross-currency, series API, sample PDF parent
-- `test_timesheet_state.py` (3) — Full reject→resubmit cycles, withdraw from CLIENT_APPROVED
-- `test_placement_copy.py` (2) — Copy with end_date, open-ended placements
-- `test_lock_blocking.py` (5) — Locked entity blocks mutations, lock cascading
-- `test_misc_backend.py` (11) — Pending view, attachment download, pagination, weekend entries, bug-report, password gen, audit triggers
-- `test_p4_misc.py` (4) — CSV columns, all 8 country holidays, past issues, invoice number uniqueness
+**Batch 3 (A-K priorities, 56 tests added):**
+- `test_data_integrity.py` (7) — Billing snapshot immutability, total_hours recalc, date-range, FTS reindex, profile immunity, correction links
+- `test_security.py` (7) — JWT expiry, cross-broker/contractor/client, rate confidentiality, duplicate emails
+- `test_numerical_precision.py` (5) — VAT rounding, subtotal consistency, zero-rate, fractional hours, negative rate
+- `test_time_edges.py` (6) — Leap year, year wrap, future/past placements, invoice date validation
+- `test_cascading.py` (6) — Contractor delete, broker scope, archived templates, candidate cleanup, FTS archive
+- `test_unicode.py` (5) — Lithuanian/Arabic/emoji/long strings/unicode FTS
+- `test_boundary.py` (4) — Zero hours, 24+ hours, pre-epoch, max decimals
+- `test_regressions.py` (7) — Bug-report regression coverage
+- `test_concurrency.py` (4) — Concurrent invoice gen, series counter, entry updates, lock-during-mutation
+- `test_misc_d.py` (5) — Large files, XSS, SQL, long strings, double-submit
+
+**Batch 2 (P1-P4, 37 tests):**
+- `test_invoice_extras.py` (12), `test_timesheet_state.py` (3), `test_placement_copy.py` (2), `test_lock_blocking.py` (5), `test_misc_backend.py` (11), `test_p4_misc.py` (4)
 
 ### File: `tests/test_api.py` (80 tests)
 
@@ -291,9 +298,12 @@ GET /control/past-issues returns issue scan, POST /admin/repopulate forbidden fo
 
 ---
 
-## Playwright E2E Catalog (115 tests)
+## Playwright E2E Catalog (125 tests)
 
-**New spec files since initial catalog (13 tests):**
+**Batch 3 (C/D deep UX, 8 tests):**
+- `ui-deep.spec.ts` (8) — Dashboard filters, profile refresh, calendar weekends, bulk gen, login redirect target, audit clicks, 404 graceful, offline recovery
+
+**Batch 2 (P1-P4, 13 tests):**
 - `invoice-correction.spec.ts` (2) — Correction flow, series live preview
 - `timesheet-rejection.spec.ts` (3) — Rejection modal, placement copy, PDF download button
 - `ui-misc.spec.ts` (6) — Page smoke tests, slide-over, toast, theme persist, responsive, back button
