@@ -50,7 +50,9 @@ frontend-tests/
 - `loginAs.admin(page)`, `loginAs.broker1(page)`, `loginAs.contractor1(page)`, `loginAs.client1(page)` — shortcuts with seeded credentials (all pwd=`a`)
 - All helpers use `data-testid` locators exclusively (`page.getByTestId(...)`)
 
-## Test Files + Scenarios (38 tests across 10 files)
+## Test Files + Scenarios
+
+> **Note:** This document captures the original test plan. The current implemented suite has grown to **102 tests across 24 spec files**. See [`tests.md`](tests.md) for the up-to-date catalog with every test name and what it verifies. The sections below remain useful as the original spec for the core functional tests.
 
 ### 1. `e2e/auth.spec.ts` — Authentication (4 tests)
 - `test('login with valid credentials')` — fill email+password, submit, verify redirect to `/`, sidebar visible

@@ -18,6 +18,7 @@ TimeHit is a recruitment/contracting agency platform. The agency places IT contr
 - `timehit-api.md` — Full REST API spec (JWT auth, all endpoints incl. /timesheets/pending, /invoices/:id/notifications)
 - `frontend-reqs.md` — Frontend spec: pages per role, navigation, components, contractor UX, attention buttons, rate confidentiality
 - `frontend-tests-reqs.md` — Playwright E2E test plan
+- `tests.md` — Full test catalog: every test in both suites, strategy, technology, run commands
 - `seriesgen.md` — Invoice series template engine: variables, counters, padding, rules, examples
 - `backend-reqs.md` — Backend stack, project structure, seed data, implementation notes
 - `req-populatedata.md` — Detailed seed data definition
@@ -44,13 +45,13 @@ npm run dev                          # http://localhost:3000
 # Backend API tests (requires backend running + populated)
 cd tests
 pip install -r requirements.txt
-pytest -v                            # 73 tests
+pytest -v                            # 176 tests across 11 files
 
 # Frontend E2E tests (requires both backend + frontend running)
 cd frontend-tests
 npm install
 npx playwright install chromium
-npx playwright test                  # 54 tests in 12 files
+npx playwright test                  # 102 tests in 24 files
 ```
 
 ## URLs
@@ -105,27 +106,25 @@ timehit3/
 
 ## Test Coverage
 
-### Backend API Tests (73 tests in `tests/test_api.py`)
-| Group | Tests | Coverage |
-|---|---|---|
-| Auth | 4 | login, refresh, change-password |
-| Users | 5 | CRUD, /me, role restrictions |
-| Clients | 5 | CRUD, broker assign/remove, scoping |
-| Client Contacts | 3 | CRUD |
-| Contractors | 3 | list, forbidden, profile update |
-| Placements | 7 | CRUD, activate/complete/cancel/copy, locked fields |
-| Placement Documents | 3 | upload, list, delete |
-| Timesheets | 7 | create, duplicate, submit, approve (both flows), reject |
-| Timesheet Entries | 3 | bulk upsert, date validation, 24h limit |
-| Timesheet Attachments | 2 | upload, delete-on-non-draft |
-| Invoices | 7 | generate pair, duplicate blocked, issue, mark-paid, void, correct, delete |
-| Documents | 7 | admin list, broker scoped, contractor empty, filter by client/label/date/search |
-| Control Screen | 3 | overview, summary, CSV export |
-| Rate Confidentiality | 13 | contractor can't see rates on placements/timesheets/invoices, client can't see rates, broker CAN see rates everywhere |
-| Role Access | 3 | contractor own placements, own invoices, client configured |
+**See [`tests.md`](tests.md) for the full catalog (every test, what it verifies, how to run).**
 
-### Playwright E2E Tests (54 tests in 12 files in `frontend-tests/`)
-auth, sidebar, users, clients, contractors, placements, timesheets, invoices, dashboard, documents, rate-confidentiality, timesheet-lifecycle
+### Backend API Tests — 176 tests across 11 files in `tests/`
+| File | Tests | Coverage |
+|---|---|---|
+| `test_api.py` | 80 | Auth, users, clients, contractors, placements, timesheets, invoices, documents, control, rate confidentiality, contractor creation, PDF generation |
+| `test_candidates.py` | 40 | CRUD, FTS search, files, activities, contractor link, parse-cv, access control |
+| `test_invoice_templates.py` | 13 | CRUD + activate/archive lifecycle + delete rules |
+| `test_audit.py` | 11 | Global log, entity-specific logs, filters, access control |
+| `test_lock.py` | 7 | Lock/unlock with reason, lock-row, lock-all, unlocked entities |
+| `test_settings_holidays.py` | 6 | Agency settings GET/PATCH, holidays endpoint |
+| `test_entity_delete.py` | 6 | User/client/contractor delete with soft/hard logic |
+| `test_client_files_activities.py` | 5 | Client file upload/list/delete + activities |
+| `test_invoice_notifications.py` | 3 | Auto-created notifications on status transitions |
+| `test_control_extra.py` | 3 | Past issues, repopulate access control |
+| `test_timesheet_extra.py` | 2 | Withdraw flow |
+
+### Playwright E2E Tests — 102 tests across 24 files in `frontend-tests/`
+auth, sidebar, users, clients, contractors, placements, timesheets, invoices, dashboard, documents, rate-confidentiality, entity-links, timesheet-lifecycle, dashboard-check, dashboard-flags, candidates, brokers, settings, audit, plus 5 theme/screenshot specs.
 
 ## Key Domain Concepts
 
