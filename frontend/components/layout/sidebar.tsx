@@ -161,7 +161,31 @@ export function Sidebar() {
               <div className="relative">
                 <Menu size={18} />
                 {pastIssues && pastIssues.count > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center animate-pulse">
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    title="Go to dashboard (past issues)"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (pastIssues.earliest_year && pastIssues.earliest_month) {
+                        sessionStorage.setItem("control-year", String(pastIssues.earliest_year));
+                        sessionStorage.setItem("control-month", String(pastIssues.earliest_month));
+                      }
+                      router.push("/");
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        if (pastIssues.earliest_year && pastIssues.earliest_month) {
+                          sessionStorage.setItem("control-year", String(pastIssues.earliest_year));
+                          sessionStorage.setItem("control-month", String(pastIssues.earliest_month));
+                        }
+                        router.push("/");
+                      }
+                    }}
+                    className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center animate-pulse cursor-pointer hover:scale-125 transition-transform"
+                  >
                     {pastIssues.count > 9 ? "!" : pastIssues.count}
                   </span>
                 )}
