@@ -20,6 +20,7 @@ from apps.timesheets.models import Timesheet
 from apps.contractors.models import ContractorProfile
 from apps.users.permissions import IsAdminOrBroker, has_broker_access_to_client
 from apps.audit.service import log_audit
+from apps.users.exceptions import check_locked
 
 
 def _inv_snapshot(inv):
@@ -375,6 +376,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         if not (request.user.is_admin or request.user.is_broker):
             raise PermissionDenied()
         inv = self.get_object()
+        check_locked(inv)
         if inv.status != Invoice.Status.DRAFT:
             from apps.users.exceptions import ConflictError
             raise ConflictError("Can only delete DRAFT invoices")
@@ -387,6 +389,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         if not (request.user.is_admin or request.user.is_broker):
             raise PermissionDenied()
         inv = self.get_object()
+        check_locked(inv)
         snap = _inv_snapshot(inv)
         inv.issue()
         _inv_audit(inv, "ISSUED", f"Invoice {inv.invoice_number} issued", request.user, snap)
@@ -400,6 +403,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         ser = MarkPaidSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         inv = self.get_object()
+        check_locked(inv)
         snap = _inv_snapshot(inv)
         inv.mark_paid(ser.validated_data["payment_date"], ser.validated_data.get("payment_reference", ""))
         _inv_audit(inv, "PAID", f"Invoice {inv.invoice_number} marked paid", request.user, snap)
@@ -411,6 +415,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         if not (request.user.is_admin or request.user.is_broker):
             raise PermissionDenied()
         inv = self.get_object()
+        check_locked(inv)
         snap = _inv_snapshot(inv)
         inv.void()
         _inv_audit(inv, "VOIDED", f"Invoice {inv.invoice_number} voided", request.user, snap)
@@ -424,6 +429,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         ser = CorrectSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         inv = self.get_object()
+        check_locked(inv)
         snap = _inv_snapshot(inv)
         d = ser.validated_data
         inv.mark_corrected()
@@ -537,6 +543,7 @@ class InvoiceTemplateViewSet(viewsets.ModelViewSet):
         _inv_audit_tpl(tpl, "CREATED", f"Template '{tpl.title}' created", self.request.user)
 
     def perform_update(self, serializer):
+        check_locked(serializer.instance)
         user = self.request.user
         if user.is_contractor and serializer.instance.contractor_id != user.id:
             raise PermissionDenied()
@@ -551,6 +558,7 @@ class InvoiceTemplateViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         obj = self.get_object()
+        check_locked(obj)
         if obj.status not in (InvoiceTemplate.Status.DRAFT, InvoiceTemplate.Status.ARCHIVED):
             from apps.users.exceptions import ConflictError
             raise ConflictError("Can only delete DRAFT or ARCHIVED templates")

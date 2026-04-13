@@ -7,6 +7,8 @@ import { useApiQuery, useApiMutation } from "@/hooks/use-api";
 import { useAuth } from "@/hooks/use-auth";
 import { apiUpload, api } from "@/lib/api";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { LockBadge } from "@/components/shared/lock-badge";
+import { BackLink } from "@/components/shared/back-link";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { SearchableSelect } from "@/components/shared/searchable-select";
 import { CircleAlert } from "lucide-react";
@@ -265,8 +267,12 @@ export default function PlacementDetailPage() {
 
   const handleDocDelete = async (docId: string) => {
     if (!confirm("Delete this document?")) return;
-    await api(`/placements/${id}/documents/${docId}`, { method: "DELETE" });
-    qc.invalidateQueries({ queryKey: ["placement-documents", id] });
+    try {
+      await api(`/placements/${id}/documents/${docId}`, { method: "DELETE" });
+      qc.invalidateQueries({ queryKey: ["placement-documents", id] });
+    } catch (err: unknown) {
+      alert((err as { message?: string })?.message ?? "Failed to delete");
+    }
   };
 
   const handleSettingsSave = () => {
@@ -337,6 +343,7 @@ export default function PlacementDetailPage() {
 
   return (
     <div data-testid="placement-detail" className="space-y-6">
+      <BackLink />
       {/* Header Card */}
       <div className="bg-surface border rounded-lg p-6">
         <div className="flex items-start justify-between mb-4">
@@ -346,13 +353,15 @@ export default function PlacementDetailPage() {
                 <EL href={`/clients/${placement.client.id}`}>{placement.client.company_name}</EL> &rarr; {placement.title || <EL href={`/contractors/${placement.contractor.id}`}>{placement.contractor.full_name}</EL>}
               </h1>
               <StatusBadge value={placement.status} />
+              <LockBadge entityType="placement" entityId={id} isLocked={placement.is_locked ?? false}
+                invalidateKeys={[["placement", id], ["placements"]]} label={placement.title || placement.client.company_name} />
             </div>
             {placement.title && (
               <p className="text-sm text-gray-500"><EL href={`/contractors/${placement.contractor.id}`}>{placement.contractor.full_name}</EL></p>
             )}
           </div>
           <div className="flex gap-2">
-            {canManagePlacement && !editing && (
+            {canManagePlacement && !editing && !placement.is_locked && (
               <button
                 data-testid="placement-edit-btn"
                 onClick={startEdit}
@@ -378,7 +387,7 @@ export default function PlacementDetailPage() {
                 </button>
               </>
             )}
-            {canManagePlacement && isDraft && !editing && (
+            {canManagePlacement && isDraft && !editing && !placement.is_locked && (
               <>
                 <button
                   data-testid="placement-activate-btn"
@@ -397,7 +406,7 @@ export default function PlacementDetailPage() {
                 </button>
               </>
             )}
-            {canManagePlacement && isActive && (
+            {canManagePlacement && isActive && !placement.is_locked && (
               <>
                 <button
                   data-testid="placement-complete-btn"
@@ -764,7 +773,7 @@ export default function PlacementDetailPage() {
                   >
                     Download
                   </button>
-                  {canUploadDocs && (
+                  {canUploadDocs && !placement.is_locked && (
                     <button
                       data-testid={`doc-delete-${doc.id}`}
                       onClick={(e) => { e.stopPropagation(); handleDocDelete(doc.id); }}

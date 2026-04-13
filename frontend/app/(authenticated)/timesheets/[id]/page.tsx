@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { api, apiUpload } from "@/lib/api";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { BackLink } from "@/components/shared/back-link";
 import { EntityLink as EL } from "@/components/shared/entity-link";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { FileUpload } from "@/components/shared/file-upload";
@@ -351,6 +352,7 @@ export default function TimesheetDetailPage() {
 
   return (
     <div data-testid="timesheet-detail" className="space-y-6">
+      <BackLink />
       {/* Rejection Banner */}
       {ts.rejection_reason && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">

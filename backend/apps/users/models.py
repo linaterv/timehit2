@@ -31,6 +31,7 @@ class User(AbstractBaseUser):
     full_name = models.CharField(max_length=255)
     role = models.CharField(max_length=20, choices=Role.choices)
     is_active = models.BooleanField(default=True)
+    is_locked = models.BooleanField(default=False)
     theme = models.CharField(max_length=50, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

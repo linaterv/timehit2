@@ -9,6 +9,7 @@ from .serializers import (
     ContractorProfileUpdateSerializer,
 )
 from apps.audit.service import log_audit
+from apps.users.exceptions import check_locked
 
 
 class ContractorViewSet(viewsets.ModelViewSet):
@@ -69,6 +70,7 @@ class ContractorViewSet(viewsets.ModelViewSet):
         if not request.user.is_admin:
             raise PermissionDenied("Only admins can delete contractors")
         obj = self.get_object()
+        check_locked(obj)
         user = obj.user
         active_placements = user.placements.filter(status="ACTIVE").count()
         if active_placements:
@@ -101,6 +103,7 @@ class ContractorViewSet(viewsets.ModelViewSet):
             if obj.user_id != user.id:
                 raise PermissionDenied()
         obj = self.get_object()
+        check_locked(obj)
         before = {"company_name": obj.company_name, "country": obj.country}
         resp = super().partial_update(request, *args, **kwargs)
         obj.refresh_from_db()

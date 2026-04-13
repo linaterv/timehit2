@@ -12,6 +12,8 @@ import { CountrySelect } from "@/components/shared/country-select";
 import { EntityLink as EL } from "@/components/shared/entity-link";
 import { formatDate } from "@/lib/utils";
 import { AuditTimeline } from "@/components/shared/audit-timeline";
+import { LockBadge } from "@/components/shared/lock-badge";
+import { BackLink } from "@/components/shared/back-link";
 import {
   InvoiceTemplateA4, TplForm, emptyTplForm, tplToForm,
   STATUS_COLORS, TYPE_LABELS,
@@ -208,12 +210,17 @@ export default function ContractorDetailPage() {
 
   return (
     <div data-testid="contractor-detail" className={`space-y-6 ${tplShowEditor ? "" : "max-w-3xl"}`}>
+      <BackLink />
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">
-            <span className="font-mono text-sm text-gray-400 mr-2">{contractor.code}</span>
-            {contractor.full_name}
-          </h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-semibold text-gray-900">
+              <span className="font-mono text-sm text-gray-400 mr-2">{contractor.code}</span>
+              {contractor.full_name}
+            </h2>
+            <LockBadge entityType="contractor" entityId={contractorId} isLocked={contractor.is_locked ?? false}
+              invalidateKeys={[["contractors", contractorId], ["contractors"]]} label={contractor.full_name} />
+          </div>
           <p className="text-sm text-gray-500">{contractor.email}</p>
           {contractor.candidate_id && (
             <button onClick={() => router.push(`/candidates/${contractor.candidate_id}`)}
@@ -223,7 +230,7 @@ export default function ContractorDetailPage() {
           )}
         </div>
         <div className="flex gap-2">
-          {isAdmin && !editing && (
+          {isAdmin && !editing && !contractor.is_locked && (
             <button
               data-testid="contractor-delete-btn"
               onClick={() => setDeleteOpen(true)}
@@ -232,7 +239,7 @@ export default function ContractorDetailPage() {
               Delete
             </button>
           )}
-          {canEdit && !editing && (
+          {canEdit && !editing && !contractor.is_locked && (
             <button
               data-testid="contractor-edit-btn"
               onClick={() => setEditing(true)}

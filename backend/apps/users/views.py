@@ -17,6 +17,7 @@ from .serializers import (
     UserUpdateSerializer, UserMeSerializer,
 )
 from .permissions import IsAdmin
+from .exceptions import check_locked
 from apps.audit.service import log_audit
 
 
@@ -151,6 +152,7 @@ class UserViewSet(viewsets.ModelViewSet):
         if not request.user.is_admin:
             raise PermissionDenied("Only admins can delete users")
         target = self.get_object()
+        check_locked(target)
         if target.id == request.user.id:
             raise PermissionDenied("Cannot delete yourself")
         # Check active placements (contractor)
@@ -199,6 +201,7 @@ class UserViewSet(viewsets.ModelViewSet):
             if extra:
                 raise PermissionDenied(f"Cannot update fields: {extra}")
         obj = self.get_object()
+        check_locked(obj)
         before = {"full_name": obj.full_name, "email": obj.email, "is_active": obj.is_active}
         resp = super().partial_update(request, *args, **kwargs)
         obj.refresh_from_db()

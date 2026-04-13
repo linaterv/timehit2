@@ -1,17 +1,20 @@
+from django.http import FileResponse
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, NotFound
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from drf_spectacular.utils import extend_schema
-from .models import Client, ClientContact, BrokerClientAssignment
+from .models import Client, ClientContact, BrokerClientAssignment, ClientActivity, ClientFile
 from .serializers import (
     ClientListSerializer, ClientDetailSerializer, ClientCreateSerializer,
     ClientUpdateSerializer, ClientContactSerializer, ClientContactCreateSerializer,
     ClientContactUpdateSerializer, BrokerAssignSerializer, BrokerAssignmentSerializer,
+    ClientActivitySerializer, ClientFileSerializer,
 )
 from apps.users.models import User
 from apps.users.permissions import IsAdminOrBroker, has_broker_access_to_client
-from apps.users.exceptions import ConflictError
+from apps.users.exceptions import ConflictError, check_locked
 from apps.audit.service import log_audit
 
 
@@ -86,10 +89,20 @@ class ClientViewSet(viewsets.ModelViewSet):
         if "is_active" in request.data and not request.user.is_admin:
             raise PermissionDenied("Only admin can change is_active")
         obj = self.get_object()
+        check_locked(obj)
+        old_active = obj.is_active
         before = {"company_name": obj.company_name, "is_active": obj.is_active, "country": obj.country}
         resp = super().partial_update(request, *args, **kwargs)
         obj.refresh_from_db()
         after = {"company_name": obj.company_name, "is_active": obj.is_active, "country": obj.country}
+        if old_active != obj.is_active:
+            ClientActivity.objects.create(
+                client=obj, type=ClientActivity.Type.STATUS_CHANGE,
+                text=f"Status changed from {'Active' if old_active else 'Inactive'} to {'Active' if obj.is_active else 'Inactive'}",
+                old_value="Active" if old_active else "Inactive",
+                new_value="Active" if obj.is_active else "Inactive",
+                created_by=request.user,
+            )
         if before != after:
             log_audit(entity_type="client", entity_id=obj.id, action="UPDATED",
                       title=f"Client {obj.company_name} updated", user=request.user,
@@ -101,6 +114,7 @@ class ClientViewSet(viewsets.ModelViewSet):
         if not request.user.is_admin:
             raise PermissionDenied("Only admins can delete clients")
         client = self.get_object()
+        check_locked(client)
         active_placements = client.placements.filter(status="ACTIVE").count()
         if active_placements:
             return Response(
@@ -200,3 +214,131 @@ class ClientContactViewSet(viewsets.ModelViewSet):
             setattr(contact, k, v)
         contact.save()
         return Response(ClientContactSerializer(contact).data)
+
+
+class ClientActivityViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAdminOrBroker]
+    serializer_class = ClientActivitySerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    http_method_names = ["get", "post"]
+
+    def get_queryset(self):
+        return ClientActivity.objects.filter(
+            client_id=self.kwargs["client_pk"]
+        ).select_related("created_by").prefetch_related("files")
+
+    def _get_client(self):
+        try:
+            return Client.objects.get(pk=self.kwargs["client_pk"])
+        except Client.DoesNotExist:
+            raise NotFound("Client not found")
+
+    @extend_schema(tags=["Clients"])
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(tags=["Clients"])
+    def create(self, request, *args, **kwargs):
+        client = self._get_client()
+        if request.user.is_broker and not has_broker_access_to_client(request.user, client.id):
+            raise PermissionDenied()
+
+        activity = ClientActivity.objects.create(
+            client=client,
+            type=request.data.get("type", "NOTE"),
+            text=request.data.get("text", ""),
+            created_by=request.user,
+        )
+
+        uploaded_files = request.FILES.getlist("file") or request.FILES.getlist("files")
+        for f in uploaded_files:
+            ClientFile.objects.create(
+                client=client, activity=activity,
+                file=f, original_filename=f.name,
+                file_type="OTHER", file_size=f.size,
+                uploaded_by=request.user,
+            )
+
+        log_audit(entity_type="client", entity_id=client.id, action="ACTIVITY_ADDED",
+                  title=f"Activity added for {client.company_name}", user=request.user,
+                  data_after={"type": activity.type, "text": activity.text[:200]})
+        activity.refresh_from_db()
+        return Response(ClientActivitySerializer(activity).data, status=status.HTTP_201_CREATED)
+
+
+class ClientFileViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAdminOrBroker]
+    serializer_class = ClientFileSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    http_method_names = ["get", "post", "delete"]
+
+    def get_queryset(self):
+        qs = ClientFile.objects.filter(client_id=self.kwargs["client_pk"]).select_related("uploaded_by")
+        ft = self.request.query_params.get("type")
+        if ft:
+            qs = qs.filter(file_type=ft)
+        return qs
+
+    def _get_client(self):
+        try:
+            return Client.objects.get(pk=self.kwargs["client_pk"])
+        except Client.DoesNotExist:
+            raise NotFound("Client not found")
+
+    @extend_schema(tags=["Clients"])
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(tags=["Clients"])
+    def create(self, request, *args, **kwargs):
+        client = self._get_client()
+        if request.user.is_broker and not has_broker_access_to_client(request.user, client.id):
+            raise PermissionDenied()
+        file_type = request.data.get("file_type", "OTHER")
+        uploaded_files = request.FILES.getlist("file") or request.FILES.getlist("files")
+        if not uploaded_files:
+            return Response({"error": "No files provided"}, status=400)
+
+        created = []
+        for f in uploaded_files:
+            cf = ClientFile.objects.create(
+                client=client, file=f, original_filename=f.name,
+                file_type=file_type, file_size=f.size,
+                uploaded_by=request.user,
+            )
+            created.append(cf)
+            ClientActivity.objects.create(
+                client=client, type=ClientActivity.Type.FILE_UPLOADED,
+                text=f"Uploaded {f.name}",
+                created_by=request.user,
+            )
+
+        fnames = [c.original_filename for c in created]
+        log_audit(entity_type="client", entity_id=client.id, action="FILE_UPLOADED",
+                  title=f"File uploaded for {client.company_name}", user=request.user,
+                  data_after={"files": fnames, "file_type": file_type})
+        return Response(ClientFileSerializer(created, many=True).data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(tags=["Clients"])
+    def destroy(self, request, *args, **kwargs):
+        obj = self.get_object()
+        client = obj.client
+        fname = obj.original_filename
+        ftype = obj.file_type
+        obj.file.delete(save=False)
+        obj.delete()
+        ClientActivity.objects.create(
+            client=client, type=ClientActivity.Type.FILE_REMOVED,
+            text=f"Removed {fname}",
+            created_by=request.user,
+        )
+        log_audit(entity_type="client", entity_id=client.id, action="FILE_DELETED",
+                  title=f"File removed from {client.company_name}", user=request.user,
+                  data_before={"filename": fname, "file_type": ftype})
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @extend_schema(tags=["Clients"])
+    @action(detail=True, methods=["get"])
+    def download(self, request, client_pk=None, pk=None):
+        obj = self.get_object()
+        return FileResponse(obj.file.open("rb"), as_attachment=True, filename=obj.original_filename)

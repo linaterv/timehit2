@@ -7,6 +7,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { EntityLink as EL } from "@/components/shared/entity-link";
 import { useApiQuery, useApiMutation } from "@/hooks/use-api";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { LockBadge } from "@/components/shared/lock-badge";
+import { BackLink } from "@/components/shared/back-link";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { formatCurrency, formatDate, formatMonth } from "@/lib/utils";
 import { FileDown } from "lucide-react";
@@ -171,6 +173,7 @@ export default function InvoiceDetailPage() {
 
   return (
     <div data-testid="invoice-detail" className="space-y-6">
+      <BackLink />
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
@@ -180,6 +183,8 @@ export default function InvoiceDetailPage() {
             </h1>
             {!isContractor && <StatusBadge value={invoice.invoice_type} />}
             <StatusBadge value={invoice.status} />
+            {isAdminOrBroker && <LockBadge entityType="invoice" entityId={invoiceId} isLocked={invoice.is_locked ?? false}
+              invalidateKeys={[["invoice", invoiceId], ["invoices"]]} label={invoice.invoice_number} />}
           </div>
           <p className="text-sm text-gray-500">
             <EL href={`/clients/${invoice.client.id}`}>{invoice.client.company_name}</EL>
@@ -360,7 +365,7 @@ export default function InvoiceDetailPage() {
           Download PDF
         </button>
 
-        {isAdminOrBroker && invoice.status === "DRAFT" && (
+        {isAdminOrBroker && invoice.status === "DRAFT" && !invoice.is_locked && (
           <>
             <button
               data-testid="invoice-issue-btn"
@@ -380,7 +385,7 @@ export default function InvoiceDetailPage() {
           </>
         )}
 
-        {isAdminOrBroker && invoice.status === "ISSUED" && (
+        {isAdminOrBroker && invoice.status === "ISSUED" && !invoice.is_locked && (
           <>
             <button
               data-testid="invoice-paid-btn"
@@ -411,7 +416,7 @@ export default function InvoiceDetailPage() {
           </>
         )}
 
-        {isAdminOrBroker && invoice.status === "PAID" && (
+        {isAdminOrBroker && invoice.status === "PAID" && !invoice.is_locked && (
           <button
             data-testid="invoice-void-btn"
             onClick={() => setConfirmVoid(true)}

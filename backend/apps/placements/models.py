@@ -37,6 +37,7 @@ class Placement(models.Model):
         null=True, blank=True, related_name="placements_as_client_template",
     )
     notes = models.TextField(blank=True, default="")
+    is_locked = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -22,6 +22,7 @@ class ContractorProfile(models.Model):
     country = models.CharField(max_length=100, default="")
     default_currency = models.CharField(max_length=3, default="EUR")
     candidate_id = models.CharField(max_length=36, blank=True, default="")
+    is_locked = models.BooleanField(default=False)
 
     class Meta:
         db_table = "contractor_profiles"

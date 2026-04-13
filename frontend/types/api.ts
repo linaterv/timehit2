@@ -31,6 +31,7 @@ export interface User {
   full_name: string;
   role: Role;
   is_active: boolean;
+  is_locked?: boolean;
   created_at: string;
   updated_at?: string;
   contractor_profile?: ContractorProfile | null;
@@ -62,6 +63,7 @@ export interface Client {
   default_currency: string;
   payment_terms_days: number | null;
   is_active: boolean;
+  is_locked: boolean;
   notes?: string;
   brokers: BrokerAssignment[];
   placement_summary?: PlacementSummary;
@@ -79,6 +81,32 @@ export interface ClientContact {
   phone: string;
   is_primary: boolean;
   is_active: boolean;
+}
+
+export type ClientFileType = "CONTRACT" | "PROPOSAL" | "NDA" | "OTHER";
+export type ClientActivityType = "NOTE" | "MEETING" | "CALL" | "PROPOSAL_SENT" | "CONTRACT_SIGNED" | "STATUS_CHANGE" | "FILE_UPLOADED" | "FILE_REMOVED";
+
+export interface ClientFileInfo {
+  id: string;
+  client_id: string;
+  activity_id: string | null;
+  original_filename: string;
+  file_type: ClientFileType;
+  file_size: number;
+  uploaded_by: UserRef | null;
+  uploaded_at: string;
+}
+
+export interface ClientActivityInfo {
+  id: string;
+  client_id: string;
+  type: ClientActivityType;
+  text: string;
+  old_value: string;
+  new_value: string;
+  created_by: UserRef | null;
+  created_at: string;
+  files: ClientFileInfo[];
 }
 
 export interface ContractorProfile {
@@ -102,6 +130,7 @@ export interface ContractorProfile {
   country: string;
   default_currency: string;
   candidate_id: string;
+  is_locked?: boolean;
   is_active?: boolean;
   current_placement?: PlacementRef | null;
   placement_summary?: PlacementSummary;
@@ -125,6 +154,7 @@ export interface Placement {
   client_invoice_template_id: string | null;
   payment_terms_client_days: number | null;
   payment_terms_contractor_days: number | null;
+  is_locked?: boolean;
   notes: string;
   created_at: string;
 }
@@ -226,6 +256,7 @@ export interface Invoice {
   billing_snapshot?: Record<string, unknown>;
   correction_link?: { corrective_invoice_id: string; reason: string } | null;
   generated_by: UserRef;
+  is_locked?: boolean;
   created_at: string;
 }
 
@@ -280,6 +311,7 @@ export interface ControlRow {
   contractor_invoice: { id: string; invoice_number: string; status: InvoiceStatus; total_amount: string } | null;
   margin: string;
   flags: string[];
+  unlocked?: string[];
 }
 
 export interface ControlSummary {

@@ -13,6 +13,7 @@ class Client(models.Model):
     default_currency = models.CharField(max_length=3, default="EUR")
     payment_terms_days = models.IntegerField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
+    is_locked = models.BooleanField(default=False)
     notes = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -52,3 +53,60 @@ class BrokerClientAssignment(models.Model):
     class Meta:
         db_table = "broker_client_assignments"
         unique_together = [("broker", "client")]
+
+
+def client_file_path(instance, filename):
+    return f"clients/{instance.client_id}/{filename}"
+
+
+class ClientActivity(models.Model):
+    class Type(models.TextChoices):
+        NOTE = "NOTE"
+        MEETING = "MEETING"
+        CALL = "CALL"
+        PROPOSAL_SENT = "PROPOSAL_SENT"
+        CONTRACT_SIGNED = "CONTRACT_SIGNED"
+        STATUS_CHANGE = "STATUS_CHANGE"
+        FILE_UPLOADED = "FILE_UPLOADED"
+        FILE_REMOVED = "FILE_REMOVED"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name="activities")
+    type = models.CharField(max_length=20, choices=Type.choices)
+    text = models.TextField(blank=True, default="")
+    old_value = models.CharField(max_length=50, blank=True, default="")
+    new_value = models.CharField(max_length=50, blank=True, default="")
+    created_by = models.ForeignKey("users.User", on_delete=models.SET_NULL, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "client_activities"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.type}: {self.text[:50]}"
+
+
+class ClientFile(models.Model):
+    class FileType(models.TextChoices):
+        CONTRACT = "CONTRACT"
+        PROPOSAL = "PROPOSAL"
+        NDA = "NDA"
+        OTHER = "OTHER"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name="files")
+    activity = models.ForeignKey(ClientActivity, on_delete=models.SET_NULL, null=True, blank=True, related_name="files")
+    file = models.FileField(upload_to=client_file_path)
+    original_filename = models.CharField(max_length=255)
+    file_type = models.CharField(max_length=20, choices=FileType.choices, default=FileType.OTHER)
+    file_size = models.IntegerField(default=0)
+    uploaded_by = models.ForeignKey("users.User", on_delete=models.SET_NULL, null=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "client_files"
+        ordering = ["-uploaded_at"]
+
+    def __str__(self):
+        return self.original_filename

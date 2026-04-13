@@ -24,7 +24,7 @@ class PlacementListSerializer(serializers.ModelSerializer):
             "require_timesheet_attachment", "client_can_view_invoices",
             "client_can_view_documents", "client_invoice_template_id",
             "payment_terms_client_days",
-            "payment_terms_contractor_days", "notes", "created_at",
+            "payment_terms_contractor_days", "is_locked", "notes", "created_at",
         ]
 
     def get_client(self, obj):

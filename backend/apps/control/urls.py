@@ -7,5 +7,9 @@ urlpatterns = [
     path("control/export", views.ControlExportView.as_view(), name="control-export"),
     path("agency-settings", views.AgencySettingsView.as_view(), name="agency-settings"),
     path("holidays", views.HolidaysView.as_view(), name="holidays"),
+    path("control/past-issues", views.PastIssuesView.as_view(), name="past-issues"),
+    path("control/unlocked", views.UnlockedEntitiesView.as_view(), name="unlocked-entities"),
+    path("control/lock-row", views.LockRowView.as_view(), name="lock-row"),
+    path("control/lock-all", views.LockAllView.as_view(), name="lock-all"),
     path("admin/repopulate", views.RepopulateView.as_view(), name="repopulate"),
 ]

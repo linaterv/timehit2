@@ -14,6 +14,26 @@ class InvalidStateTransition(Exception):
         self.message = message
 
 
+class LockedError(Exception):
+    def __init__(self, message="This entity is locked and cannot be modified. Unlock it first."):
+        self.message = message
+
+
+def check_locked(obj):
+    """Raise LockedError if obj.is_locked is True."""
+    if getattr(obj, "is_locked", False):
+        label = ""
+        if hasattr(obj, "company_name"):
+            label = obj.company_name
+        elif hasattr(obj, "full_name"):
+            label = obj.full_name
+        elif hasattr(obj, "invoice_number"):
+            label = obj.invoice_number
+        elif hasattr(obj, "title"):
+            label = obj.title
+        raise LockedError(f"{label or 'Entity'} is locked. Unlock it first to make changes.")
+
+
 def custom_exception_handler(exc, context):
     if isinstance(exc, InvalidStateTransition):
         return Response(
@@ -24,6 +44,11 @@ def custom_exception_handler(exc, context):
         return Response(
             {"error": {"code": "CONFLICT", "message": exc.message, "details": []}},
             status=status.HTTP_409_CONFLICT,
+        )
+    if isinstance(exc, LockedError):
+        return Response(
+            {"error": {"code": "LOCKED", "message": exc.message, "details": []}},
+            status=423,
         )
 
     response = exception_handler(exc, context)

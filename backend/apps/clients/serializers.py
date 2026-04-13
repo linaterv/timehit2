@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Client, ClientContact, BrokerClientAssignment
+from .models import Client, ClientContact, BrokerClientAssignment, ClientActivity, ClientFile
 
 
 class BrokerAssignmentSerializer(serializers.ModelSerializer):
@@ -20,7 +20,7 @@ class ClientListSerializer(serializers.ModelSerializer):
         fields = [
             "id", "code", "company_name", "registration_number", "vat_number",
             "billing_address", "country", "default_currency", "payment_terms_days",
-            "is_active", "brokers", "placement_summary", "created_at",
+            "is_active", "is_locked", "brokers", "placement_summary", "created_at",
         ]
 
     def get_placement_summary(self, obj):
@@ -134,3 +134,30 @@ class ClientContactUpdateSerializer(serializers.Serializer):
 
 class BrokerAssignSerializer(serializers.Serializer):
     broker_ids = serializers.ListField(child=serializers.UUIDField())
+
+
+class ClientFileSerializer(serializers.ModelSerializer):
+    uploaded_by = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ClientFile
+        fields = ["id", "client_id", "activity_id", "original_filename", "file_type", "file_size", "uploaded_by", "uploaded_at"]
+
+    def get_uploaded_by(self, obj):
+        if obj.uploaded_by:
+            return {"id": str(obj.uploaded_by_id), "full_name": obj.uploaded_by.full_name}
+        return None
+
+
+class ClientActivitySerializer(serializers.ModelSerializer):
+    files = ClientFileSerializer(many=True, read_only=True)
+    created_by = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ClientActivity
+        fields = ["id", "client_id", "type", "text", "old_value", "new_value", "created_by", "created_at", "files"]
+
+    def get_created_by(self, obj):
+        if obj.created_by:
+            return {"id": str(obj.created_by_id), "full_name": obj.created_by.full_name}
+        return None

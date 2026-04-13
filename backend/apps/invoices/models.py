@@ -41,6 +41,7 @@ class Invoice(models.Model):
     generated_by = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="generated_invoices")
     pdf_file = models.FileField(upload_to="invoices/", null=True, blank=True)
     issued_at = models.DateTimeField(null=True, blank=True)
+    is_locked = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -137,6 +138,7 @@ class InvoiceTemplate(models.Model):
     payment_terms_days = models.IntegerField(null=True, blank=True)
 
     is_default = models.BooleanField(default=False)
+    is_locked = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

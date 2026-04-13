@@ -1537,9 +1537,9 @@ Query params: `year` (required), `month` (required), `client_id`, `contractor_id
 
 ### `GET /control/summary`
 
-Aggregate counters for the selected month.
+Aggregate counters for the selected month. If `month` is omitted or `0`, counters are aggregated across all months of the year (1..current month for the current year, 1..12 for past years).
 
-Query params: `year` (required), `month` (required), `broker_id` (admin only)
+Query params: `year` (required), `month` (optional — omit or set to `0` for whole-year aggregation), `client_id`, `contractor_id`, `broker_id` (admin only)
 
 ```json
 // 200

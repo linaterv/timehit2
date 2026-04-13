@@ -651,6 +651,21 @@ class TestControl:
         assert "total_active_placements" in r.json()
         assert "currency_breakdown" in r.json()
 
+    def test_control_summary_year_only(self, broker1_api):
+        # month omitted -> aggregates across year
+        r_year = broker1_api.get("/control/summary?year=2026")
+        assert r_year.status_code == 200
+        body = r_year.json()
+        assert "timesheet_issues" in body
+        assert "placements_with_issues" in body
+        # month=0 is equivalent to omitting month
+        r_zero = broker1_api.get("/control/summary?year=2026&month=0")
+        assert r_zero.status_code == 200
+        # year aggregate must be >= any single month's counts
+        r_feb = broker1_api.get("/control/summary?year=2026&month=2").json()
+        assert body["timesheet_issues"] >= r_feb["timesheet_issues"]
+        assert body["placements_with_issues"] >= r_feb["placements_with_issues"]
+
     def test_control_export_csv(self, broker1_api):
         r = broker1_api.get("/control/export?year=2026&month=2")
         assert r.status_code == 200

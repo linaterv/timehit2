@@ -11,7 +11,8 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { EntityLink as EL } from "@/components/shared/entity-link";
 
 import { GenerateInvoicesModal } from "@/components/shared/generate-invoices-modal";
-import { FileWarning, FileX, CreditCard, MailX, AlertTriangle } from "lucide-react";
+import { FileWarning, FileX, CreditCard, MailX, AlertTriangle, Lock, Unlock } from "lucide-react";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { formatCurrency, formatMonth } from "@/lib/utils";
 import { api, getAccessToken } from "@/lib/api";
 import type {
@@ -184,11 +185,36 @@ function ControlScreen() {
   const [sort, setSort] = useState("");
   const [order, setOrder] = useState<"asc" | "desc">("asc");
   const { clientId: globalClient, contractorId: globalContractor } = useGlobalFilter();
-  const [clientFilter, setClientFilter] = useState(globalClient);
-  const [contractorFilter, setContractorFilter] = useState(globalContractor);
-  const [brokerFilter, setBrokerFilter] = useState("");
-  const [needsAttention, setNeedsAttention] = useState(false);
-  const [flagFilter, setFlagFilter] = useState<Set<string>>(new Set());
+  const [clientFilter, setClientFilter] = useState(() => {
+    if (typeof window !== "undefined") return sessionStorage.getItem("control-clientFilter") || globalClient;
+    return globalClient;
+  });
+  const [contractorFilter, setContractorFilter] = useState(() => {
+    if (typeof window !== "undefined") return sessionStorage.getItem("control-contractorFilter") || globalContractor;
+    return globalContractor;
+  });
+  const [brokerFilter, setBrokerFilter] = useState(() => {
+    if (typeof window !== "undefined") return sessionStorage.getItem("control-brokerFilter") || "";
+    return "";
+  });
+  const [needsAttention, setNeedsAttention] = useState(() => {
+    if (typeof window !== "undefined") return sessionStorage.getItem("control-needsAttention") === "true";
+    return false;
+  });
+  const [flagFilter, setFlagFilter] = useState<Set<string>>(() => {
+    if (typeof window !== "undefined") {
+      const saved = sessionStorage.getItem("control-flagFilter");
+      if (saved) return new Set(JSON.parse(saved));
+    }
+    return new Set();
+  });
+  useEffect(() => {
+    sessionStorage.setItem("control-clientFilter", clientFilter);
+    sessionStorage.setItem("control-contractorFilter", contractorFilter);
+    sessionStorage.setItem("control-brokerFilter", brokerFilter);
+    sessionStorage.setItem("control-needsAttention", String(needsAttention));
+    sessionStorage.setItem("control-flagFilter", JSON.stringify([...flagFilter]));
+  }, [clientFilter, contractorFilter, brokerFilter, needsAttention, flagFilter]);
   const [flagDropdownOpen, setFlagDropdownOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [generateOpen, setGenerateOpen] = useState(false);
@@ -267,6 +293,40 @@ function ControlScreen() {
     ["control-summary", summaryParams],
     `/control/summary?${summaryParams}`
   );
+
+  // Unlocked entities
+  const { data: unlockedData } = useApiQuery<{ total: number; placements: unknown[]; clients: unknown[]; contractors: unknown[]; invoices: unknown[] }>(
+    ["control-unlocked"], "/control/unlocked"
+  );
+  const [lockAllOpen, setLockAllOpen] = useState(false);
+  const [lockingAll, setLockingAll] = useState(false);
+  const [lockRowTarget, setLockRowTarget] = useState<{ placementId: string; label: string; year?: number; month?: number } | null>(null);
+  const [lockingRowId, setLockingRowId] = useState<string | null>(null);
+
+  const handleLockRow = async () => {
+    if (!lockRowTarget) return;
+    setLockingRowId(lockRowTarget.placementId);
+    setLockRowTarget(null);
+    try {
+      await api("/control/lock-row", {
+        method: "POST",
+        body: JSON.stringify({ placement_id: lockRowTarget.placementId, year: lockRowTarget.year, month: lockRowTarget.month }),
+      });
+      qc.invalidateQueries({ queryKey: ["control-overview"] });
+      qc.invalidateQueries({ queryKey: ["control-unlocked"] });
+    } catch { /* ignore */ }
+    finally { setLockingRowId(null); }
+  };
+
+  const handleLockAll = async () => {
+    setLockAllOpen(false);
+    setLockingAll(true);
+    try {
+      await api("/control/lock-all", { method: "POST" });
+      qc.invalidateQueries({ queryKey: ["control-unlocked"] });
+    } catch { /* ignore */ }
+    finally { setLockingAll(false); }
+  };
 
   // Single month: one call. All months (month=0): 12 parallel calls merged.
   const singleMonthQ = useApiQuery<PaginatedResponse<ControlRow>>(
@@ -463,6 +523,29 @@ function ControlScreen() {
           </div>
         ) : null,
     },
+    {
+      key: "unlocked" as keyof ControlRow,
+      label: "Lock",
+      render: (row) => {
+        const ul = row.unlocked ?? [];
+        if (ul.length === 0) {
+          return <Lock size={14} className="text-emerald-400" />;
+        }
+        const isLocking = lockingRowId === row.placement.id;
+        return (
+          <div className="flex items-center gap-1">
+            <Unlock size={14} className="text-yellow-500" />
+            <button
+              onClick={(e) => { e.stopPropagation(); setLockRowTarget({ placementId: row.placement.id, label: `${row.client.company_name} → ${row.placement.title || row.contractor.full_name}`, year: (row as any).year ?? year, month: (row as any).month ?? month }); }}
+              disabled={isLocking}
+              className="px-1.5 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700 border border-yellow-300 hover:bg-yellow-200 disabled:opacity-50 whitespace-nowrap"
+            >
+              {isLocking ? "..." : "Lock"}
+            </button>
+          </div>
+        );
+      },
+    },
   ];
 
   const handleSort = (key: string, newOrder: "asc" | "desc") => {
@@ -538,7 +621,7 @@ function ControlScreen() {
       <h1 className="text-2xl font-bold text-gray-900">Control Screen</h1>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
         <div
           data-testid="summary-ts-issues"
           onClick={() => { setFlagFilter(new Set(["no_timesheet", "timesheet_draft", "pending_approval", "missing_attachment"])); setNeedsAttention(false); setPage(1); }}
@@ -624,7 +707,57 @@ function ControlScreen() {
             </div>
           </div>
         </div>
+        <div
+          className={`rounded-lg p-4 border cursor-default transition-shadow ${
+            (unlockedData?.total ?? 0) > 0
+              ? "bg-yellow-50 border-yellow-300"
+              : "bg-emerald-50 border-emerald-200"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className={`text-sm font-medium ${(unlockedData?.total ?? 0) > 0 ? "text-yellow-700" : "text-emerald-700"}`}>
+                {(unlockedData?.total ?? 0) > 0 ? "Unlocked" : "All Locked"}
+              </p>
+              <p className={`text-3xl font-bold mt-1 ${(unlockedData?.total ?? 0) > 0 ? "text-yellow-900" : "text-emerald-900"}`}>
+                {unlockedData?.total ?? "—"}
+              </p>
+            </div>
+            <div className={`rounded-full p-3 ${(unlockedData?.total ?? 0) > 0 ? "bg-yellow-100" : "bg-emerald-100"}`}>
+              {(unlockedData?.total ?? 0) > 0
+                ? <Unlock className="h-6 w-6 text-yellow-600" />
+                : <Lock className="h-6 w-6 text-emerald-600" />}
+            </div>
+          </div>
+          {(unlockedData?.total ?? 0) > 0 && (
+            <button
+              onClick={() => setLockAllOpen(true)}
+              disabled={lockingAll}
+              className="mt-3 w-full px-3 py-1.5 bg-yellow-600 text-white rounded text-xs font-medium hover:bg-yellow-700 disabled:opacity-50"
+            >
+              {lockingAll ? "Locking..." : "Lock All"}
+            </button>
+          )}
+        </div>
       </div>
+
+      <ConfirmDialog
+        open={!!lockRowTarget}
+        title="Lock Row"
+        message={`Lock all entities for ${lockRowTarget?.label ?? ""}? This will lock the placement, client, contractor, and related invoices. Unlocking will require a reason.`}
+        confirmLabel="Lock"
+        onConfirm={handleLockRow}
+        onCancel={() => setLockRowTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={lockAllOpen}
+        title="Lock All Entities"
+        message={`Lock all ${unlockedData?.total ?? 0} unlocked entities tied to active placements? This includes ${unlockedData?.placements?.length ?? 0} placements, ${unlockedData?.clients?.length ?? 0} clients, ${unlockedData?.contractors?.length ?? 0} contractors, and ${unlockedData?.invoices?.length ?? 0} invoices. Unlocking will require a reason.`}
+        confirmLabel="Lock All"
+        onConfirm={handleLockAll}
+        onCancel={() => setLockAllOpen(false)}
+      />
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-center">

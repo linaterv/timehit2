@@ -8,7 +8,7 @@ class UserListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "email", "full_name", "role", "is_active", "created_at", "current_placement", "broker_assignments"]
+        fields = ["id", "email", "full_name", "role", "is_active", "is_locked", "created_at", "current_placement", "broker_assignments"]
 
     def get_broker_assignments(self, obj):
         if obj.role != User.Role.BROKER:
@@ -59,7 +59,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "email", "full_name", "role", "is_active", "created_at", "updated_at", "broker_assignments"]
+        fields = ["id", "email", "full_name", "role", "is_active", "is_locked", "created_at", "updated_at", "broker_assignments"]
 
     def get_broker_assignments(self, obj):
         if obj.role != User.Role.BROKER:

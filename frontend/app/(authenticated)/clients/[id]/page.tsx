@@ -10,22 +10,56 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { CountrySelect } from "@/components/shared/country-select";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { EntityLink as EL } from "@/components/shared/entity-link";
+import { LockBadge } from "@/components/shared/lock-badge";
+import { BackLink } from "@/components/shared/back-link";
+import { Upload, Download, Trash2, FileText, ArrowRight } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { formatDate } from "@/lib/utils";
-import { api } from "@/lib/api";
-import { AuditTimeline } from "@/components/shared/audit-timeline";
+import { api, getAccessToken } from "@/lib/api";
 import {
   InvoiceTemplateA4, TplForm, emptyTplForm, tplToForm, STATUS_COLORS,
 } from "@/components/shared/invoice-template-editor";
 import type {
   Client,
   ClientContact,
+  ClientActivityInfo,
+  ClientFileInfo,
   Placement,
   User,
   PaginatedResponse,
   InvoiceTemplate,
 } from "@/types/api";
 
-type Tab = "contacts" | "brokers" | "placements" | "templates" | "history";
+type Tab = "contacts" | "brokers" | "placements" | "documents" | "templates" | "timeline";
+
+const CLIENT_ACTIVITY_TYPES = [
+  { value: "NOTE", label: "Note" },
+  { value: "MEETING", label: "Meeting" },
+  { value: "CALL", label: "Call" },
+  { value: "PROPOSAL_SENT", label: "Proposal Sent" },
+  { value: "CONTRACT_SIGNED", label: "Contract Signed" },
+];
+
+const CLIENT_ACTIVITY_ICONS: Record<string, string> = {
+  NOTE: "💬", MEETING: "🤝", CALL: "📞",
+  PROPOSAL_SENT: "📤", CONTRACT_SIGNED: "✍️",
+  STATUS_CHANGE: "🔄", FILE_UPLOADED: "📄", FILE_REMOVED: "🗑️",
+};
+
+const FILE_TYPES = ["CONTRACT", "PROPOSAL", "NDA", "OTHER"];
+
+function downloadFile(url: string, filename: string) {
+  const token = getAccessToken();
+  fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    .then((r) => r.blob())
+    .then((blob) => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+}
 
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -67,7 +101,18 @@ export default function ClientDetailPage() {
   const [deleteMsg, setDeleteMsg] = useState("");
   const [deleteError, setDeleteError] = useState("");
 
+  // Activity/timeline state
+  const [activityType, setActivityType] = useState("NOTE");
+  const [activityText, setActivityText] = useState("");
+  const [activityFiles, setActivityFiles] = useState<File[]>([]);
+  const [activitySubmitting, setActivitySubmitting] = useState(false);
+
+  // Document upload state
+  const [docUploading, setDocUploading] = useState(false);
+  const [docFileType, setDocFileType] = useState("OTHER");
+
   const allowed = user?.role === "ADMIN" || user?.role === "BROKER";
+  const qc = useQueryClient();
 
   // ----- Queries -----
 
@@ -113,8 +158,12 @@ export default function ClientDetailPage() {
   );
   const globalTemplates = (globalTplQ.data?.data ?? []).filter((t) => !t.contractor && !t.client);
 
-  const auditQ = useApiQuery<{ data: { id: string; action: string; title: string; text: string; data_before: Record<string, unknown> | null; data_after: Record<string, unknown> | null; created_by: { id: string; full_name: string } | null; created_at: string; entity_type: string; entity_id: string }[] }>(
-    ["client-audit", id], `/clients/${id}/audit-log`, allowed && activeTab === "history"
+  const activitiesQ = useApiQuery<PaginatedResponse<ClientActivityInfo>>(
+    ["client-activities", id], `/clients/${id}/activities?per_page=100`, allowed && !!id && activeTab === "timeline"
+  );
+
+  const filesQ = useApiQuery<PaginatedResponse<ClientFileInfo>>(
+    ["client-files", id], `/clients/${id}/files?per_page=100`, allowed && !!id && activeTab === "documents"
   );
 
   // ----- Mutations -----
@@ -361,24 +410,77 @@ export default function ClientDetailPage() {
   };
   const updateTplForm = <K extends keyof TplForm>(k: K, v: TplForm[K]) => setTplForm((p) => ({ ...p, [k]: v }));
 
+  const activities = activitiesQ.data?.data ?? [];
+  const clientFiles = filesQ.data?.data ?? [];
+
+  const handleActivitySubmit = async () => {
+    if (!activityText.trim() && activityFiles.length === 0) return;
+    setActivitySubmitting(true);
+    const fd = new FormData();
+    fd.append("type", activityType);
+    fd.append("text", activityText);
+    activityFiles.forEach((f) => fd.append("file", f));
+    try {
+      await fetch(`/api/v1/clients/${id}/activities`, {
+        method: "POST", body: fd,
+        headers: { Authorization: `Bearer ${getAccessToken()}` },
+      });
+      setActivityText(""); setActivityFiles([]); setActivityType("NOTE");
+      qc.invalidateQueries({ queryKey: ["client-activities", id] });
+      qc.invalidateQueries({ queryKey: ["client-files", id] });
+    } catch { /* ignore */ }
+    finally { setActivitySubmitting(false); }
+  };
+
+  const handleDocUpload = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setDocUploading(true);
+    const fd = new FormData();
+    fd.append("file_type", docFileType);
+    Array.from(files).forEach((f) => fd.append("file", f));
+    try {
+      await fetch(`/api/v1/clients/${id}/files`, {
+        method: "POST", body: fd,
+        headers: { Authorization: `Bearer ${getAccessToken()}` },
+      });
+      qc.invalidateQueries({ queryKey: ["client-files", id] });
+      qc.invalidateQueries({ queryKey: ["client-activities", id] });
+    } catch { /* ignore */ }
+    finally { setDocUploading(false); }
+  };
+
+  const handleDocDelete = async (fileId: string) => {
+    try {
+      await api(`/clients/${id}/files/${fileId}`, { method: "DELETE" });
+      qc.invalidateQueries({ queryKey: ["client-files", id] });
+      qc.invalidateQueries({ queryKey: ["client-activities", id] });
+    } catch { /* ignore */ }
+  };
+
   const tabs: { key: Tab; label: string }[] = [
     { key: "contacts", label: "Contacts" },
     { key: "brokers", label: "Brokers" },
     { key: "placements", label: "Placements" },
+    { key: "documents", label: `Documents (${Array.isArray(clientFiles) ? clientFiles.length : 0})` },
     { key: "templates", label: "Billing Templates" },
-    { key: "history", label: "History" },
+    { key: "timeline", label: "Timeline" },
   ];
 
   return (
     <div data-testid="client-detail-page" className="space-y-6">
+      <BackLink />
       {/* Header card */}
       <div data-testid="client-header" className="bg-surface border rounded-lg p-6">
         <div className="flex items-start justify-between">
           <div>
-            <h1 data-testid="client-company-name" className="text-2xl font-bold text-gray-900">
-              <span className="font-mono text-sm text-gray-400 mr-2">{client.code}</span>
-              {client.company_name}
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 data-testid="client-company-name" className="text-2xl font-bold text-gray-900">
+                <span className="font-mono text-sm text-gray-400 mr-2">{client.code}</span>
+                {client.company_name}
+              </h1>
+              <LockBadge entityType="client" entityId={id} isLocked={client.is_locked}
+                invalidateKeys={[["client", id], ["clients"]]} label={client.company_name} />
+            </div>
             <div className="mt-2 space-y-1 text-sm text-gray-600">
               <p data-testid="client-country">
                 <span className="font-medium">Country:</span> {client.country || "\u2014"}
@@ -411,7 +513,7 @@ export default function ClientDetailPage() {
             </div>
           </div>
           <div className="flex gap-2">
-            {user?.role === "ADMIN" && (
+            {user?.role === "ADMIN" && !client.is_locked && (
               <button
                 data-testid="client-delete-btn"
                 onClick={() => setDeleteOpen(true)}
@@ -420,13 +522,15 @@ export default function ClientDetailPage() {
                 Delete
               </button>
             )}
-            <button
-              data-testid="edit-client-btn"
-              onClick={openEditSlide}
-              className="px-4 py-2 border rounded text-sm hover:bg-gray-50"
-            >
-              Edit
-            </button>
+            {!client.is_locked && (
+              <button
+                data-testid="edit-client-btn"
+                onClick={openEditSlide}
+                className="px-4 py-2 border rounded text-sm hover:bg-gray-50"
+              >
+                Edit
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -588,11 +692,122 @@ export default function ClientDetailPage() {
             parentTemplate={globalTemplates.find((g) => g.id === (tplForm.parent_id ?? tplEditing?.parent_id)) ?? null}
           />
         )}
-        {/* History tab */}
-        {activeTab === "history" && (
-          <div data-testid="history-tab-content" className="border rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">History</h2>
-            <AuditTimeline entries={auditQ.data?.data ?? []} loading={auditQ.isLoading} />
+        {/* Documents tab */}
+        {activeTab === "documents" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">Documents</h2>
+              <div className="flex gap-2">
+                <select value={docFileType} onChange={(e) => setDocFileType(e.target.value)}
+                  className="px-3 py-2 border rounded text-sm">
+                  {FILE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+                <label className="px-4 py-2 bg-brand-600 text-white rounded text-sm font-medium hover:bg-brand-700 cursor-pointer">
+                  <Upload size={14} className="inline mr-1" />
+                  {docUploading ? "Uploading..." : "Upload"}
+                  <input type="file" multiple className="hidden"
+                    onChange={(e) => handleDocUpload(e.target.files)} disabled={docUploading} />
+                </label>
+              </div>
+            </div>
+            {!Array.isArray(clientFiles) || clientFiles.length === 0 ? (
+              <p className="text-center py-8 text-sm text-gray-400">No documents yet.</p>
+            ) : (
+              <div className="border rounded-lg divide-y">
+                {clientFiles.map((f: ClientFileInfo) => (
+                  <div key={f.id} className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <FileText size={18} className="text-gray-400" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{f.original_filename}</p>
+                        <p className="text-xs text-gray-400">
+                          {(f.file_size / 1024).toFixed(0)} KB
+                          {f.uploaded_by && <span> by {f.uploaded_by.full_name}</span>}
+                          {" · "}{formatDate(f.uploaded_at)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">{f.file_type}</span>
+                      <button onClick={() => downloadFile(`/api/v1/clients/${id}/files/${f.id}/download`, f.original_filename)}
+                        className="p-1.5 text-gray-400 hover:text-brand-600" title="Download">
+                        <Download size={16} />
+                      </button>
+                      <button onClick={() => handleDocDelete(f.id)}
+                        className="p-1.5 text-gray-400 hover:text-red-600" title="Delete">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Timeline tab */}
+        {activeTab === "timeline" && (
+          <div className="space-y-4">
+            {/* Activity form */}
+            <div className="bg-surface border rounded-lg p-4 space-y-3">
+              <div className="flex gap-3">
+                <select value={activityType} onChange={(e) => setActivityType(e.target.value)}
+                  className="px-3 py-2 border rounded text-sm">
+                  {CLIENT_ACTIVITY_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+              </div>
+              <textarea value={activityText} onChange={(e) => setActivityText(e.target.value)}
+                placeholder="Add note or activity details..." rows={2}
+                className="w-full px-3 py-2 border rounded text-sm" />
+              <div className="flex items-center justify-between">
+                <label className="text-sm text-gray-500 cursor-pointer hover:text-brand-600">
+                  📎 Attach files
+                  <input type="file" multiple className="hidden"
+                    onChange={(e) => setActivityFiles(Array.from(e.target.files ?? []))} />
+                  {activityFiles.length > 0 && <span className="ml-1 text-brand-600">({activityFiles.length} selected)</span>}
+                </label>
+                <button onClick={handleActivitySubmit} disabled={activitySubmitting}
+                  className="px-4 py-2 bg-brand-600 text-white rounded text-sm font-medium hover:bg-brand-700 disabled:opacity-50">
+                  {activitySubmitting ? "Saving..." : "Add"}
+                </button>
+              </div>
+            </div>
+
+            {/* Activity feed */}
+            {!Array.isArray(activities) || activities.length === 0 ? (
+              <p className="text-center py-8 text-sm text-gray-400">No activity yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {activities.map((a: ClientActivityInfo) => (
+                  <div key={a.id} className="flex gap-3 px-1">
+                    <div className="text-lg mt-0.5">{CLIENT_ACTIVITY_ICONS[a.type] || "📌"}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-medium text-gray-500">{a.type.replace(/_/g, " ")}</span>
+                        <span className="text-xs text-gray-400">{formatDate(a.created_at)}</span>
+                        {a.created_by && <span className="text-xs text-gray-400">by {a.created_by.full_name}</span>}
+                      </div>
+                      {a.text && <p className="text-sm text-gray-700 mt-0.5">{a.text}</p>}
+                      {a.old_value && a.new_value && (
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          <StatusBadge value={a.old_value} /> <ArrowRight size={10} className="inline mx-1" /> <StatusBadge value={a.new_value} />
+                        </p>
+                      )}
+                      {a.files?.length > 0 && (
+                        <div className="mt-1 space-y-0.5">
+                          {a.files.map((f: ClientFileInfo) => (
+                            <button key={f.id} onClick={() => downloadFile(`/api/v1/clients/${id}/files/${f.id}/download`, f.original_filename)}
+                              className="text-xs text-brand-600 hover:underline flex items-center gap-1">
+                              📎 {f.original_filename} <span className="text-gray-400">({(f.file_size / 1024).toFixed(0)} KB)</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

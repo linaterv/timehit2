@@ -13,7 +13,7 @@ from .serializers import (
     PlacementDocumentUploadSerializer,
 )
 from apps.users.permissions import IsAdminOrBroker, has_broker_access_to_client
-from apps.users.exceptions import ConflictError
+from apps.users.exceptions import ConflictError, check_locked
 from apps.audit.service import log_audit
 
 
@@ -111,6 +111,7 @@ class PlacementViewSet(viewsets.ModelViewSet):
     @extend_schema(tags=["Placements"])
     def partial_update(self, request, *args, **kwargs):
         obj = self.get_object()
+        check_locked(obj)
         snap_before = _pl_snapshot(obj)
         resp = super().partial_update(request, *args, **kwargs)
         obj.refresh_from_db()
@@ -120,6 +121,7 @@ class PlacementViewSet(viewsets.ModelViewSet):
     @extend_schema(tags=["Placements"])
     def destroy(self, request, *args, **kwargs):
         obj = self.get_object()
+        check_locked(obj)
         if obj.status != Placement.Status.DRAFT:
             raise ConflictError("Can only delete DRAFT placements")
         if obj.timesheets.exists():
@@ -131,6 +133,7 @@ class PlacementViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def activate(self, request, pk=None):
         p = self.get_object()
+        check_locked(p)
         snap_before = _pl_snapshot(p)
         p.activate()
         _pl_audit(p, "ACTIVATED", "Placement activated", request.user, snap_before)
@@ -140,6 +143,7 @@ class PlacementViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def complete(self, request, pk=None):
         p = self.get_object()
+        check_locked(p)
         snap_before = _pl_snapshot(p)
         warnings = p.complete()
         _pl_audit(p, "COMPLETED", "Placement completed", request.user, snap_before)
@@ -151,6 +155,7 @@ class PlacementViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def cancel(self, request, pk=None):
         p = self.get_object()
+        check_locked(p)
         snap_before = _pl_snapshot(p)
         warnings = p.cancel()
         _pl_audit(p, "CANCELLED", "Placement cancelled", request.user, snap_before)
@@ -238,6 +243,7 @@ class PlacementDocumentViewSet(viewsets.ModelViewSet):
         if not (request.user.is_admin or request.user.is_broker):
             raise PermissionDenied()
         doc = self.get_object()
+        check_locked(doc.placement)
         before = {"label": doc.label, "visible_to_client": doc.visible_to_client, "visible_to_contractor": doc.visible_to_contractor}
         if "label" in request.data:
             doc.label = request.data["label"]
@@ -264,6 +270,7 @@ class PlacementDocumentViewSet(viewsets.ModelViewSet):
         if not (request.user.is_admin or request.user.is_broker):
             raise PermissionDenied()
         doc = self.get_object()
+        check_locked(doc.placement)
         log_audit(entity_type="document", entity_id=doc.id, action="DELETED",
                   title=f"Document '{doc.label or doc.file_name}' deleted", user=request.user,
                   data_before={"file_name": doc.file_name, "label": doc.label})

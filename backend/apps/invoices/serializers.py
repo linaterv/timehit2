@@ -39,7 +39,7 @@ class InvoiceListSerializer(serializers.ModelSerializer):
             "placement_id", "placement_title", "year", "month", "currency", "hourly_rate",
             "total_hours", "subtotal", "vat_rate_percent", "vat_amount",
             "total_amount", "status", "issue_date", "due_date", "payment_date",
-            "payment_reference", "generated_by", "created_at",
+            "payment_reference", "generated_by", "is_locked", "created_at",
         ]
 
     def _user_ref(self, user):
