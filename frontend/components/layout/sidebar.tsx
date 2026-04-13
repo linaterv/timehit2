@@ -70,6 +70,17 @@ export function Sidebar() {
   const [pastIssues, setPastIssues] = useState<{ count: number; earliest_year: number | null; earliest_month: number | null } | null>(null);
   const [pastLoading, setPastLoading] = useState(false);
 
+  const goToEarliestIssue = useCallback(() => {
+    if (pastIssues?.earliest_year && pastIssues?.earliest_month) {
+      sessionStorage.setItem("control-year", String(pastIssues.earliest_year));
+      sessionStorage.setItem("control-month", String(pastIssues.earliest_month));
+      window.dispatchEvent(new CustomEvent("control-set-period", {
+        detail: { year: pastIssues.earliest_year, month: pastIssues.earliest_month },
+      }));
+    }
+    router.push("/");
+  }, [pastIssues, router]);
+
   const fetchPastIssues = useCallback(async () => {
     const token = getAccessToken();
     if (!token) return;
@@ -165,23 +176,12 @@ export function Sidebar() {
                     role="button"
                     tabIndex={0}
                     title="Go to dashboard (past issues)"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (pastIssues.earliest_year && pastIssues.earliest_month) {
-                        sessionStorage.setItem("control-year", String(pastIssues.earliest_year));
-                        sessionStorage.setItem("control-month", String(pastIssues.earliest_month));
-                      }
-                      router.push("/");
-                    }}
+                    onClick={(e) => { e.stopPropagation(); goToEarliestIssue(); }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.stopPropagation();
                         e.preventDefault();
-                        if (pastIssues.earliest_year && pastIssues.earliest_month) {
-                          sessionStorage.setItem("control-year", String(pastIssues.earliest_year));
-                          sessionStorage.setItem("control-month", String(pastIssues.earliest_month));
-                        }
-                        router.push("/");
+                        goToEarliestIssue();
                       }
                     }}
                     className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center animate-pulse cursor-pointer hover:scale-125 transition-transform"
@@ -201,14 +201,7 @@ export function Sidebar() {
                 {pastIssues && pastIssues.count > 0 && (
                   <div className="border-t mt-1 pt-1 px-2 pb-1">
                     <button
-                      onClick={() => {
-                        setMoreOpen(false);
-                        if (pastIssues.earliest_year && pastIssues.earliest_month) {
-                          sessionStorage.setItem("control-year", String(pastIssues.earliest_year));
-                          sessionStorage.setItem("control-month", String(pastIssues.earliest_month));
-                        }
-                        router.push("/");
-                      }}
+                      onClick={() => { setMoreOpen(false); goToEarliestIssue(); }}
                       className="w-full flex items-center gap-2 px-2 py-2 rounded bg-red-600 text-white text-xs font-bold hover:bg-red-700 animate-pulse"
                     >
                       <AlertCircle size={16} className="shrink-0" />

@@ -181,6 +181,17 @@ function ControlScreen() {
     sessionStorage.setItem("control-year", String(year));
     sessionStorage.setItem("control-month", String(month));
   }, [year, month]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ year: number; month: number }>).detail;
+      if (detail?.year) setYear(detail.year);
+      if (typeof detail?.month === "number") setMonth(detail.month);
+      setPage(1);
+    };
+    window.addEventListener("control-set-period", handler);
+    return () => window.removeEventListener("control-set-period", handler);
+  }, []);
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState("");
   const [order, setOrder] = useState<"asc" | "desc">("asc");
