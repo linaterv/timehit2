@@ -214,10 +214,11 @@ Use `temp_python.py` or `temp_sh.sh` in project root for ad-hoc scripts (fewer a
 
 ## Team Agents
 
-`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=true` is set globally — multi-agent teams are available. Two project-scoped personas live in `.claude/agents/`:
+`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=true` is set globally — multi-agent teams are available. Three project-scoped personas live in `.claude/agents/`:
 
 - **`ui-engineer`** — owns `frontend/` and `frontend-tests/` (Next.js/React/Tailwind/Playwright)
 - **`backend-engineer`** — owns `backend/` and `tests/` (Django/DRF/pytest/FTS)
+- **`team-lead`** — full-stack reviewer/coordinator. Updates reqs docs, distributes tasks to ui/be via `TaskCreate` with `owner`, advises on design tradeoffs, reviews diffs against business rules + state machines. Codes only for small cross-cutting fixes or reqs/doc edits.
 
 ### When to spawn a team (vs. solo)
 
@@ -238,6 +239,7 @@ Stay solo when:
 3. **Spawn teammates in parallel** — one Agent call per persona, in a **single message with multiple tool uses**:
    - `Agent({ subagent_type: "ui-engineer", name: "ui", team_name: "<slug>", prompt: "<scoped UI task>" })`
    - `Agent({ subagent_type: "backend-engineer", name: "be", team_name: "<slug>", prompt: "<scoped backend task>" })`
+   - For larger features where ongoing review/coordination helps, also spawn `Agent({ subagent_type: "team-lead", name: "lead", team_name: "<slug>", prompt: "own reqs updates, task breakdown, and review" })`. Skip for small or single-lane work.
 4. **Split the work reasonably** — each teammate's prompt should state its own deliverable, the API contract they share, and who messages whom first (usually backend first if the contract is new).
 5. **Coordination rule**: the teammate that changes or introduces a contract (endpoint, field, permission) messages the other via `SendMessage` BEFORE landing the change. The receiver acks, then both proceed against the agreed contract.
 6. **Monitor**: when teammates go idle they're waiting for input — that's normal, not an error. Review `TaskList`, assign follow-ups via `TaskUpdate { owner: "ui" | "be" }`.
