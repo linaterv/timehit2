@@ -11,4 +11,4 @@
 - [Skill activation overrides](feedback_skill_overrides.md) — CHECK before invoking any superpowers skill; local skip/force rules override defaults
 - [Auto-commit cron](feedback_autocommit.md) — 10-min cron already commits everything in this repo; defaults locked, do not re-ask
 - [Team agents](feedback_team_agents.md) — ui-engineer + backend-engineer personas exist; spawn as team for clear UI+backend splits
-- [Manual invoices feature](project_manual_invoices.md) — in-flight: standalone client invoices (permanent-find fee etc.), specs drafted, team dispatched
+- [Manual invoices (shipped)](project_manual_invoices.md) — standalone client invoices (permanent-find fee etc.) — shipped 2026-04-14, reference only

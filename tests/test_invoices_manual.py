@@ -124,6 +124,30 @@ class TestManualInvoiceCreate:
         r = admin_api.post("/invoices/manual", json=p)
         assert r.status_code == 400
 
+    def test_bill_to_required_when_no_client(self, admin_api):
+        p = _payload(invoice_number=_num("NBTO"))
+        del p["bill_to"]
+        r = admin_api.post("/invoices/manual", json=p)
+        assert r.status_code == 400
+        assert "bill_to" in r.text.lower()
+
+    def test_bill_to_empty_company_when_no_client_400(self, admin_api):
+        p = _payload(invoice_number=_num("NBT2"))
+        p["bill_to"] = {"billing_address": "Somewhere"}  # no company_name
+        r = admin_api.post("/invoices/manual", json=p)
+        assert r.status_code == 400
+
+    def test_bill_to_override_with_client(self, admin_api):
+        # bill_to present + client_id set → bill_to takes precedence in snapshot
+        cid = _find_client(admin_api, "Acme Corp")
+        p = _payload(invoice_number=_num("BTOV"), client_id=cid)
+        p["bill_to"] = {"company_name": "OVERRIDE NAME", "billing_address": "Override Addr", "country": "XX", "vat_number": "XX999"}
+        r = admin_api.post("/invoices/manual", json=p)
+        assert r.status_code == 201, r.text
+        body = r.json()
+        assert body["billing_snapshot"]["client_company_name"] == "OVERRIDE NAME"
+        assert body["billing_snapshot"]["client_country"] == "XX"
+
 
 class TestManualInvoicePermissions:
     def test_broker_create_no_client_ok(self, broker1_api):

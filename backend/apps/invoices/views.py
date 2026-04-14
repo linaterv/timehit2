@@ -266,12 +266,31 @@ def _resolve_manual_payment_terms_days(requested):
 
 
 class ManualInvoiceView(APIView):
+    """POST /invoices/manual — create a standalone manual client invoice.
+
+    **bill_to precedence** (for billing_snapshot assembly):
+    - `client_id` null + `bill_to` absent → 400 (bill_to required when no client linked)
+    - `client_id` null + `bill_to` present → snapshot taken directly from `bill_to`
+    - `client_id` set + `bill_to` absent → snapshot taken from Client's default CLIENT InvoiceTemplate (then Client model)
+    - `client_id` set + `bill_to` present → `bill_to` acts as an explicit override, Client template fills gaps
+
+    **Bank fields**: from `bank` block if provided, else from AgencySettings.default_client_invoice_template.
+
+    **Server-computed fields** (silently ignored if sent in the body): subtotal, vat_amount, total_amount,
+    line_total (from quantity × unit_price), display_order (from array index), status (always DRAFT).
+
+    **Error codes**:
+    - 400 missing/invalid fields, empty line_items, bill_to absent when client_id null, qty/price ≤ 0
+    - 403 broker outside scope (client_id set but not assigned)
+    - 409 invoice_number already taken
+    """
     permission_classes = [IsAdminOrBroker]
 
     @extend_schema(request=ManualInvoiceCreateSerializer, tags=["Invoices"])
     def post(self, request):
         from apps.clients.models import Client
         from apps.users.exceptions import ConflictError
+        from rest_framework.exceptions import ValidationError
 
         ser = ManualInvoiceCreateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
@@ -285,13 +304,14 @@ class ManualInvoiceView(APIView):
                 raise NotFound("Client not found")
             if request.user.is_broker and not has_broker_access_to_client(request.user, client.id):
                 raise PermissionDenied("No access to this client")
-
-        # Broker without client: allowed (per spec, both roles may create with no client link)
-        # (IsAdminOrBroker already enforces; no extra gate needed)
+        else:
+            # client_id null → bill_to required (must have at least company_name)
+            bt = data.get("bill_to") or {}
+            if not bt.get("company_name"):
+                raise ValidationError({"bill_to": "bill_to.company_name is required when client_id is null"})
 
         # Uniqueness check up-front for 409
         if Invoice.objects.filter(invoice_number=data["invoice_number"]).exists():
-            from apps.users.exceptions import ConflictError
             raise ConflictError(f"Invoice number {data['invoice_number']} already exists")
 
         vat_rate = data.get("vat_rate_percent")

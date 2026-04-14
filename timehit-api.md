@@ -1216,16 +1216,22 @@ Create a standalone manual client invoice (e.g. a permanent-placement finder's f
 }
 
 // 201 — returns the full invoice with computed subtotal / vat_amount / total_amount and line_items
-// 400 — missing required fields, empty line_items, duplicate invoice_number, invalid currency
-// 403 — Broker without matching client assignment; Broker attempting to create without client_id
+// 400 — missing required fields, empty line_items, qty/unit_price ≤ 0, invalid currency, bill_to absent when client_id is null
+// 403 — Broker without matching client assignment (client_id is set but broker isn't assigned to that client)
 // 409 — invoice_number already taken
 ```
 
 **Validation:**
 - `line_items` non-empty; each `quantity` and `unit_price` > 0.
-- `invoice_number` unique across ALL invoices (not just manual).
-- If `client_id` set: Broker must have a `BrokerClientAssignment` for it. If null: any Admin or Broker.
-- `billing_snapshot` on the stored invoice is assembled on the server: from the client's default `InvoiceTemplate` when `client_id` is set, otherwise from the `bill_to` block. Bank fields from `bank` (or agency default if omitted) are merged in.
+- `invoice_number` unique across ALL invoices (not just manual) — duplicates return `409`, never `400`.
+- If `client_id` set: Broker must have a `BrokerClientAssignment` for it. If null: any Admin or Broker, AND `bill_to.company_name` is required.
+- **`bill_to` precedence for `billing_snapshot` assembly**:
+  - `client_id` null + `bill_to` absent → `400`
+  - `client_id` null + `bill_to` present → snapshot fields come directly from `bill_to`
+  - `client_id` set + `bill_to` absent → snapshot fields come from the client's default CLIENT `InvoiceTemplate` (then fall back to Client model)
+  - `client_id` set + `bill_to` present → `bill_to` acts as an explicit override; anything omitted falls back to the Client's default template, then Client model
+- Bank fields come from the `bank` block if provided; otherwise from `AgencySettings.default_client_invoice_template` (bank_name / bank_account_iban / bank_swift_bic).
+- **Server-computed fields** (silently ignored if sent in the body): `subtotal`, `vat_amount`, `total_amount`, `line_total` (from `quantity × unit_price`), `display_order` (from array index), `status` (always `DRAFT`).
 - Invoice is created in `DRAFT`. Editable via `PATCH /invoices/:id` until issued.
 
 ### `PATCH /invoices/:id`
