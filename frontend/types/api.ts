@@ -231,19 +231,30 @@ export interface Timesheet {
   created_at: string;
 }
 
+export interface InvoiceLineItem {
+  id: string;
+  display_order: number;
+  description: string;
+  quantity: string;
+  unit_price: string;
+  line_total: string;
+}
+
 export interface Invoice {
   id: string;
   invoice_number: string;
   invoice_type: InvoiceType;
-  client: ClientRef;
-  contractor: UserRef;
-  placement_id: string;
-  timesheet_id?: string;
-  year: number;
-  month: number;
+  is_manual: boolean;
+  candidate_id: string | null;
+  client: ClientRef | null;
+  contractor: UserRef | null;
+  placement_id: string | null;
+  timesheet_id: string | null;
+  year: number | null;
+  month: number | null;
   currency: string;
-  hourly_rate: string;
-  total_hours: string;
+  hourly_rate: string | null;
+  total_hours: string | null;
   subtotal: string;
   vat_rate_percent: string | null;
   vat_amount: string | null;
@@ -253,11 +264,43 @@ export interface Invoice {
   due_date: string | null;
   payment_date: string | null;
   payment_reference: string;
+  payment_terms_days: number | null;
+  line_items: InvoiceLineItem[] | null;
   billing_snapshot?: Record<string, unknown>;
   correction_link?: { corrective_invoice_id: string; reason: string } | null;
   generated_by: UserRef;
   is_locked?: boolean;
   created_at: string;
+}
+
+export interface ManualInvoiceLineItemInput {
+  description: string;
+  quantity: string;
+  unit_price: string;
+}
+
+export interface ManualInvoicePayload {
+  invoice_number: string;
+  issue_date: string;
+  due_date?: string | null;
+  payment_terms_days?: number | null;
+  currency: string;
+  vat_rate_percent?: string | null;
+  client_id?: string | null;
+  candidate_id?: string | null;
+  bill_to?: {
+    company_name: string;
+    registration_number?: string;
+    billing_address: string;
+    country: string;
+    vat_number?: string;
+  };
+  bank?: {
+    bank_name?: string;
+    bank_account_iban?: string;
+    bank_swift_bic?: string;
+  };
+  line_items: ManualInvoiceLineItemInput[];
 }
 
 export interface InvoiceTemplate {

@@ -12,6 +12,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { GenerateInvoicesModal } from "@/components/shared/generate-invoices-modal";
 import { EntityLink as EL } from "@/components/shared/entity-link";
 import { formatCurrency, formatDate, formatMonth } from "@/lib/utils";
+import { ManualInvoiceForm } from "@/components/forms/manual-invoice-form";
 import type {
   Invoice,
   Placement,
@@ -49,7 +50,9 @@ export default function InvoicesPage() {
   const [clientFilter, setClientFilter] = useState(globalClient);
   const [yearFilter, setYearFilter] = useState("");
   const [monthFilter, setMonthFilter] = useState("");
+  const [manualFilter, setManualFilter] = useState<"" | "true" | "false">("");
   const [generateOpen, setGenerateOpen] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
 
   const isAdminOrBroker =
     user?.role === "ADMIN" || user?.role === "BROKER";
@@ -66,8 +69,9 @@ export default function InvoicesPage() {
     if (clientFilter) params.set("client_id", clientFilter);
     if (yearFilter) params.set(isContractor ? "issue_year" : "year", yearFilter);
     if (monthFilter) params.set("month", monthFilter);
+    if (manualFilter) params.set("is_manual", manualFilter);
     return params.toString();
-  }, [page, sort, order, typeFilter, statusFilter, clientFilter, yearFilter, monthFilter]);
+  }, [page, sort, order, typeFilter, statusFilter, clientFilter, yearFilter, monthFilter, manualFilter, isContractor]);
 
   const { data, isLoading } = useApiQuery<PaginatedResponse<Invoice>>(
     ["invoices", queryParams],
@@ -118,6 +122,7 @@ export default function InvoicesPage() {
     const seen = new Map<string, { id: string; label: string }>();
     // From invoices (all clients ever invoiced)
     for (const inv of (allInvoicesQ.data?.data ?? [])) {
+      if (!inv.client) continue;
       if (!seen.has(inv.client.id)) {
         seen.set(inv.client.id, {
           id: inv.client.id,
@@ -144,17 +149,29 @@ export default function InvoicesPage() {
         key: "invoice_type",
         label: "Type",
         sortable: true,
-        render: (row: Invoice) => <StatusBadge value={row.invoice_type} />,
+        render: (row: Invoice) => (
+          row.is_manual
+            ? <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">Manual</span>
+            : <StatusBadge value={row.invoice_type} />
+        ),
       } as Column<Invoice>,
       {
         key: "client",
         label: "Client",
-        render: (row: Invoice) => <EL href={`/clients/${row.client.id}`}>{row.client.company_name}</EL>,
+        render: (row: Invoice) => (
+          row.client
+            ? <EL href={`/clients/${row.client.id}`}>{row.client.company_name}</EL>
+            : <span className="text-gray-400">—</span>
+        ),
       } as Column<Invoice>,
       {
         key: "contractor",
         label: "Contractor",
-        render: (row: Invoice) => <EL href={`/contractors/${row.contractor.id}`}>{row.contractor.full_name}</EL>,
+        render: (row: Invoice) => (
+          row.contractor
+            ? <EL href={`/contractors/${row.contractor.id}`}>{row.contractor.full_name}</EL>
+            : <span className="text-gray-400">—</span>
+        ),
       } as Column<Invoice>,
       {
         key: "placement_title",
@@ -167,7 +184,7 @@ export default function InvoicesPage() {
         label: "Placement",
         render: (row: Invoice) => (
           <span>
-            {row.client.company_name}
+            {row.client?.company_name ?? "—"}
             <span className="text-gray-400"> → </span>
             {(row as any).placement_title || "—"}
           </span>
@@ -177,7 +194,11 @@ export default function InvoicesPage() {
     ...(!isContractor ? [{
       key: "period",
       label: "Period",
-      render: (row: Invoice) => <span>{formatMonth(row.year, row.month)}</span>,
+      render: (row: Invoice) => (
+        row.year && row.month
+          ? <span>{formatMonth(row.year, row.month)}</span>
+          : <span className="text-gray-400">—</span>
+      ),
     } as Column<Invoice>] : []),
     ...(!isContractor ? [{
       key: "total_amount",
@@ -223,13 +244,22 @@ export default function InvoicesPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Invoices</h1>
         {isAdminOrBroker && (
-          <button
-            data-testid="generate-invoices-btn"
-            onClick={() => setGenerateOpen(true)}
-            className="px-4 py-2 bg-brand-600 text-white rounded text-sm hover:bg-brand-700"
-          >
-            Generate Invoices
-          </button>
+          <div className="flex gap-2">
+            <button
+              data-testid="manual-invoice-btn"
+              onClick={() => setManualOpen(true)}
+              className="px-4 py-2 bg-brand-600 text-white rounded text-sm hover:bg-brand-700"
+            >
+              New Manual Invoice
+            </button>
+            <button
+              data-testid="generate-invoices-btn"
+              onClick={() => setGenerateOpen(true)}
+              className="px-4 py-2 border rounded text-sm hover:bg-gray-50"
+            >
+              Generate Invoices
+            </button>
+          </div>
         )}
       </div>
 
@@ -264,6 +294,17 @@ export default function InvoicesPage() {
             >
               <option value="">All Clients</option>
               {(clientsData?.data ?? []).map((c) => (<option key={c.id} value={c.id}>{c.company_name}</option>))}
+            </select>
+
+            <select
+              data-testid="invoices-manual-filter"
+              value={manualFilter}
+              onChange={(e) => { setManualFilter(e.target.value as "" | "true" | "false"); setPage(1); }}
+              className="px-3 py-2 border rounded text-sm"
+            >
+              <option value="">Auto + Manual</option>
+              <option value="false">Auto only</option>
+              <option value="true">Manual only</option>
             </select>
           </>
         )}
@@ -326,6 +367,15 @@ export default function InvoicesPage() {
       <GenerateInvoicesModal
         open={generateOpen}
         onClose={() => setGenerateOpen(false)}
+      />
+
+      <ManualInvoiceForm
+        open={manualOpen}
+        onClose={() => setManualOpen(false)}
+        onCreated={(id) => {
+          setManualOpen(false);
+          router.push(`/invoices/${id}`);
+        }}
       />
     </div>
   );

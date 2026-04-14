@@ -9,12 +9,13 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied, NotFound
 from drf_spectacular.utils import extend_schema
-from .models import Invoice, InvoiceCorrectionLink, InvoiceNotification, InvoiceTemplate
+from .models import Invoice, InvoiceCorrectionLink, InvoiceLineItem, InvoiceNotification, InvoiceTemplate
 from .serializers import (
     InvoiceListSerializer, InvoiceDetailSerializer, GenerateInvoicesSerializer,
     MarkPaidSerializer, VoidSerializer, CorrectSerializer, InvoiceNotificationSerializer,
     InvoiceTemplateListSerializer, InvoiceTemplateDetailSerializer,
     InvoiceTemplateCreateSerializer, InvoiceTemplateUpdateSerializer,
+    ManualInvoiceCreateSerializer, ManualInvoicePatchSerializer,
 )
 from apps.timesheets.models import Timesheet
 from apps.contractors.models import ContractorProfile

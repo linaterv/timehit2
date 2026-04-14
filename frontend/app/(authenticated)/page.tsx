@@ -526,9 +526,10 @@ function ControlScreen() {
             {row.flags.map((flag) => (
               <span
                 key={flag}
-                className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 break-all max-w-[220px]"
+                title={flag}
+                className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 whitespace-nowrap"
               >
-                {flag}
+                {FLAG_LABELS[flag] ?? flag}
               </span>
             ))}
           </div>

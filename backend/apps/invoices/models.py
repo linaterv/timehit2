@@ -19,15 +19,17 @@ class Invoice(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     invoice_number = models.CharField(max_length=50, unique=True)
     invoice_type = models.CharField(max_length=20, choices=Type.choices)
-    timesheet = models.ForeignKey("timesheets.Timesheet", on_delete=models.CASCADE, related_name="invoices")
-    placement = models.ForeignKey("placements.Placement", on_delete=models.CASCADE, related_name="invoices")
-    client = models.ForeignKey("clients.Client", on_delete=models.CASCADE, related_name="invoices")
-    contractor = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="contractor_invoices")
-    year = models.IntegerField()
-    month = models.IntegerField()
+    is_manual = models.BooleanField(default=False)
+    candidate_id = models.UUIDField(null=True, blank=True)
+    timesheet = models.ForeignKey("timesheets.Timesheet", on_delete=models.CASCADE, related_name="invoices", null=True, blank=True)
+    placement = models.ForeignKey("placements.Placement", on_delete=models.CASCADE, related_name="invoices", null=True, blank=True)
+    client = models.ForeignKey("clients.Client", on_delete=models.CASCADE, related_name="invoices", null=True, blank=True)
+    contractor = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="contractor_invoices", null=True, blank=True)
+    year = models.IntegerField(null=True, blank=True)
+    month = models.IntegerField(null=True, blank=True)
     currency = models.CharField(max_length=3)
-    hourly_rate = models.DecimalField(max_digits=10, decimal_places=2)
-    total_hours = models.DecimalField(max_digits=10, decimal_places=2)
+    hourly_rate = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    total_hours = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     subtotal = models.DecimalField(max_digits=12, decimal_places=2)
     vat_rate_percent = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     vat_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
@@ -37,6 +39,7 @@ class Invoice(models.Model):
     due_date = models.DateField(null=True, blank=True)
     payment_date = models.DateField(null=True, blank=True)
     payment_reference = models.CharField(max_length=255, blank=True, default="")
+    payment_terms_days = models.IntegerField(null=True, blank=True)
     billing_snapshot = models.JSONField(default=dict)
     generated_by = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="generated_invoices")
     pdf_file = models.FileField(upload_to="invoices/", null=True, blank=True)
@@ -77,6 +80,20 @@ class Invoice(models.Model):
             raise InvalidStateTransition("Can only correct from ISSUED status")
         self.status = self.Status.CORRECTED
         self.save()
+
+
+class InvoiceLineItem(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name="line_items")
+    display_order = models.IntegerField(default=0)
+    description = models.TextField(blank=True, default="")
+    quantity = models.DecimalField(max_digits=12, decimal_places=2)
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2)
+    line_total = models.DecimalField(max_digits=14, decimal_places=2)
+
+    class Meta:
+        db_table = "invoice_line_items"
+        ordering = ["display_order"]
 
 
 class InvoiceNotification(models.Model):

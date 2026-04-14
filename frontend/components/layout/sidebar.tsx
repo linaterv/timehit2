@@ -202,7 +202,7 @@ export function Sidebar() {
                   <div className="border-t mt-1 pt-1 px-2 pb-1">
                     <button
                       onClick={() => { setMoreOpen(false); goToEarliestIssue(); }}
-                      className="w-full flex items-center gap-2 px-2 py-2 rounded bg-red-600 text-white text-xs font-bold hover:bg-red-700 animate-pulse"
+                      className="w-full flex items-center gap-2 px-2 py-2 rounded bg-red-600 text-white text-xs font-bold hover:bg-red-700 animate-pulse cursor-pointer"
                     >
                       <AlertCircle size={16} className="shrink-0" />
                       <span>{pastIssues.count} past issue{pastIssues.count !== 1 ? "s" : ""} need attention</span>
