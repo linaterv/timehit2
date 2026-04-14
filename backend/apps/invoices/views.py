@@ -388,6 +388,9 @@ class GenerateInvoicesView(APIView):
                 co_inv = None
                 from .pdf import generate_invoice_pdf
 
+                _cl_code = pl.client.code if hasattr(pl.client, "code") else ""
+                _co_code = profile.code if hasattr(profile, "code") else ""
+
                 # Client invoice (skip if non-voided already exists)
                 if not existing_client:
                     c_sub = ts.total_hours * pl.client_rate
@@ -407,8 +410,6 @@ class GenerateInvoicesView(APIView):
                     }
                     if ct:
                         c_snap["template_id"] = str(ct.id)
-                        _cl_code = pl.client.code if hasattr(pl.client, "code") else ""
-                    _co_code = profile.code if hasattr(profile, "code") else ""
                     c_inv = Invoice.objects.create(
                         invoice_number=_next_number(ct or profile, client_code=_cl_code, contractor_code=_co_code, default_template="WISE-{CLIENT}{CONTRACTOR}{YY}{MM}{DD}"),
                         invoice_type=Invoice.Type.CLIENT_INVOICE,
