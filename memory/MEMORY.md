@@ -9,3 +9,4 @@
 - [Use temp files for long commands](feedback_temp_files.md) — Prefer temp_*.py / temp_*.sh scripts over long inline bash
 - [Session WIP](session_wip.md) — READ at session start, UPDATE at session end; tracks in-flight work across conversations
 - [Skill activation overrides](feedback_skill_overrides.md) — CHECK before invoking any superpowers skill; local skip/force rules override defaults
+- [Auto-commit cron](feedback_autocommit.md) — 10-min cron already commits everything in this repo; defaults locked, do not re-ask
