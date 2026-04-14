@@ -1182,9 +1182,72 @@ Generate invoice pairs for one or more approved timesheets. Broker/Admin only.
 - No non-VOIDED invoices must exist for this timesheet.
 - Contractor profile must have sufficient data (bank details recommended but not blocked).
 
+### `POST /invoices/manual`
+
+Create a standalone manual client invoice (e.g. a permanent-placement finder's fee). Admin + Broker. When `client_id` is set, Broker must be assigned to that client. When `client_id` is omitted, either role may create (bill-to typed directly). Nothing is auto-generated: `invoice_number` and `issue_date` are user-entered, no counter is consumed, no PDF is rendered on creation.
+
+```json
+// Request
+{
+  "invoice_number": "PERM-2026-001",         // required; must be unique
+  "issue_date": "2026-04-14",                // required
+  "due_date": "2026-05-14",                  // optional; if omitted and payment_terms_days given, computed = issue_date + terms
+  "payment_terms_days": 30,                  // optional; default from AgencySettings.default_client_invoice_template
+  "currency": "EUR",                         // required
+  "vat_rate_percent": "21.00",               // optional; null = no VAT line
+  "client_id": "uuid | null",                // optional
+  "candidate_id": "uuid | null",             // optional; cross-DB UUID to CRM candidate
+  "bill_to": {                               // required when client_id is null; snapshot from client otherwise
+    "company_name": "Acme Corp",
+    "registration_number": "123456",
+    "billing_address": "...",
+    "country": "DE",
+    "vat_number": "DE123456789"
+  },
+  "bank": {                                  // optional; prefilled from AgencySettings default on the form but stored as snapshot
+    "bank_name": "SEB",
+    "bank_account_iban": "LT...",
+    "bank_swift_bic": "CBVILT2X"
+  },
+  "line_items": [                            // ≥1 required
+    { "description": "Permanent placement fee — John Doe", "quantity": "1", "unit_price": "8000.00" },
+    { "description": "Onboarding support", "quantity": "1", "unit_price": "1000.00" }
+  ]
+}
+
+// 201 — returns the full invoice with computed subtotal / vat_amount / total_amount and line_items
+// 400 — missing required fields, empty line_items, duplicate invoice_number, invalid currency
+// 403 — Broker without matching client assignment; Broker attempting to create without client_id
+// 409 — invoice_number already taken
+```
+
+**Validation:**
+- `line_items` non-empty; each `quantity` and `unit_price` > 0.
+- `invoice_number` unique across ALL invoices (not just manual).
+- If `client_id` set: Broker must have a `BrokerClientAssignment` for it. If null: any Admin or Broker.
+- `billing_snapshot` on the stored invoice is assembled on the server: from the client's default `InvoiceTemplate` when `client_id` is set, otherwise from the `bill_to` block. Bank fields from `bank` (or agency default if omitted) are merged in.
+- Invoice is created in `DRAFT`. Editable via `PATCH /invoices/:id` until issued.
+
+### `PATCH /invoices/:id`
+
+Edit a manual invoice while it is in `DRAFT`. Admin + Broker (same client-scope rules as create). Auto-generated invoices and any invoice past DRAFT reject this endpoint with `409`.
+
+```json
+// Request — any subset of the POST /invoices/manual body
+{
+  "invoice_number": "PERM-2026-001B",
+  "issue_date": "2026-04-15",
+  "line_items": [ ... ]          // if provided, REPLACES the whole list
+}
+
+// 200 — full updated invoice
+// 409 — not DRAFT, or not a manual invoice
+// 403 — scope mismatch
+```
+
 ### `GET /invoices`
 
-Query params: `invoice_type` (CLIENT_INVOICE, CONTRACTOR_INVOICE), `status` (comma-separated), `client_id`, `contractor_id`, `placement_id`, `year`, `month`, `page`, `per_page`, `sort`, `order`
+Query params: `invoice_type` (CLIENT_INVOICE, CONTRACTOR_INVOICE), `status` (comma-separated), `client_id`, `contractor_id`, `placement_id`, `year`, `month`, `is_manual` (`true` / `false`), `candidate_id`, `page`, `per_page`, `sort`, `order`
 
 ```json
 // 200
@@ -1194,9 +1257,11 @@ Query params: `invoice_type` (CLIENT_INVOICE, CONTRACTOR_INVOICE), `status` (com
       "id": "uuid",
       "invoice_number": "AGY-2026-0001",
       "invoice_type": "CLIENT_INVOICE",
+      "is_manual": false,
       "client": { "id": "uuid", "company_name": "string" },
-      "contractor": { "id": "uuid", "full_name": "string" },
-      "placement_id": "uuid",
+      "contractor": { "id": "uuid", "full_name": "string" } | null,
+      "candidate_id": "uuid | null",
+      "placement_id": "uuid | null",
       "year": 2026,
       "month": 3,
       "currency": "EUR",
@@ -1218,6 +1283,8 @@ Query params: `invoice_type` (CLIENT_INVOICE, CONTRACTOR_INVOICE), `status` (com
   "meta": { ... }
 }
 ```
+
+For manual invoices (`is_manual: true`), `timesheet_id`, `placement_id`, `contractor`, `year`, `month`, `hourly_rate`, `total_hours` are all `null`, and `line_items` is populated (see `GET /invoices/:id`).
 
 ### `GET /invoices/:id`
 
@@ -1273,12 +1340,71 @@ For CLIENT_INVOICE, `billing_snapshot` contains client fields instead:
 }
 ```
 
-### `POST /invoices/:id/issue`
-
-DRAFT -> ISSUED. Triggers PDF generation. Broker/Admin.
+For a manual invoice (`is_manual: true`), the detail response additionally includes the `line_items` array and uses a manual-flavored `billing_snapshot`:
 
 ```json
-// 200 — invoice with status: "ISSUED", pdf available
+{
+  "id": "uuid",
+  "invoice_number": "PERM-2026-001",
+  "invoice_type": "CLIENT_INVOICE",
+  "is_manual": true,
+  "timesheet_id": null,
+  "placement_id": null,
+  "client": { "id": "uuid", "company_name": "Acme Corp" } | null,
+  "contractor": null,
+  "candidate_id": "uuid | null",
+  "year": null,
+  "month": null,
+  "currency": "EUR",
+  "hourly_rate": null,
+  "total_hours": null,
+  "subtotal": "9000.00",
+  "vat_rate_percent": "21.00",
+  "vat_amount": "1890.00",
+  "total_amount": "10890.00",
+  "status": "DRAFT",
+  "issue_date": "2026-04-14",
+  "due_date": "2026-05-14",
+  "payment_terms_days": 30,
+  "line_items": [
+    {
+      "id": "uuid",
+      "display_order": 0,
+      "description": "Permanent placement fee — John Doe",
+      "quantity": "1.00",
+      "unit_price": "8000.00",
+      "line_total": "8000.00"
+    },
+    {
+      "id": "uuid",
+      "display_order": 1,
+      "description": "Onboarding support",
+      "quantity": "1.00",
+      "unit_price": "1000.00",
+      "line_total": "1000.00"
+    }
+  ],
+  "billing_snapshot": {
+    "client_company_name": "Acme Corp",
+    "client_billing_address": "...",
+    "client_vat_number": "DE123456789",
+    "bank_name": "SEB",
+    "bank_account_iban": "LT...",
+    "bank_swift_bic": "CBVILT2X"
+  },
+  "created_at": "2026-04-14T10:00:00Z"
+}
+```
+
+### `POST /invoices/:id/issue`
+
+DRAFT -> ISSUED. Broker/Admin.
+
+- **Auto-generated invoices**: triggers PDF generation server-side; `pdf` becomes available.
+- **Manual invoices** (`is_manual: true`): no PDF is generated. The invoice freezes and becomes non-editable, but `GET /invoices/:id/pdf` remains on-demand (see below).
+
+```json
+// 200 — invoice with status: "ISSUED"
 // 409 — not in DRAFT status
 ```
 
@@ -1334,11 +1460,14 @@ ISSUED -> CORRECTED. Creates a new corrective invoice in DRAFT. Broker/Admin.
 
 ### `GET /invoices/:id/pdf`
 
-Download generated PDF. Available to anyone who can view the invoice.
+Download the PDF. Available to anyone who can view the invoice.
+
+- **Auto-generated invoices**: returns the PDF rendered at ISSUE time.
+- **Manual invoices**: renders the PDF **on demand** from stored data (`billing_snapshot`, `line_items`, bank fields). Works for both DRAFT and ISSUED manual invoices — DRAFT PDFs are watermarked "DRAFT" and are not persisted.
 
 ```
 // 200 — Content-Type: application/pdf, Content-Disposition: attachment
-// 404 — PDF not yet generated (invoice still in DRAFT)
+// 404 — auto-generated invoice still in DRAFT (no PDF yet)
 ```
 
 ### `DELETE /invoices/:id`

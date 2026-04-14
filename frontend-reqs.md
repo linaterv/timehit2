@@ -323,6 +323,33 @@ Reusable component used by Settings, contractor detail Templates tab, and profil
 - Generate button, shows results (generated + errors)
 - data-testid: `generate-modal`, `generate-submit`, `generate-auto-issue`
 
+**Create Manual Invoice** (button on Invoices list, Admin + Broker):
+- Use case: one-off sales like a permanent-placement finder's fee. Not tied to a timesheet.
+- Button top-right on `/invoices`, labeled "New Manual Invoice". Hidden for Contractor/Client Contact.
+- Opens a slide-over or full-page form. All fields user-entered — nothing auto-generated.
+- **Form sections**:
+  1. **Identity**: `invoice_number` (required, unique — inline validation), `issue_date` (date picker, default today but editable), `due_date` (date picker, auto-computes from `payment_terms_days` if left empty but overridable).
+  2. **Bill to**: radio — "Existing Client" (dropdown scoped to assigned clients for Broker; all clients for Admin; snapshots from client's `InvoiceTemplate`) OR "Manual entry" (company_name, registration_number, billing_address, country, vat_number inputs). When no client is selected, both Admin and Broker may submit.
+  3. **Candidate link (optional)**: autocomplete over `/candidates` search. Shows candidate full_name + email. Clearable.
+  4. **Line items**: repeater, ≥1 row required. Per row: `description` (text), `quantity` (decimal, default 1), `unit_price` (decimal). `line_total` shown as computed `qty × unit_price`. "Add line" / "Remove" buttons. Sum shown live below.
+  5. **Totals**: `currency` dropdown, `vat_rate_percent` input (blank = no VAT line). Live display: subtotal (sum of lines), VAT amount, total.
+  6. **Payment details**: `payment_terms_days` (number), bank fields (`bank_name`, `bank_account_iban`, `bank_swift_bic`) — all four prefilled from `AgencySettings.default_client_invoice_template` via the `/agency-settings` endpoint, editable.
+- **Submit**: "Save as Draft" → `POST /invoices/manual` then stay on the form (or navigate to detail). No "Save & Issue" shortcut; ISSUE is a separate step on the detail page for safety.
+- **Validation**: duplicate invoice_number → inline red error. Empty line items → submit disabled.
+- data-testid: `manual-invoice-btn`, `manual-invoice-form`, `mi-number`, `mi-issue-date`, `mi-client-select`, `mi-bill-to-mode`, `mi-candidate-select`, `mi-lines`, `mi-line-{index}-desc`, `mi-line-{index}-qty`, `mi-line-{index}-price`, `mi-add-line`, `mi-currency`, `mi-vat`, `mi-terms`, `mi-bank-iban`, `mi-submit`.
+
+**Invoice list — manual invoices**:
+- Manual invoices appear interleaved with auto-generated ones. `month` column blank (no billing period). `type` column shows a "Manual" badge instead of CLIENT/CONTRACTOR.
+- Extra filter: `is_manual` toggle ("Auto / Manual / All"), defaults to All.
+
+**Invoice detail — manual invoices**:
+- Same layout as auto, but: placement section hidden, timesheet link hidden, billing period hidden.
+- Line items card replaces the "rate × hours" card. Table: #, description, qty, unit_price, line_total.
+- DRAFT state: **inline edit** allowed (edit invoice_number, issue_date, due_date, bill-to, line items, currency, vat_rate, bank fields) via `PATCH /invoices/:id`. Shows "Save" / "Discard" while dirty.
+- "Download PDF" button is always visible for manual invoices (DRAFT watermarks the PDF with "DRAFT"; ISSUED/PAID render clean).
+- "Delete" button only for DRAFT manual invoices.
+- data-testid: `manual-invoice-detail`, `mi-edit-save`, `mi-edit-discard`, `invoice-delete-btn`.
+
 ### 10. Documents (`/documents`) — ADMIN, BROKER, CLIENT_CONTACT
 Aggregated view of all placement documents the user has access to.
 
