@@ -13,11 +13,11 @@ TimeHit2 is the user's primary project and focus. It is an IT Contracting Agency
 - Next.js frontend: port 3000, started with `npx next dev --port 3000 --hostname 0.0.0.0`
 - Both run as nohup background processes (logs at /tmp/django.log and /tmp/nextjs.log)
 
-**Seed data loaded:** 24 users, 7 clients, 14 placements, 43 timesheets, 70 invoices, 9 documents. All passwords: `a`
+**Seed data:** loaded via `python manage.py populate --clean` (realistic dataset) or `python manage.py seed` (minimal, for API tests). Exact counts drift between runs — check the DB or CLAUDE.md for current figures. All passwords: `a`
 
 **Key users:** admin@timehit.com (Admin), jonas@timehit.com (Broker), dev.alex@mail.com (Contractor), anna@techvibe.com (Client Contact)
 
-**Tests:** 269 backend pytest tests across 27 files (in tests/), 125 Playwright E2E tests across 29 files (in frontend-tests/). Full catalog in `tests.md`, future test ideas (L-P backlog) in `tests-todo.md`.
+**Tests:** pytest API suite in `tests/` (run with `pytest -v`), Playwright E2E in `frontend-tests/` (run with `npx playwright test`). Counts drift — see `tests.md` for the live catalog and `tests-todo.md` for backlog.
 
 **Candidates module (built 2026-04-11):**
 - Separate SQLite DB (`candidates.sqlite3`) with Django multi-DB routing (`apps.candidates.router.CandidatesRouter`)
