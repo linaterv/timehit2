@@ -247,11 +247,12 @@ class ControlSummaryView(APIView):
                 draft_invs = Invoice.objects.filter(placement=pl, year=year, month=m, status=Invoice.Status.DRAFT)
                 not_sent += draft_invs.count()
 
-        # Manual invoices: filter by issue_date (they have null placement/year/month).
-        # Scope: broker sees only manual invoices whose client is assigned to them OR has no client link.
+        # Manual invoices: no billing period (year/month are null). Always surface
+        # them in the unpaid/not-sent counters regardless of the month the user is
+        # viewing — overdue is a time-based property, not a billing-period one.
+        # Scope by year only; broker sees only manual invoices whose client is
+        # assigned to them OR has no client link.
         manual_qs = Invoice.objects.filter(is_manual=True, issue_date__year=year)
-        if month:
-            manual_qs = manual_qs.filter(issue_date__month=month)
         if request.user.is_broker:
             from django.db.models import Q as _Q
             manual_qs = manual_qs.filter(

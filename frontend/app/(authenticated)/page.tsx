@@ -22,6 +22,7 @@ import type {
   Client,
   Timesheet,
   User,
+  Invoice,
 } from "@/types/api";
 
 /* ──────────────────────────── Contractor redirect ──────────────────────────── */
@@ -390,6 +391,22 @@ function ControlScreen() {
     ["brokers-for-select"],
     "/users?role=BROKER&is_active=true&per_page=200"
   );
+
+  useEffect(() => {
+    if (clientFilter && clientsData?.data && !clientsData.data.some((c) => c.id === clientFilter)) {
+      setClientFilter("");
+    }
+  }, [clientFilter, clientsData]);
+  useEffect(() => {
+    if (contractorFilter && contractorsData?.data && !contractorsData.data.some((c) => c.user_id === contractorFilter)) {
+      setContractorFilter("");
+    }
+  }, [contractorFilter, contractorsData]);
+  useEffect(() => {
+    if (brokerFilter && brokersData?.data && !brokersData.data.some((b) => b.id === brokerFilter)) {
+      setBrokerFilter("");
+    }
+  }, [brokerFilter, brokersData]);
 
   const overviewRows = overviewData?.data ?? [];
 
@@ -933,6 +950,9 @@ function ControlScreen() {
         </div>
       )}
 
+      {/* Unpaid Manual Invoices (no placement → not in the main table; surface here so they don't get lost) */}
+      <ManualInvoicesBlock year={year} />
+
       {/* Data Table */}
       {isLoading ? (
         <div className="text-center py-12 text-gray-400">Loading...</div>
@@ -988,4 +1008,60 @@ export default function DashboardPage() {
   }
 
   return <ControlScreen />;
+}
+
+function ManualInvoicesBlock({ year }: { year: number }) {
+  const router = useRouter();
+  const { data } = useApiQuery<PaginatedResponse<Invoice>>(
+    ["manual-invoices-unpaid", year],
+    `/invoices?is_manual=true&status=ISSUED,DRAFT&year=${year}&per_page=50&sort=due_date&order=asc`,
+  );
+  const rows = data?.data ?? [];
+  if (rows.length === 0) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  return (
+    <div data-testid="manual-invoices-block" className="border rounded-lg bg-surface">
+      <div className="px-4 py-2 border-b bg-amber-50 text-sm font-medium text-amber-900 flex items-center gap-2">
+        <span>Unpaid Manual Invoices</span>
+        <span className="text-xs text-amber-700 font-normal">({rows.length})</span>
+      </div>
+      <table className="w-full text-sm">
+        <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
+          <tr>
+            <th className="px-3 py-1.5 text-left">Invoice #</th>
+            <th className="px-3 py-1.5 text-left">Bill To</th>
+            <th className="px-3 py-1.5 text-right">Amount</th>
+            <th className="px-3 py-1.5 text-left">Issue Date</th>
+            <th className="px-3 py-1.5 text-left">Due Date</th>
+            <th className="px-3 py-1.5 text-left">Status</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y">
+          {rows.map((inv) => {
+            const overdue = inv.status === "ISSUED" && inv.due_date && inv.due_date < today;
+            const billTo = inv.client?.company_name
+              ?? (inv.billing_snapshot as { client_company_name?: string } | undefined)?.client_company_name
+              ?? "—";
+            return (
+              <tr key={inv.id} onClick={() => router.push(`/invoices/${inv.id}`)}
+                className="cursor-pointer hover:bg-gray-50">
+                <td className="px-3 py-1.5 font-mono text-xs">{inv.invoice_number}</td>
+                <td className="px-3 py-1.5">{billTo}</td>
+                <td className="px-3 py-1.5 text-right whitespace-nowrap">{inv.total_amount} {inv.currency}</td>
+                <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-600">{inv.issue_date}</td>
+                <td className={`px-3 py-1.5 whitespace-nowrap text-xs ${overdue ? "text-red-600 font-semibold" : "text-gray-600"}`}>
+                  {inv.due_date || "—"}{overdue ? " (overdue)" : ""}
+                </td>
+                <td className="px-3 py-1.5">
+                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${
+                    inv.status === "DRAFT" ? "bg-gray-100 text-gray-700" : "bg-blue-100 text-blue-700"
+                  }`}>{inv.status}</span>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
 }
