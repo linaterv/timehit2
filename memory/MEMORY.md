@@ -7,3 +7,5 @@
 - [Candidates FTS architecture](project_candidates_fts.md) — Separate SQLite DB with FTS5, multi-DB routing, PDF extraction, cross-DB contractor link
 - [Server restart pattern](feedback_restart_servers.md) — pkill exits 144, start servers separately, fuser -k for port conflicts
 - [Use temp files for long commands](feedback_temp_files.md) — Prefer temp_*.py / temp_*.sh scripts over long inline bash
+- [Session WIP](session_wip.md) — READ at session start, UPDATE at session end; tracks in-flight work across conversations
+- [Skill activation overrides](feedback_skill_overrides.md) — CHECK before invoking any superpowers skill; local skip/force rules override defaults
