@@ -1014,7 +1014,7 @@ function ManualInvoicesBlock({ year }: { year: number }) {
   const router = useRouter();
   const { data } = useApiQuery<PaginatedResponse<Invoice>>(
     ["manual-invoices-unpaid", year],
-    `/invoices?is_manual=true&status=ISSUED,DRAFT&year=${year}&per_page=50&sort=due_date&order=asc`,
+    `/invoices?is_manual=true&status=ISSUED,DRAFT&issue_year=${year}&per_page=50&sort=due_date&order=asc`,
   );
   const rows = data?.data ?? [];
   if (rows.length === 0) return null;
