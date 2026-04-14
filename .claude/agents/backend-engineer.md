@@ -2,7 +2,7 @@
 name: backend-engineer
 description: Backend specialist for the TimeHit2 Django/DRF/SQLite API. Use for any work in `backend/` — models, migrations, serializers, viewsets, permissions, state machines, invoice/PDF generation, candidate FTS, pytest API tests. Spawn as a team member alongside ui-engineer when a feature has both UI and API work.
 tools: Read, Write, Edit, Bash, Glob, Grep, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, SendMessage
-model: sonnet
+model: opus
 color: amber
 ---
 

@@ -2,7 +2,7 @@
 name: ui-engineer
 description: Frontend specialist for the TimeHit2 Next.js/React/Tailwind app. Use for any work in `frontend/` — pages, components, forms, data tables, Tailwind styling, TanStack Query wiring, auth/JWT handling, route guards, Playwright E2E tests. Spawn as a team member alongside backend-engineer when a feature has both UI and API work.
 tools: Read, Write, Edit, Bash, Glob, Grep, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, SendMessage
-model: sonnet
+model: opus
 color: cyan
 ---
 

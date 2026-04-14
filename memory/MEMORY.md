@@ -10,3 +10,4 @@
 - [Session WIP](session_wip.md) — READ at session start, UPDATE at session end; tracks in-flight work across conversations
 - [Skill activation overrides](feedback_skill_overrides.md) — CHECK before invoking any superpowers skill; local skip/force rules override defaults
 - [Auto-commit cron](feedback_autocommit.md) — 10-min cron already commits everything in this repo; defaults locked, do not re-ask
+- [Team agents](feedback_team_agents.md) — ui-engineer + backend-engineer personas exist; spawn as team for clear UI+backend splits
