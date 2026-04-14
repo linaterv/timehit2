@@ -1,0 +1,9 @@
+- [TimeHit2 primary project](project_timehit2.md) — IT contracting agency platform, user's main project at /home/timehit/a/timehit2, Django+Next.js, deployed and running
+- [User role and context](user_role.md) — timehit user, prefers action over explanation, Linux server, Chrome/Windows
+- [Server and infrastructure](reference_server.md) — v1ln.l.dedikuoti.lt, SSL, nginx cookie gate auth at /gate, GitHub SSH, service ports
+- [Chrome basic auth broken](feedback_chrome_auth.md) — Chrome 146 won't show basic auth popup, must use cookie-based login page with try_files
+- [Workflow: features and commits](feedback_workflow.md) — Update reqs before implementing features; auto-commit when user confirms a change
+- [Bug report naming](feedback_bugreports.md) — Rename bug-reports files to fixed- prefix after fixing
+- [Candidates FTS architecture](project_candidates_fts.md) — Separate SQLite DB with FTS5, multi-DB routing, PDF extraction, cross-DB contractor link
+- [Server restart pattern](feedback_restart_servers.md) — pkill exits 144, start servers separately, fuser -k for port conflicts
+- [Use temp files for long commands](feedback_temp_files.md) — Prefer temp_*.py / temp_*.sh scripts over long inline bash

@@ -12,6 +12,12 @@ TimeHit is a recruitment/contracting agency platform. The agency places IT contr
 **Frontend**: Next.js 16.2, React 19, TypeScript, Tailwind CSS v4, TanStack Query, Lucide icons
 **Tests**: pytest + requests (backend API), Playwright (frontend E2E)
 
+## Memory
+
+Persistent, file-based memory lives in `memory/` at the repo root. It is symlinked from `~/.claude/projects/-home-timehit-a-timehit2/memory/`, so Claude Code's auto-memory system reads and writes directly into the repo. `memory/MEMORY.md` is the index (auto-loaded into context); individual memory files are referenced from there.
+
+Save new memories into `memory/` using the standard `user`/`feedback`/`project`/`reference` types. Do not duplicate content that already lives in this CLAUDE.md or in the requirement docs.
+
 ## Documentation
 
 - `functional-spec.md` — Entity model (incl. InvoiceNotification), state machines, user flows, role-based access matrix, business rules, edge cases
