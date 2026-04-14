@@ -493,7 +493,11 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         user = self.request.user
         if user.is_broker:
-            qs = qs.filter(client__broker_assignments__broker=user)
+            # Broker sees: invoices for assigned clients, OR manual invoices they created (incl. with no client)
+            qs = qs.filter(
+                models.Q(client__broker_assignments__broker=user)
+                | models.Q(is_manual=True, generated_by=user)
+            ).distinct()
         elif user.is_contractor:
             qs = qs.filter(contractor=user, invoice_type=Invoice.Type.CONTRACTOR_INVOICE)
         elif user.is_client_contact:

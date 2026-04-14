@@ -821,6 +821,120 @@ class Command(BaseCommand):
             generated_by=t_broker1,
         )
 
+        # ── MANUAL INVOICES ──────────────────────────────────────────────────
+        self.stdout.write("Creating manual invoices...")
+        from apps.invoices.models import InvoiceLineItem
+        today = date.today()
+        last_month = (today.replace(day=1) - timedelta(days=1))
+        two_months_ago = (last_month.replace(day=1) - timedelta(days=1))
+
+        # 1. Manual invoice WITH client link — permanent placement fee — ISSUED + overdue
+        techvibe = Client.objects.filter(company_name="TechVibe GmbH").first()
+        if techvibe:
+            mi1 = Invoice.objects.create(
+                invoice_number=f"PERM-{today.year}-001",
+                invoice_type="CLIENT_INVOICE",
+                is_manual=True,
+                client=techvibe,
+                currency="EUR",
+                subtotal=D("8000.00"),
+                vat_rate_percent=D("21.00"),
+                vat_amount=D("1680.00"),
+                total_amount=D("9680.00"),
+                status="ISSUED",
+                issue_date=two_months_ago,
+                due_date=two_months_ago + timedelta(days=30),
+                payment_terms_days=30,
+                issued_at=timezone.now() - timedelta(days=40),
+                billing_snapshot={
+                    "client_company_name": techvibe.company_name,
+                    "client_billing_address": techvibe.billing_address,
+                    "client_registration_number": techvibe.registration_number,
+                    "client_country": techvibe.country,
+                    "client_vat_number": techvibe.vat_number,
+                    "bank_name": "SEB Bank",
+                    "bank_account_iban": "LT123456789012345",
+                    "bank_swift_bic": "CBVILT2X",
+                },
+                generated_by=User.objects.get(email="jonas@timehit.com"),
+            )
+            InvoiceLineItem.objects.create(invoice=mi1, display_order=0,
+                description="Permanent placement fee — Anna Developer",
+                quantity=D("1.00"), unit_price=D("8000.00"), line_total=D("8000.00"))
+
+        # 2. Manual invoice WITHOUT client link — referral fee — DRAFT
+        mi2 = Invoice.objects.create(
+            invoice_number=f"REF-{today.year}-001",
+            invoice_type="CLIENT_INVOICE",
+            is_manual=True,
+            client=None,
+            currency="EUR",
+            subtotal=D("2500.00"),
+            vat_rate_percent=D("21.00"),
+            vat_amount=D("525.00"),
+            total_amount=D("3025.00"),
+            status="DRAFT",
+            issue_date=today,
+            due_date=today + timedelta(days=14),
+            payment_terms_days=14,
+            billing_snapshot={
+                "client_company_name": "External Referral Co",
+                "client_billing_address": "Some Street 42\nBerlin, Germany",
+                "client_registration_number": "HRB 999",
+                "client_country": "DE",
+                "client_vat_number": "DE999999999",
+                "bank_name": "SEB Bank",
+                "bank_account_iban": "LT123456789012345",
+                "bank_swift_bic": "CBVILT2X",
+            },
+            generated_by=User.objects.get(email="admin@timehit.com"),
+        )
+        InvoiceLineItem.objects.create(invoice=mi2, display_order=0,
+            description="Candidate referral fee", quantity=D("1.00"),
+            unit_price=D("2000.00"), line_total=D("2000.00"))
+        InvoiceLineItem.objects.create(invoice=mi2, display_order=1,
+            description="Administrative handling", quantity=D("1.00"),
+            unit_price=D("500.00"), line_total=D("500.00"))
+
+        # 3. Manual invoice WITH client link — PAID (to exercise the full lifecycle)
+        nordsoft = Client.objects.filter(company_name="NordSoft AB").first()
+        if nordsoft:
+            mi3 = Invoice.objects.create(
+                invoice_number=f"PERM-{today.year}-002",
+                invoice_type="CLIENT_INVOICE",
+                is_manual=True,
+                client=nordsoft,
+                currency="EUR",
+                subtotal=D("12000.00"),
+                vat_rate_percent=D("21.00"),
+                vat_amount=D("2520.00"),
+                total_amount=D("14520.00"),
+                status="PAID",
+                issue_date=two_months_ago,
+                due_date=two_months_ago + timedelta(days=30),
+                payment_date=last_month,
+                payment_reference="SEPA-REF-2026-04-001",
+                payment_terms_days=30,
+                issued_at=timezone.now() - timedelta(days=45),
+                billing_snapshot={
+                    "client_company_name": nordsoft.company_name,
+                    "client_billing_address": nordsoft.billing_address,
+                    "client_registration_number": nordsoft.registration_number,
+                    "client_country": nordsoft.country,
+                    "client_vat_number": nordsoft.vat_number,
+                    "bank_name": "SEB Bank",
+                    "bank_account_iban": "LT123456789012345",
+                    "bank_swift_bic": "CBVILT2X",
+                },
+                generated_by=User.objects.get(email="laura@timehit.com"),
+            )
+            InvoiceLineItem.objects.create(invoice=mi3, display_order=0,
+                description="Permanent placement fee — Senior architect",
+                quantity=D("1.00"), unit_price=D("10000.00"), line_total=D("10000.00"))
+            InvoiceLineItem.objects.create(invoice=mi3, display_order=1,
+                description="Onboarding workshops (2 days)",
+                quantity=D("2.00"), unit_price=D("1000.00"), line_total=D("2000.00"))
+
         # ── CANDIDATES ───────────────────────────────────────────────────────
         self.stdout.write("Creating candidates with CVs...")
         self._populate_candidates()

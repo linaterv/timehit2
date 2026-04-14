@@ -39,7 +39,7 @@ Save new memories into `memory/` using the standard `user`/`feedback`/`project`/
 cd backend
 pip install -r requirements.txt
 python manage.py migrate
-python manage.py populate --clean    # full realistic data: 21 users, 6 clients, 11 placements, 36 timesheets, 62 invoices with PDFs
+python manage.py populate --clean    # full realistic data: 21 users, 6 clients, 11 placements, 36 timesheets, 65 invoices (62 with PDFs, 3 manual)
 python manage.py seed                # minimal legacy test data (for API tests)
 python manage.py runserver           # http://localhost:8000
 
