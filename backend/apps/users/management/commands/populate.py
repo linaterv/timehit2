@@ -934,6 +934,20 @@ class Command(BaseCommand):
             InvoiceLineItem.objects.create(invoice=mi3, display_order=1,
                 description="Onboarding workshops (2 days)",
                 quantity=D("2.00"), unit_price=D("1000.00"), line_total=D("2000.00"))
+            laura_user = User.objects.get(email="laura@timehit.com")
+            InvoiceNotification.objects.create(invoice=mi3, created_by=laura_user,
+                title="Invoice Created", status="DRAFT")
+            InvoiceNotification.objects.create(invoice=mi3, created_by=laura_user,
+                title="Invoice Issued", status="ISSUED")
+            InvoiceNotification.objects.create(invoice=mi3, created_by=laura_user,
+                title="Payment Received", status="PAID")
+
+        if techvibe:
+            jonas_user = User.objects.get(email="jonas@timehit.com")
+            InvoiceNotification.objects.create(invoice=mi1, created_by=jonas_user,
+                title="Invoice Created", status="DRAFT")
+            InvoiceNotification.objects.create(invoice=mi1, created_by=jonas_user,
+                title="Invoice Issued", status="ISSUED")
 
         # ── CANDIDATES ───────────────────────────────────────────────────────
         self.stdout.write("Creating candidates with CVs...")

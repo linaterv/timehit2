@@ -1387,6 +1387,8 @@ For a manual invoice (`is_manual: true`), the detail response additionally inclu
   "billing_snapshot": {
     "client_company_name": "Acme Corp",
     "client_billing_address": "...",
+    "client_registration_number": "HRB 12345",
+    "client_country": "DE",
     "client_vat_number": "DE123456789",
     "bank_name": "SEB",
     "bank_account_iban": "LT...",
