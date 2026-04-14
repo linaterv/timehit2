@@ -211,3 +211,41 @@ When the user reports a bug or requests a feature:
 3. **Then implement** the code changes
 
 Use `temp_python.py` or `temp_sh.sh` in project root for ad-hoc scripts (fewer approval prompts).
+
+## Team Agents
+
+`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=true` is set globally — multi-agent teams are available. Two project-scoped personas live in `.claude/agents/`:
+
+- **`ui-engineer`** — owns `frontend/` and `frontend-tests/` (Next.js/React/Tailwind/Playwright)
+- **`backend-engineer`** — owns `backend/` and `tests/` (Django/DRF/pytest/FTS)
+
+### When to spawn a team (vs. solo)
+
+Spawn a team whenever the work **cleanly splits across UI and backend** and both halves take more than a trivial edit. Typical triggers:
+- New feature that needs a new endpoint + new page/component/dialog
+- Schema change that propagates to API response + UI types + tests on both sides
+- Cross-cutting refactor touching serializers and the components that consume them
+
+Stay solo when:
+- Single-file edit, typo, CSS tweak, doc update
+- Backend-only (migration, pytest fix, admin command) or frontend-only (layout, Tailwind polish, a11y fix)
+- Exploratory/research question — use `Explore` subagent, not a full team
+
+### How to spawn the team
+
+1. **Create the team**: `TeamCreate({ team_name: "<short-slug>", description: "<one-line goal>" })`. Slug examples: `feat-export-csv`, `fix-invoice-pdf`.
+2. **Update reqs docs first** (per Process Rules above) — functional-spec / timehit-api / frontend-reqs as relevant. Do this before spawning so both teammates start from the same source of truth.
+3. **Spawn teammates in parallel** — one Agent call per persona, in a **single message with multiple tool uses**:
+   - `Agent({ subagent_type: "ui-engineer", name: "ui", team_name: "<slug>", prompt: "<scoped UI task>" })`
+   - `Agent({ subagent_type: "backend-engineer", name: "be", team_name: "<slug>", prompt: "<scoped backend task>" })`
+4. **Split the work reasonably** — each teammate's prompt should state its own deliverable, the API contract they share, and who messages whom first (usually backend first if the contract is new).
+5. **Coordination rule**: the teammate that changes or introduces a contract (endpoint, field, permission) messages the other via `SendMessage` BEFORE landing the change. The receiver acks, then both proceed against the agreed contract.
+6. **Monitor**: when teammates go idle they're waiting for input — that's normal, not an error. Review `TaskList`, assign follow-ups via `TaskUpdate { owner: "ui" | "be" }`.
+7. **Shutdown**: when the feature is done, `SendMessage` each teammate with `{ type: "shutdown_request" }`, then `TeamDelete`.
+
+### What NOT to do
+
+- Don't spawn a team for solo-scope work. The coordination overhead eats the savings.
+- Don't let teammates cross lanes (UI agent editing Django, backend agent editing React). If a lane edit is needed, message the other teammate to do it.
+- Don't skip updating req docs before spawning — both teammates read them and will drift if they're stale.
+- Don't manually run `git commit`. Auto-commit sweeps everything every 10 min with an `autoCommit:` prefix.

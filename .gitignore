@@ -41,3 +41,6 @@ playwright-report/
 temp_*.js
 temp_*.py
 temp_*.sh
+
+# Remember plugin logs
+.remember/logs/
