@@ -247,6 +247,21 @@ class ControlSummaryView(APIView):
                 draft_invs = Invoice.objects.filter(placement=pl, year=year, month=m, status=Invoice.Status.DRAFT)
                 not_sent += draft_invs.count()
 
+        # Manual invoices: filter by issue_date (they have null placement/year/month).
+        # Scope: broker sees only manual invoices whose client is assigned to them OR has no client link.
+        manual_qs = Invoice.objects.filter(is_manual=True, issue_date__year=year)
+        if month:
+            manual_qs = manual_qs.filter(issue_date__month=month)
+        if request.user.is_broker:
+            from django.db.models import Q as _Q
+            manual_qs = manual_qs.filter(
+                _Q(client__broker_assignments__broker=request.user) | _Q(client__isnull=True)
+            )
+        manual_issued = manual_qs.filter(status=Invoice.Status.ISSUED)
+        manual_draft = manual_qs.filter(status=Invoice.Status.DRAFT)
+        unpaid += manual_issued.count()
+        not_sent += manual_draft.count()
+
         total_rev = sum(d["revenue"] for d in currency_data.values())
         total_cost = sum(d["cost"] for d in currency_data.values())
         return Response({
@@ -281,6 +296,37 @@ class ControlExportView(APIView):
                 row["client_invoice"]["status"] if row["client_invoice"] else "N/A",
                 row["margin"], ", ".join(row["flags"]),
             ])
+
+        # Append manual invoices (no placement) for the requested period.
+        try:
+            year = int(request.query_params.get("year", 0))
+            month = int(request.query_params.get("month", 0))
+        except (TypeError, ValueError):
+            year, month = 0, 0
+        if year:
+            today = date.today()
+            manual_qs = Invoice.objects.filter(is_manual=True, issue_date__year=year).select_related("client")
+            if month:
+                manual_qs = manual_qs.filter(issue_date__month=month)
+            if request.user.is_broker:
+                from django.db.models import Q as _Q
+                manual_qs = manual_qs.filter(
+                    _Q(client__broker_assignments__broker=request.user) | _Q(client__isnull=True)
+                )
+            for mi in manual_qs.exclude(status=Invoice.Status.VOIDED):
+                flags = ["manual"]
+                if mi.status == Invoice.Status.ISSUED and mi.due_date and mi.due_date < today:
+                    overdue_days = (today - mi.due_date).days
+                    flags.append(f"overdue_{overdue_days}d")
+                writer.writerow([
+                    (mi.client.company_name if mi.client else (mi.billing_snapshot or {}).get("client_company_name", "") or "(manual, no client)"),
+                    "(manual)",
+                    "", "", mi.currency,
+                    "", "N/A",
+                    mi.status,
+                    str(mi.total_amount), ", ".join(flags),
+                ])
+
         response = HttpResponse(buf.getvalue(), content_type="text/csv")
         response["Content-Disposition"] = f'attachment; filename="control-{request.query_params.get("year", "")}-{request.query_params.get("month", "")}.csv"'
         return response

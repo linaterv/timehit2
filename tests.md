@@ -74,7 +74,7 @@ The most thorough coverage area — verified at **both** API level (fields nulle
 
 ---
 
-## Backend Test Catalog (269 tests)
+## Backend Test Catalog (297 tests)
 
 **Batch 3 (A-K priorities, 56 tests added):**
 - `test_data_integrity.py` (7) — Billing snapshot immutability, total_hours recalc, date-range, FTS reindex, profile immunity, correction links
@@ -87,6 +87,9 @@ The most thorough coverage area — verified at **both** API level (fields nulle
 - `test_regressions.py` (7) — Bug-report regression coverage
 - `test_concurrency.py` (4) — Concurrent invoice gen, series counter, entry updates, lock-during-mutation
 - `test_misc_d.py` (5) — Large files, XSS, SQL, long strings, double-submit
+
+**Manual Invoices (28 tests):**
+- `test_invoices_manual.py` (28) — Manual invoice CRUD, PATCH editing, PDF generation, control summary/export integration, line items, VAT, billing snapshot, broker scope
 
 **Batch 2 (P1-P4, 37 tests):**
 - `test_invoice_extras.py` (12), `test_timesheet_state.py` (3), `test_placement_copy.py` (2), `test_lock_blocking.py` (5), `test_misc_backend.py` (11), `test_p4_misc.py` (4)
@@ -298,7 +301,10 @@ GET /control/past-issues returns issue scan, POST /admin/repopulate forbidden fo
 
 ---
 
-## Playwright E2E Catalog (125 tests)
+## Playwright E2E Catalog (138 tests)
+
+**Manual Invoices (13 tests):**
+- `manual-invoices.spec.ts` (13) — Create manual invoice form, edit DRAFT, issue/void/pay flow, PDF download, line items, validation, broker scope
 
 **Batch 3 (C/D deep UX, 8 tests):**
 - `ui-deep.spec.ts` (8) — Dashboard filters, profile refresh, calendar weekends, bulk gen, login redirect target, audit clicks, 404 graceful, offline recovery

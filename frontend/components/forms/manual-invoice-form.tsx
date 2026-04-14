@@ -167,17 +167,19 @@ export function ManualInvoiceForm({ open, onClose, onCreated }: Props) {
   }, [candidateSearch, candidateMenuOpen]);
 
   useEffect(() => {
-    if (!invoiceNumber.trim()) {
+    const trimmed = invoiceNumber.trim();
+    if (!trimmed) {
       setInvoiceNumberError("");
       return;
     }
     const t = setTimeout(async () => {
       try {
         const res = await api<PaginatedResponse<Invoice>>(
-          `/invoices?invoice_number=${encodeURIComponent(invoiceNumber.trim())}&per_page=1`
+          `/invoices?invoice_number=${encodeURIComponent(trimmed)}&per_page=20`
         );
-        if (res.data && res.data.length > 0) {
-          setInvoiceNumberError(`Invoice number "${invoiceNumber.trim()}" is already taken`);
+        const exactHit = (res.data ?? []).some((inv) => inv.invoice_number === trimmed);
+        if (exactHit) {
+          setInvoiceNumberError(`Invoice number "${trimmed}" is already taken`);
         } else {
           setInvoiceNumberError("");
         }

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Upload, Download, Trash2, FileText, MessageSquare, ArrowRight, ExternalLink } from "lucide-react";
+import { Upload, Download, Trash2, FileText, MessageSquare, ArrowRight, ExternalLink, UserPlus } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useApiQuery, useApiMutation } from "@/hooks/use-api";
 import { useQueryClient } from "@tanstack/react-query";
@@ -10,7 +10,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { CountrySelect } from "@/components/shared/country-select";
 import { api, getAccessToken } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import type { Candidate, CandidateActivityInfo, CandidateFileInfo, PaginatedResponse } from "@/types/api";
+import type { Candidate, CandidateActivityInfo, CandidateFileInfo, PaginatedResponse, User } from "@/types/api";
 
 function downloadFile(url: string, filename: string) {
   const token = getAccessToken();
@@ -75,6 +75,15 @@ export default function CandidateDetailPage() {
   // CV upload
   const [cvUploading, setCvUploading] = useState(false);
 
+  // Create-contractor-from-candidate modal
+  const [ccOpen, setCcOpen] = useState(false);
+  const [ccName, setCcName] = useState("");
+  const [ccEmail, setCcEmail] = useState("");
+  const [ccCountry, setCcCountry] = useState("LT");
+  const [ccPassword, setCcPassword] = useState("");
+  const [ccError, setCcError] = useState("");
+  const [ccSubmitting, setCcSubmitting] = useState(false);
+
   const { data: candidate, isLoading } = useApiQuery<Candidate>(
     ["candidate", id], `/candidates/${id}`, allowed && !!id
   );
@@ -131,6 +140,45 @@ export default function CandidateDetailPage() {
     } catch { /* ignore */ }
   };
 
+  const openCreateContractor = async () => {
+    setCcName(candidate.full_name || "");
+    setCcEmail(candidate.email || "");
+    setCcCountry(candidate.country || "LT");
+    setCcError("");
+    setCcOpen(true);
+    try {
+      const d = await api<{ password: string }>("/users/generate-password", { method: "POST" });
+      setCcPassword(d.password);
+    } catch { setCcPassword(""); }
+  };
+
+  const submitCreateContractor = async () => {
+    if (!ccEmail.trim() || !ccName.trim() || !ccPassword.trim()) {
+      setCcError("Name, email, and password required"); return;
+    }
+    setCcSubmitting(true); setCcError("");
+    try {
+      const newUser = await api<User>("/users", {
+        method: "POST",
+        body: JSON.stringify({ email: ccEmail, full_name: ccName, password: ccPassword, role: "CONTRACTOR", country: ccCountry }),
+        headers: { "Content-Type": "application/json" },
+      });
+      await api(`/candidates/${id}/link-contractor`, {
+        method: "POST",
+        body: JSON.stringify({ contractor_id: newUser.id }),
+        headers: { "Content-Type": "application/json" },
+      });
+      qc.invalidateQueries({ queryKey: ["candidate", id] });
+      qc.invalidateQueries({ queryKey: ["contractors"] });
+      setCcOpen(false);
+    } catch (e) {
+      const err = e as { message?: string; details?: { field: string; message: string }[] };
+      setCcError(err.details?.map(d => `${d.field}: ${d.message}`).join("; ") || err.message || "Failed to create contractor");
+    } finally {
+      setCcSubmitting(false);
+    }
+  };
+
   const handleActivitySubmit = async () => {
     if (!activityText.trim() && activityFiles.length === 0) return;
     setActivitySubmitting(true);
@@ -184,11 +232,21 @@ export default function CandidateDetailPage() {
                 </a>
               )}
             </div>
-            {candidate.contractor_id && (
+            {candidate.contractor_id ? (
               <div className="mt-2 flex items-center gap-2">
                 <span className="text-xs text-emerald-600 font-medium bg-emerald-50 px-2 py-0.5 rounded">Linked to contractor</span>
                 <button onClick={() => router.push(`/contractors/${candidate.contractor_id}`)}
                   className="text-xs text-brand-600 hover:underline">View <ArrowRight size={12} className="inline" /></button>
+              </div>
+            ) : (
+              <div className="mt-2">
+                <button
+                  data-testid="create-contractor-from-candidate"
+                  onClick={openCreateContractor}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 text-white rounded text-xs font-medium hover:bg-brand-700"
+                >
+                  <UserPlus size={14} /> Create Contractor
+                </button>
               </div>
             )}
           </div>
@@ -420,6 +478,52 @@ export default function CandidateDetailPage() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Create Contractor from Candidate modal */}
+      {ccOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/30" onClick={() => !ccSubmitting && setCcOpen(false)} />
+          <div data-testid="cc-dialog" className="relative bg-surface rounded-xl shadow-lg w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Create Contractor from Candidate</h3>
+              <button onClick={() => !ccSubmitting && setCcOpen(false)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+            </div>
+            <p className="text-xs text-gray-500">Creates a contractor user and links this candidate to it.</p>
+            {ccError && <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{ccError}</div>}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+              <input data-testid="cc-name" type="text" value={ccName} onChange={(e) => setCcName(e.target.value)}
+                className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input data-testid="cc-email" type="email" value={ccEmail} onChange={(e) => setCcEmail(e.target.value)}
+                className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+              <CountrySelect value={ccCountry} onChange={setCcCountry} testId="cc-country" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Password <span className="text-xs text-gray-400">(auto-generated, editable)</span></label>
+              <div className="flex gap-2">
+                <input data-testid="cc-password" type="text" value={ccPassword} onChange={(e) => setCcPassword(e.target.value)}
+                  className="flex-1 border rounded-md px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-600" />
+                <button type="button" onClick={async () => {
+                  try { const d = await api<{ password: string }>("/users/generate-password", { method: "POST" }); setCcPassword(d.password); } catch { /* ignore */ }
+                }} className="px-3 py-2 border rounded-md text-sm text-gray-700 hover:bg-gray-50">Regenerate</button>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button disabled={ccSubmitting} onClick={() => setCcOpen(false)} className="px-4 py-2 border rounded-md text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50">Cancel</button>
+              <button data-testid="cc-submit" disabled={ccSubmitting} onClick={submitCreateContractor}
+                className="px-4 py-2 bg-brand-600 text-white rounded-md text-sm font-medium hover:bg-brand-700 disabled:opacity-50">
+                {ccSubmitting ? "Creating…" : "Create & Link"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

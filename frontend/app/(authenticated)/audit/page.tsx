@@ -26,7 +26,7 @@ interface AuditEntry {
   related: RelatedEntity[];
 }
 
-const ENTITY_TYPES = ["timesheet", "placement", "invoice", "invoice_template", "client", "contractor", "user", "document"];
+const ENTITY_TYPES = ["timesheet", "placement", "invoice", "invoice_template", "client", "contractor", "candidate", "user", "document"];
 const ACTION_COLORS: Record<string, string> = {
   CREATED: "bg-brand-50 text-brand-700",
   UPDATED: "bg-blue-50 text-blue-700",
@@ -56,6 +56,7 @@ function entityLink(type: string, id: string): string {
     case "invoice": return `/invoices/${id}`;
     case "client": return `/clients/${id}`;
     case "contractor": return `/contractors/${id}`;
+    case "candidate": return `/candidates/${id}`;
     default: return "";
   }
 }
