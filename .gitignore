@@ -47,3 +47,6 @@ temp_*.sh
 
 # Remember plugin state
 .remember/
+
+# Claude scheduled tasks lock
+.claude/scheduled_tasks.lock
